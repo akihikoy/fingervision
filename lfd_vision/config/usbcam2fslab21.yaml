@@ -2,8 +2,8 @@
 CameraInfo:
   -
     Name: usbcam2fslab21_l
-    #DevID: "http://aypi2:8080/?action=stream&dummy=file.mjpg"
-    DevID: "3"
+    DevID: "http://aypi3:8082/?action=stream&dummy=file.mjpg"
+    #DevID: "3"
     Width: 320
     Height: 240
     PixelFormat: MJPG
@@ -28,8 +28,8 @@ CameraInfo:
       data: [ 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0 ]
   -
     Name: usbcam2fslab21_r
-    #DevID: "http://aypi2:8081/?action=stream&dummy=file.mjpg"
-    DevID: "4"
+    DevID: "http://aypi3:8083/?action=stream&dummy=file.mjpg"
+    #DevID: "4"
     Width: 320
     Height: 240
     PixelFormat: MJPG
