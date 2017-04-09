@@ -8,10 +8,10 @@
 base=~/ros/lfd_vision
 files=(
 Makefile
-blob_usbcam2fay12_l.yaml
-blob_usbcam2fay12_r.yaml
-blob_usbcam2fay22_l.yaml
-blob_usbcam2fay22_r.yaml
+# blob_usbcam2fay12_l.yaml
+# blob_usbcam2fay12_r.yaml
+# blob_usbcam2fay22_l.yaml
+# blob_usbcam2fay22_r.yaml
 config/usbcam2fay12.yaml
 config/usbcam2fay22.yaml
 include/lfd_vision/blob_tracker2.h
@@ -24,7 +24,7 @@ launch/usb_stereo_calib2fay11.sh
 launch/visual_skin_2fay12.launch
 launch/visual_skin_2fay22.launch
 mainpage.dox
-manifest.xml
+# manifest.xml
 msg/BlobMove.msg
 msg/BlobMoves.msg
 msg/Int32Array.msg
@@ -50,6 +50,9 @@ rsync -azv -R -L ${files2} lfd_vision/
 
 base=~/prg/testl/cv
 files=(
+cv2-videoout2.h
+rotate90n.h
+cap_open.h
 simple_blob_tracker4.cpp
 obj_det_track3.cpp
 )
