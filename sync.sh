@@ -55,6 +55,7 @@ rotate90n.h
 cap_open.h
 simple_blob_tracker4.cpp
 obj_det_track3.cpp
+capture.cpp
 )
 files2=""
 for ((i=0; i<$((${#files[@]})); i++)) ; do
