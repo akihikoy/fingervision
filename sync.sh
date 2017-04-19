@@ -12,8 +12,8 @@ Makefile
 # blob_usbcam2fay12_r.yaml
 # blob_usbcam2fay22_l.yaml
 # blob_usbcam2fay22_r.yaml
-config/usbcam2fay12.yaml
-config/usbcam2fay22.yaml
+# config/usbcam2fay12.yaml
+# config/usbcam2fay22.yaml
 include/lfd_vision/blob_tracker2.h
 include/lfd_vision/geom_util.h
 include/lfd_vision/pcl_util.h
