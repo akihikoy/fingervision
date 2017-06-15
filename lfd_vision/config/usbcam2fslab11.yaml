@@ -2,8 +2,8 @@
 CameraInfo:
   -
     Name: usbcam2fslab12_l
-    #DevID: "http://aypi1:8080/?action=stream&dummy=file.mjpg"
-    DevID: "1"
+    DevID: "http://aypi3:8080/?action=stream&dummy=file.mjpg"
+    #DevID: "1"
     Width: 320
     Height: 240
     PixelFormat: MJPG
@@ -28,8 +28,8 @@ CameraInfo:
       data: [ 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0 ]
   -
     Name: usbcam2fslab12_r
-    #DevID: "http://aypi1:8081/?action=stream&dummy=file.mjpg"
-    DevID: "2"
+    DevID: "http://aypi3:8081/?action=stream&dummy=file.mjpg"
+    #DevID: "2"
     Width: 320
     Height: 240
     PixelFormat: MJPG
@@ -69,7 +69,7 @@ BlobTracker2:
     # SBDParams_minInertiaRatio : 0.01
     ThreshH: 180
     ThreshS: 255
-    ThreshV: 13
+    ThreshV: 40
     NDilate1: 2
     NErode1: 2
     SWidth: 30

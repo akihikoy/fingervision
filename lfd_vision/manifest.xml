@@ -8,7 +8,7 @@
   <license>???</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/lfd_vision</url>
-  <depend package="rospy"/>
+  <!--<depend package="rospy"/>-->
   <depend package="roscpp"/>
   <depend package="std_msgs"/>
   <depend package="std_srvs"/>
@@ -18,7 +18,7 @@
   <depend package="camera_info_manager"/>
   <!--<depend package="pcl"/>-->
   <depend package="pcl_ros"/>
-  <depend package="ar_track_alvar_msgs"/>
+  <!--<depend package="ar_track_alvar_msgs"/>-->
   <!--<depend package="pr2_lfd_utils"/>-->
   <!--<depend package="sentis_tof_m100"/>-->
 
