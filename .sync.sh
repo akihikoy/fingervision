@@ -63,3 +63,39 @@ for ((i=0; i<$((${#files[@]})); i++)) ; do
 done
 # echo $files2
 rsync -azv -R -L ${files2} standalone/
+
+base=~/things
+#Use `git ls-files` to list files.
+files=(
+bxgr_optskin01/bxgr_optskin02a-v3.1.fcstd
+bxgr_optskin01/bxgr_optskin02a-v3.1.step
+bxgr_optskin01/bxgr_optskin02a-v3.1.stl
+bxgr_optskin01/bxgr_optskin02b-v3.1.fcstd
+bxgr_optskin01/bxgr_optskin02b-v3.1.stl
+bxgr_optskin01/bxgr_optskin02b-v3.fcstd
+bxgr_optskin01/bxgr_optskin02b-v3.stl
+bxgr_optskin01/bxgr_optskin02c-v3.1.fcstd
+bxgr_optskin01/bxgr_optskin02c-v3.1.stl
+optskin_mold01/bxgr_optskin02_mold_a-v3.1-p1.stp
+optskin_mold01/bxgr_optskin02_mold_a-v3.1.fcstd
+optskin_mold01/bxgr_optskin02_mold_a-v3.1.stl
+optskin_mold01/bxgr_optskin02_mold_a-v3.1.stp
+optskin_mold01/bxgr_optskin02_mold_b.fcstd
+optskin_mold01/bxgr_optskin02_mold_b.stl
+optskin_mold01/bxgr_optskin02_mold_c-v3.fcstd
+optskin_mold01/bxgr_optskin02_mold_c-v3.stl
+optskin_mold01/bxgr_optskin02_mold_d-v3.fcstd
+optskin_mold01/bxgr_optskin02_mold_d-v3.stl
+optskin_mold01/rq_optskin01_mold_a.fcstd
+optskin_mold01/rq_optskin01_mold_a.stl
+optskin_mold01/rq_optskin01_mold_b.fcstd
+optskin_mold01/rq_optskin01_mold_b.stl
+rq_optskin01/rq_optskin01a.fcstd
+rq_optskin01/rq_optskin01a.stl
+)
+files2=""
+for ((i=0; i<$((${#files[@]})); i++)) ; do
+  files2="$files2 ${base}/./${files[i]}"
+done
+# echo $files2
+rsync -azv -R -L ${files2} cad/
