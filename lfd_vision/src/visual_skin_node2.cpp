@@ -36,7 +36,7 @@ namespace trick
 {
 bool Running(true), Shutdown(false), DoCalibrate(false);
 int FrameSkip(0);  // 0: no skip
-std::string CurrentWin;
+std::string *CurrentWin(NULL);
 
 std::string BlobCalibPrefix("blob_");
 std::vector<TCameraInfo> CamInfo;
@@ -87,8 +87,8 @@ void OnMouse(int event, int x, int y, int flags, void *data)
 {
   if(event!=0)
   {
-    CurrentWin= *(reinterpret_cast<std::string*>(data));
-    std::cerr<<"CurrentWin: "<<CurrentWin<<std::endl;
+    CurrentWin= reinterpret_cast<std::string*>(data);
+    std::cerr<<"CurrentWin: "<<*CurrentWin<<std::endl;
   }
 
   // if(flags!=0)  return;
@@ -102,7 +102,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
     int i_cam(-1);
     TObjDetTrackBSP *ptracker(NULL);
     for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(ObjDetTracker[i].Name==CurrentWin)
+      if(ObjDetTracker[i].Name==*CurrentWin)
       {
         ptracker= &ObjDetTracker[i];
         i_cam= i;
@@ -146,7 +146,7 @@ bool HandleKeyEvent()
     int i_cam(-1);
     TBlobTracker2 *ptracker(NULL);
     for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(BlobTracker[i].Name==CurrentWin)
+      if(BlobTracker[i].Name==*CurrentWin)
       {
         ptracker= &BlobTracker[i];
         i_cam= i;
@@ -163,7 +163,7 @@ bool HandleKeyEvent()
     int i_cam(-1);
     TBlobTracker2 *ptracker(NULL);
     for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(BlobTracker[i].Name==CurrentWin)
+      if(BlobTracker[i].Name==*CurrentWin)
       {
         ptracker= &BlobTracker[i];
         i_cam= i;
@@ -177,23 +177,23 @@ bool HandleKeyEvent()
   }
   else if(c=='C')
   {
-    ShowTrackbars[CurrentWin].Enabled= !ShowTrackbars[CurrentWin].Enabled;
-    if(ShowTrackbars[CurrentWin].Enabled)
+    ShowTrackbars[*CurrentWin].Enabled= !ShowTrackbars[*CurrentWin].Enabled;
+    if(ShowTrackbars[*CurrentWin].Enabled)
     {
-      if(ShowTrackbars[CurrentWin].Kind=="BlobTracker")
+      if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
       {
         // int i_cam(-1);
         TBlobTracker2 *ptracker(NULL);
         for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(BlobTracker[i].Name==CurrentWin)
+          if(BlobTracker[i].Name==*CurrentWin)
           {
             ptracker= &BlobTracker[i];
             // i_cam= i;
             break;
           }
-        cv::createTrackbar("thresh_v", CurrentWin, &ptracker->Params().ThreshV, 255, NULL);
+        cv::createTrackbar("thresh_v", *CurrentWin, &ptracker->Params().ThreshV, 255, NULL);
       }
-      else if(ShowTrackbars[CurrentWin].Kind=="ObjDetTracker")
+      else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
       {
         std::cerr<<"Not implemented yet. Show trackbars for ObjDetTracker"<<std::endl;
       }
@@ -201,15 +201,17 @@ bool HandleKeyEvent()
     else
     {
       // Remove trackbars from window.
-      if(ShowTrackbars[CurrentWin].Kind=="BlobTracker")
+      if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
       {
-        cv::destroyWindow(CurrentWin);
-        cv::namedWindow(CurrentWin,1);
+        cv::destroyWindow(*CurrentWin);
+        cv::namedWindow(*CurrentWin,1);
+        cv::setMouseCallback(*CurrentWin, OnMouse, CurrentWin);
       }
-      else if(ShowTrackbars[CurrentWin].Kind=="ObjDetTracker")
+      else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
       {
-        cv::destroyWindow(CurrentWin);
-        cv::namedWindow(CurrentWin,1);
+        cv::destroyWindow(*CurrentWin);
+        cv::namedWindow(*CurrentWin,1);
+        cv::setMouseCallback(*CurrentWin, OnMouse, CurrentWin);
       }
     }
   }
@@ -682,7 +684,7 @@ int main(int argc, char**argv)
         int i_cam(-1);
         TBlobTracker2 *ptracker(NULL);
         for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(BlobTracker[i].Name==CurrentWin)
+          if(BlobTracker[i].Name==*CurrentWin)
           {
             ptracker= &BlobTracker[i];
             i_cam= i;
@@ -703,7 +705,7 @@ int main(int argc, char**argv)
         int i_cam(-1);
         TObjDetTrackBSP *ptracker(NULL);
         for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(ObjDetTracker[i].Name==CurrentWin)
+          if(ObjDetTracker[i].Name==*CurrentWin)
           {
             ptracker= &ObjDetTracker[i];
             i_cam= i;

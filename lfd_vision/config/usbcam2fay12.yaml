@@ -67,12 +67,12 @@ BlobTracker2:
     # SBDParams_minInertiaRatio : 0.01
     ThreshH: 180
     ThreshS: 255
-    ThreshV: 13
-    NDilate1: 2
-    NErode1: 2
+    ThreshV: 40
+    NDilate1: 0  #2
+    NErode1: 0  #2
     SWidth: 30
-    NonZeroMin: 0.5
-    NonZeroMax: 1.5
+    NonZeroMin: 0.3  #0.5
+    NonZeroMax: 3.0  #1.5
     VPMax: 5.0
     VSMax: 1.0
     NReset: 3
@@ -85,11 +85,11 @@ BlobTracker2:
     ThreshH: 180
     ThreshS: 255
     ThreshV: 40
-    NDilate1: 2
-    NErode1: 2
+    NDilate1: 0  #2
+    NErode1: 0  #2
     SWidth: 30
-    NonZeroMin: 0.5
-    NonZeroMax: 1.5
+    NonZeroMin: 0.3  #0.5
+    NonZeroMax: 3.0  #1.5
     VPMax: 5.0
     VSMax: 1.0
     NReset: 3

@@ -27,7 +27,7 @@ CameraInfo:
       dt: d
       data: [ 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0 ]
   -
-    Name: usbcam2fay12_r
+    Name: usbcam2fslab12_r
     #DevID: "http://aypi1:8081/?action=stream&dummy=file.mjpg"
     DevID: "2"
     Width: 320

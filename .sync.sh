@@ -5,7 +5,7 @@
 #\version 0.1
 #\date    Apr.06, 2017
 
-base=~/ros/lfd_vision
+base=~/ros_ws/lfd_vision
 files=(
 Makefile
 blob_usbcam2fay12_l.yaml

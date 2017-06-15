@@ -577,7 +577,7 @@ int main(int argc, char**argv)
   if(argc>2)  n_rotate90= atoi(argv[2]);
 
   cv::VideoCapture cap;
-  cap= CapOpen(cam, /*width=*/0, /*height=*/0);
+  cap= CapOpen(cam, /*width=*/320, /*height=*/240);
   if(!cap.isOpened())  return -1;
 
 
