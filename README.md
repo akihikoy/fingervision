@@ -44,3 +44,7 @@ cad/
 -----------------------
 CAD models of FingerVision.
 
+tools/
+-----------------------
+Useful tools, such as configuring a USB camera device, and a helper of mjpg-streamer.
+
