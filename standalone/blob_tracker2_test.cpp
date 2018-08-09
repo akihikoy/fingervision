@@ -16,7 +16,7 @@ Run:
   $ ./blob_tracker2_test.out [CAMERA_NUMBER [WIDTH HEIGHT]]
     CAMERA_NUMBER: Camera device number (e.g. 1).
   $ ./blob_tracker2_test.out CONFIG_FILE
-    CONFIG_FILE: Configuration file in YAML (e.g. cam1.yaml).
+    CONFIG_FILE: Configuration file in YAML (e.g. fv_1.yaml).
     The configuration file may include camera configuration (CameraInfo) and
     the configuration of blob tracker (BlobTracker2).
 Usage:

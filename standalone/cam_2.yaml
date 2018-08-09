@@ -1,0 +1,18 @@
+%YAML:1.0
+CameraInfo:
+  -
+    Name: fv_2_l
+    DevID: "http://pi1:8080/?action=stream&dummy=file.mjpg"
+    Width: 320
+    Height: 240
+    PixelFormat: MJPG
+    NRotate90: 0
+    Rectification: 0
+  -
+    Name: fv_2_r
+    DevID: "http://pi1:8081/?action=stream&dummy=file.mjpg"
+    Width: 320
+    Height: 240
+    PixelFormat: MJPG
+    NRotate90: 0
+    Rectification: 0
