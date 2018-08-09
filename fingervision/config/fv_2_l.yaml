@@ -1,7 +1,7 @@
 %YAML:1.0
 CameraInfo:
   -
-    Name: cam1_l
+    Name: fv_2_l
     DevID: "http://pi1:8080/?action=stream&dummy=file.mjpg"
     Width: 320
     Height: 240

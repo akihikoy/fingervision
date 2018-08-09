@@ -518,6 +518,15 @@ cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify)
 }
 //-------------------------------------------------------------------------------------------
 
+inline std::string CheckYAMLExistence(const std::string &filename)
+{
+  std::cerr<<"Loading from YAML: "<<filename<<std::endl;
+  if(!FileExists(filename))
+    std::cerr<<"!!!File not found: "<<filename<<std::endl;
+  return filename;
+}
+//-------------------------------------------------------------------------------------------
+
 int main(int argc, char**argv)
 {
   ros::init(argc, argv, "fv_core_node");
@@ -545,16 +554,16 @@ int main(int argc, char**argv)
 
   std::vector<TBlobTracker2Params> blobtrack_info;
   std::vector<TObjDetTrackBSPParams> objdettrack_info;
-  ReadFromYAML(CamInfo, pkg_dir+"/"+cam_config);
-  ReadFromYAML(blobtrack_info, pkg_dir+"/"+blobtrack_config);
-  ReadFromYAML(objdettrack_info, pkg_dir+"/"+objdettrack_config);
+  ReadFromYAML(CamInfo, CheckYAMLExistence(pkg_dir+"/"+cam_config));
+  ReadFromYAML(blobtrack_info, CheckYAMLExistence(pkg_dir+"/"+blobtrack_config));
+  ReadFromYAML(objdettrack_info, CheckYAMLExistence(pkg_dir+"/"+objdettrack_config));
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
 
   #ifdef WITH_STEREO
   std::string stereo_config("config/cam1.yaml");
   node.param("stereo_config",stereo_config,stereo_config);
   std::cerr<<"stereo_config: "<<stereo_config<<std::endl;
-  ReadFromYAML(StereoInfo, pkg_dir+"/"+stereo_config);
+  ReadFromYAML(StereoInfo, CheckYAMLExistence(pkg_dir+"/"+stereo_config));
   #endif
 
   std::vector<cv::VideoCapture> cap(CamInfo.size());
@@ -647,16 +656,16 @@ int main(int argc, char**argv)
   #ifdef WITH_STEREO
   CloudPub.resize(Stereo.size());
   for(int j(0),j_end(Stereo.size());j<j_end;++j)
-    CloudPub[j]= node.advertise<sensor_msgs::PointCloud2>(std::string("point_cloud_")+StereoInfo[j].Name, 1);
+    CloudPub[j]= node.advertise<sensor_msgs::PointCloud2>(ros::this_node::getNamespace()+"/"+StereoInfo[j].Name+"/point_cloud", 1);
   #endif
 
   BlobPub.resize(BlobTracker.size());
   for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
-    BlobPub[j]= node.advertise<fingervision_msgs::BlobMoves>(std::string("blob_moves_")+CamInfo[j].Name, 1);
+    BlobPub[j]= node.advertise<fingervision_msgs::BlobMoves>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/blob_moves", 1);
 
   PXVPub.resize(ObjDetTracker.size());
   for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
-    PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(std::string("prox_vision_")+CamInfo[j].Name, 1);
+    PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/prox_vision", 1);
 
   ros::ServiceServer srv_pause= node.advertiseService("pause", &Pause);
   ros::ServiceServer srv_resume= node.advertiseService("resume", &Resume);

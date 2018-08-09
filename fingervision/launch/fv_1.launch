@@ -1,11 +1,11 @@
-<!-- For single optical skin demo -->
+<!-- For a single FingerVision demo (USB connection) -->
 <launch>
-  <node type="fv_core_node" pkg="fingervision" name="fv_core" output="screen">
+  <node type="fv_core_node" pkg="fingervision" name="fv_1" ns="fingervision" output="screen">
     <param name="pkg_dir" value="$(find fingervision)/" />
-    <param name="cam_config" value="config/cam1.yaml" />
-    <param name="stereo_config" value="config/cam1.yaml" />
-    <param name="blobtrack_config" value="config/cam1.yaml" />
-    <param name="objdettrack_config" value="config/cam1.yaml" />
+    <param name="cam_config" value="config/fv_1.yaml" />
+    <param name="stereo_config" value="config/fv_1.yaml" />
+    <param name="blobtrack_config" value="config/fv_1.yaml" />
+    <param name="objdettrack_config" value="config/fv_1.yaml" />
     <param name="blob_calib_prefix" value="data_gen/blob_" />
     <param name="frame_skip" value="0" />
     <!--<param name="target_fps" value="30" />-->
