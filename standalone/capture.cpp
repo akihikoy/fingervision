@@ -4,6 +4,10 @@
     \author  Akihiko Yamaguchi, info@akihikoy.net
     \version 0.1
     \date    Feb.15, 2017
+    \date    Aug.9, 2018
+             Using the same core programs as the ROS version.
+             Supporting to load YAML configuration.
+             Supporting camera rectification.
 
 g++ -g -Wall -O2 -o capture.out capture.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_highgui
 

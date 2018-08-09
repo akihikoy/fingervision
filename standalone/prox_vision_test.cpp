@@ -8,7 +8,7 @@
     \date    Aug.9, 2018
              Using the same core programs as the ROS version.
              Supporting to load YAML configuration.
-             Supporting camera-lens rectification.
+             Supporting camera rectification.
 
 g++ -g -Wall -O2 -o prox_vision_test.out prox_vision_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_video -lopencv_highgui
 
