@@ -1,0 +1,22 @@
+<launch>
+  <node type="fv_core_node" pkg="fingervision" name="fv_core_l" output="screen">
+    <param name="pkg_dir" value="$(find fingervision)/" />
+    <param name="cam_config" value="config/cam1_l.yaml" />
+    <param name="stereo_config" value="config/cam1_l.yaml" />
+    <param name="blobtrack_config" value="config/cam1_l.yaml" />
+    <param name="objdettrack_config" value="config/cam1_l.yaml" />
+    <param name="blob_calib_prefix" value="data_gen/blob_" />
+    <param name="frame_skip" value="0" />
+    <param name="target_fps" value="30" />
+  </node>
+  <node type="fv_core_node" pkg="fingervision" name="fv_core_r" output="screen">
+    <param name="pkg_dir" value="$(find fingervision)/" />
+    <param name="cam_config" value="config/cam1_r.yaml" />
+    <param name="stereo_config" value="config/cam1_r.yaml" />
+    <param name="blobtrack_config" value="config/cam1_r.yaml" />
+    <param name="objdettrack_config" value="config/cam1_r.yaml" />
+    <param name="blob_calib_prefix" value="data_gen/blob_" />
+    <param name="frame_skip" value="0" />
+    <param name="target_fps" value="30" />
+  </node>
+</launch>

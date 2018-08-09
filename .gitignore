@@ -16,9 +16,10 @@ tmp*
 backup*
 trash
 
-lfd_vision/bin/
-lfd_vision/build/
-lfd_vision/lib/
-lfd_vision/msg_gen
-lfd_vision/srv_gen
-lfd_vision/src/lfd_vision
+bin/
+build/
+data_gen/
+lib/
+msg_gen/
+srv_gen/
+fingervision_msgs/src/fingervision_msgs
