@@ -49,7 +49,10 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench):
   posforce_array= [convert_raw(mv) for mv in msg.data]
   force_array= [convert_wrench(p_f) for p_f in posforce_array]
   dstate_array= [convert_dstate(p_f) for p_f in posforce_array]
-  force= [sum([force[d] for force in force_array])/float(len(force_array)) for d in xrange(6)]
+  if len(force_array)>0:
+    force= [sum([force[d] for force in force_array])/float(len(force_array)) for d in xrange(6)]
+  else:
+    force= []
   dstate= sum(dstate_array)
 
   msg2= fingervision_msgs.msg.Filter1Wrench()
@@ -64,8 +67,9 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench):
 
   msg3= geometry_msgs.msg.WrenchStamped()
   msg3.header= msg.header
-  VecToXYZ(force[:3], msg3.wrench.force)
-  VecToXYZ(force[3:], msg3.wrench.torque)
+  if len(force)==6:
+    VecToXYZ(force[:3], msg3.wrench.force)
+    VecToXYZ(force[3:], msg3.wrench.torque)
   pub_wrench.publish(msg3)
 
 def ProxVision(msg,fv,pub_fobjinfo):
