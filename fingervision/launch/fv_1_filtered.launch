@@ -1,0 +1,9 @@
+<!-- For a single FingerVision demo (USB connection) with filter -->
+<launch>
+  <include file="$(find fingervision)/launch/fv_1.launch"/>
+
+  <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1" ns="fingervision" output="screen">
+    <param name="fv" value="fv_1" />
+    <param name="side" value="r" />
+  </node>
+</launch>

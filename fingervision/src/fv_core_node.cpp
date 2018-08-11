@@ -358,7 +358,7 @@ void ExecBlobTrack(int i_cam)
   cv::Mat frame;
   int64_t t_cap(0);
   ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
-  while(!Shutdown)
+  for(int seq(0); !Shutdown; ++seq)
   {
     if(Running)
     {
@@ -391,6 +391,9 @@ void ExecBlobTrack(int i_cam)
       {
         const std::vector<TPointMove2> &data(tracker.Data());
         fingervision_msgs::BlobMoves blob_moves;
+        blob_moves.header.seq= seq;
+        blob_moves.header.stamp= ros::Time::now();
+        blob_moves.header.frame_id= info.Name;
         blob_moves.camera_index= i_cam;
         blob_moves.camera_name= info.Name;
         blob_moves.width= info.Width;
@@ -426,7 +429,7 @@ void ExecObjDetTrack(int i_cam)
   cv::Mat frame;
   int64_t t_cap(0);
   ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
-  while(!Shutdown)
+  for(int seq(0); !Shutdown; ++seq)
   {
     if(Running)
     {
@@ -461,6 +464,9 @@ void ExecObjDetTrack(int i_cam)
         const cv::Mat &objs(tracker.ObjS()), &mvs(tracker.MvS());
         const cv::Moments &om(tracker.ObjMoments());
         fingervision_msgs::ProxVision prox_vision;
+        prox_vision.header.seq= seq;
+        prox_vision.header.stamp= ros::Time::now();
+        prox_vision.header.frame_id= info.Name;
         prox_vision.camera_index= i_cam;
         prox_vision.camera_name= info.Name;
         prox_vision.width= info.Width;
