@@ -1,0 +1,16 @@
+<!-- FingerVision demo of two video streams (no sensors) over Ethernet network; filters are applied.
+Before executing this launch, stream videos by:
+  $ rosrun fingervision stream_file1.sh
+-->
+<launch>
+  <include file="$(find fingervision)/launch/fv_3.launch"/>
+
+  <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1_l" ns="fingervision" output="screen">
+    <param name="fv" value="fv_3_l" />
+    <param name="side" value="l" />
+  </node>
+  <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1_r" ns="fingervision" output="screen">
+    <param name="fv" value="fv_3_r" />
+    <param name="side" value="r" />
+  </node>
+</launch>

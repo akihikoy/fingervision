@@ -1,0 +1,26 @@
+<!-- FingerVision demo of two video streams (no sensors) over Ethernet network.
+Before executing this launch, stream videos by:
+  $ rosrun fingervision stream_file1.sh
+-->
+<launch>
+  <node type="fv_core_node" pkg="fingervision" name="fv_3_l" ns="fingervision" output="screen">
+    <param name="pkg_dir" value="$(find fingervision)/" />
+    <param name="cam_config" value="config/fv_3_l.yaml" />
+    <param name="stereo_config" value="config/fv_3_l.yaml" />
+    <param name="blobtrack_config" value="config/fv_3_l.yaml" />
+    <param name="objdettrack_config" value="config/fv_3_l.yaml" />
+    <param name="blob_calib_prefix" value="data_gen/blob_" />
+    <param name="frame_skip" value="0" />
+    <param name="target_fps" value="30" />
+  </node>
+  <node type="fv_core_node" pkg="fingervision" name="fv_3_r" ns="fingervision" output="screen">
+    <param name="pkg_dir" value="$(find fingervision)/" />
+    <param name="cam_config" value="config/fv_3_r.yaml" />
+    <param name="stereo_config" value="config/fv_3_r.yaml" />
+    <param name="blobtrack_config" value="config/fv_3_r.yaml" />
+    <param name="objdettrack_config" value="config/fv_3_r.yaml" />
+    <param name="blob_calib_prefix" value="data_gen/blob_" />
+    <param name="frame_skip" value="0" />
+    <param name="target_fps" value="30" />
+  </node>
+</launch>
