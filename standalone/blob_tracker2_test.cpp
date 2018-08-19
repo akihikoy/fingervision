@@ -23,9 +23,11 @@ Usage:
   Press 'q' or Esc: Exit the program.
   Press 'c': Calibrate the tracker (detecting markers and storing the initial positions and sizes).
              Tips: Show a white paper or white wall during the calibration.
-  Press 'C': Show/hide the trackbars.
-  Press 'W' (shift+'w'): On/off video capture.
+  Press 'C': Show/hide the parameter configuration trackbars.
+  Press 'W' (shift+'w'): Start/stop video recording.
   Press 'p': Print the calibration result.
+  Press 's': Save the calibration result to file "blob_calib.yaml".
+  Press 'l': Load a calibration from file "blob_calib.yaml".
 */
 //-------------------------------------------------------------------------------------------
 #include "blob_tracker2.h"
@@ -59,7 +61,7 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
 
 int main(int argc, char**argv)
 {
-  std::string cam("0");
+  std::string cam("0"), config_file;
   if(argc>1)  cam= argv[1];
 
   std::vector<TCameraInfo> cam_info;
@@ -67,6 +69,7 @@ int main(int argc, char**argv)
   if(FileExists(cam))
   {
     ReadFromYAML(cam_info, cam);
+    config_file= cam;
   }
   else
   {
@@ -86,11 +89,30 @@ int main(int argc, char**argv)
   }
 
   TBlobTracker2 tracker;
-  tracker.Init();
+  if(config_file=="")
+  {
+    tracker.Init();
+  }
+  else
+  {
+    std::vector<TBlobTracker2Params> blobtrack_info;
+    ReadFromYAML(blobtrack_info, config_file);
+    tracker.Params()= blobtrack_info[0];
+    tracker.Init();
+  }
+
+  bool calib_request(true);
+  std::string blob_calib_yaml("blob_calib.yaml");
+  if(FileExists(blob_calib_yaml))
+  {
+    tracker.LoadCalib(blob_calib_yaml);
+    std::cerr<<"Loaded calibration data from "<<blob_calib_yaml<<std::endl;
+    calib_request= false;
+  }
 
   std::string win("camera");
   cv::namedWindow(win,1);
-  bool calib_mode(false);
+  bool trackbar_visible(false);
 
   TEasyVideoOut vout;
   vout.SetfilePrefix("/tmp/blobtr");
@@ -111,10 +133,20 @@ int main(int argc, char**argv)
     if(c=='\x1b'||c=='q') break;
     else if(char(c)=='W')  vout.Switch();
     else if(c=='p')  tracker.SaveCalib("/dev/stdout");
+    else if(c=='s')
+    {
+      tracker.SaveCalib(blob_calib_yaml);
+      std::cerr<<"Saved calibration data to "<<blob_calib_yaml<<std::endl;
+    }
+    else if(c=='l')
+    {
+      tracker.LoadCalib(blob_calib_yaml);
+      std::cerr<<"Loaded calibration data from "<<blob_calib_yaml<<std::endl;
+    }
     else if(c=='C')
     {
-      calib_mode= !calib_mode;
-      if(calib_mode)
+      trackbar_visible= !trackbar_visible;
+      if(trackbar_visible)
       {
         cv::createTrackbar("thresh_v", win, &tracker.Params().ThreshV, 255, NULL);
       }
@@ -125,12 +157,13 @@ int main(int argc, char**argv)
         cv::namedWindow(win,1);
       }
     }
-    else if(c=='c' || f==0)
+    else if(c=='c' || calib_request)
     {
       std::vector<cv::Mat> frames;
       for(int i(0); i<tracker.Params().NCalibPoints; ++i)
         frames.push_back(Capture(cap, cam_info[0], &cam_rectifier));
       tracker.Calibrate(frames);
+      calib_request= false;
     }
     // usleep(10000);
     if(show_fps==0)

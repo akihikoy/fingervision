@@ -22,8 +22,8 @@ Run:
 Usage:
   Press 'q' or Esc: Exit the program.
   Press 'c': Calibrate the tracker (constructing the background color model).
-  Press 'C': Show/hide the trackbars.
-  Press 'W' (shift+'w'): On/off video capture.
+  Press 'C': Show/hide the parameter configuration trackbars.
+  Press 'W' (shift+'w'): Start/stop video recording.
   Press 'r': Reset (clear) the tracking object.
   Press 'd': On/off the object detection mode (default=on).
   Click a point on the image: Add the color of the point to the object color model.
@@ -87,7 +87,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
 
 int main(int argc, char**argv)
 {
-  std::string cam("0");
+  std::string cam("0"), config_file;
   if(argc>1)  cam= argv[1];
 
   std::vector<TCameraInfo> cam_info;
@@ -95,6 +95,7 @@ int main(int argc, char**argv)
   if(FileExists(cam))
   {
     ReadFromYAML(cam_info, cam);
+    config_file= cam;
   }
   else
   {
@@ -114,14 +115,24 @@ int main(int argc, char**argv)
   }
 
   TObjDetTrackBSP tracker;
-  tracker.Init();
+  if(config_file=="")
+  {
+    tracker.Init();
+  }
+  else
+  {
+    std::vector<TObjDetTrackBSPParams> objdettrack_info;
+    ReadFromYAML(objdettrack_info, config_file);
+    tracker.Params()= objdettrack_info[0];
+    tracker.Init();
+  }
 
   cv::Mat frame, frame_src;
 
   cv::namedWindow("camera",1);
   TMouseEventData mouse_data(frame_src,tracker);
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
-  bool calib_mode(false), detecting_mode(true);
+  bool trackbar_visible(false), detecting_mode(true);
 
   TEasyVideoOut vout;
   vout.SetfilePrefix("/tmp/objtr");
@@ -158,8 +169,8 @@ int main(int argc, char**argv)
     }
     else if(c=='C')
     {
-      calib_mode= !calib_mode;
-      if(calib_mode)
+      trackbar_visible= !trackbar_visible;
+      if(trackbar_visible)
       {
         BS_History= tracker.Params().BS_History;
         Fbg20= tracker.Params().Fbg*20.0;
