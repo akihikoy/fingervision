@@ -23,3 +23,4 @@ lib/
 msg_gen/
 srv_gen/
 fingervision_msgs/src/fingervision_msgs
+standalone/blob_calib.yaml

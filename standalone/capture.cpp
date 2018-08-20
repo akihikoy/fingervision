@@ -19,7 +19,7 @@ Run:
     The configuration file may include camera configuration (CameraInfo).
 Usage:
   Press 'q' or Esc: Exit the program.
-  Press 'W': On/off video capture.
+  Press 'W' (shift+'w'): Start/stop video recording.
 */
 //-------------------------------------------------------------------------------------------
 #include "ay_vision/vision_util.h"

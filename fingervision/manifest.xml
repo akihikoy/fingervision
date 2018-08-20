@@ -23,7 +23,7 @@
   <depend package="camera_info_manager"/>
 
   <export>
-    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib"/>
+    <cpp cflags="-I${prefix}/include -I${prefix}/../3rdparty" lflags="-L${prefix}/lib"/>
   </export>
 
 </package>
