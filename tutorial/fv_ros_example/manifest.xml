@@ -1,0 +1,18 @@
+<package>
+  <description brief="fv_ros_example">
+
+     fv_ros_example
+
+  </description>
+  <author>Akihiko Y</author>
+  <license>Described in LICENSE</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://akihikoy.net/p/fv</url>
+  <depend package="fingervision"/>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="std_srvs"/>
+
+</package>
+
+
