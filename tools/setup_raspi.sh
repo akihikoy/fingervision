@@ -13,8 +13,8 @@ OPTIONS:
   [-u USER]  : Set the user (default: $user)
   [-help]    : Show help
 Example (on Raspberry Pi):
-  `basename`
-Alternatively:
+  `basename $0`
+Alternatively (on Raspberry Pi):
   bash <(curl -s https://raw.githubusercontent.com/akihikoy/fingervision/master/tools/setup_raspi.sh )
 "
 #--------------------------------------------------
