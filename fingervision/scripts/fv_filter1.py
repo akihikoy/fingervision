@@ -6,7 +6,7 @@
 #\author  Akihiko Yamaguchi, info@akihikoy.net
 #\version 0.1
 #\date    Aug.10, 2018
-import roslib; roslib.load_manifest('ay_trick')
+import roslib; roslib.load_manifest('ay_py')
 import rospy
 from ay_py.core import *
 from ay_py.ros import *  # LRToStrS, etc.
