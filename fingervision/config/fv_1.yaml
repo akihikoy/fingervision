@@ -65,17 +65,19 @@ ObjDetTrack:
     Height: 240
     ThreshBlkH: 180
     ThreshBlkS: 255
-    ThreshBlkV: 40
+    ThreshBlkV: 1
     BS_History: 30.0
     BS_VarThreshold: 10.0
     BS_DetectShadows: true
     NErode1: 0
-    BinsH: 100
+    BinsH: 50
     BinsS: 10
-    Fbg: 1.5
-    Fgain: 0.5
+    BinsV: 10
+    Fbg: 1.0
+    Fgain: 2.5
     NumModel: 5
     NumFramesInHist: 200
+    BackProjScale: 5.0
     NThreshold2: 150
     NErode2: 2
     NDilate2: 7

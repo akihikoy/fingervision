@@ -3,7 +3,8 @@
     \brief   Slip and deformation detection by detecting and tracking a proximity object.
     \author  Akihiko Yamaguchi, info@akihikoy.net
     \version 0.1
-    \date    Feb.19, 2017
+    \date    Sep.26, 2018
+             Improved the detection of darker objects.
 
 cf. testl/cv/obj_det_track3.cpp
 */
@@ -40,16 +41,20 @@ struct TObjDetTrackBSPParams
   // Background subtraction and post process
   int NErode1;  // Size of erode applied to the background subtraction result.
 
-  // Histogram bins (Hue, Saturation)
+  // Histogram bins (Hue, Saturation, Brightness)
   int BinsH;
   int BinsS;
+  int BinsV;
 
   // Object detection parameters
-  float Fbg;    // Degree to remove background model (histogram). Larger remove more.
+  float Fbg;    // Degree to remove background model (histogram). Larger value removes more.
   float Fgain;  // Learning rate.
 
   int NumModel;         // Number of object models to be maintained.
   int NumFramesInHist;  // Number of frames to make an object histogram.
+
+  // Back-projection parameters
+  double BackProjScale;  // Scale parameter of calcBackProject
 
   // Object tracking parameters
   int NThreshold2;  // Threshold applied to back projection.

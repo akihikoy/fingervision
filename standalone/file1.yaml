@@ -50,3 +50,10 @@ CameraInfo:
       cols: 3
       dt: d
       data: [ 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0 ]
+
+BlobTracker2:
+  - {}
+  - {}
+ObjDetTrack:
+  - {}
+  - {}

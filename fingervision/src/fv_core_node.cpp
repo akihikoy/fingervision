@@ -537,6 +537,7 @@ int main(int argc, char**argv)
 {
   ros::init(argc, argv, "fv_core_node");
   ros::NodeHandle node("~");
+  ros::Duration(0.1).sleep();
   std::string pkg_dir(".");
   std::string cam_config("config/cam1.yaml");
   std::string blobtrack_config("config/cam1.yaml");

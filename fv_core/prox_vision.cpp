@@ -4,6 +4,9 @@
     \author  Akihiko Yamaguchi, info@akihikoy.net
     \version 0.1
     \date    Feb.19, 2017
+    \version 0.2
+    \date    Sep.26, 2018
+             Improved the detection of darker objects.
 
 cf. testl/cv/obj_det_track3.cpp
 */
@@ -43,7 +46,7 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
   // Remove black background
   ThreshBlkH= 180;
   ThreshBlkS= 255;
-  ThreshBlkV= 40;
+  ThreshBlkV= 1;
 
   // Parameters of BackgroundSubtractorMOG2
   BS_History= 30.0;
@@ -54,15 +57,18 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
   NErode1= 0;  // Size of erode applied to the background subtraction result.
 
   // Histogram bins (Hue, Saturation)
-  BinsH= 100 ;
-  BinsS= 10  ;
+  BinsH= 50 ;
+  BinsS= 10 ;
+  BinsV= 10 ;
 
   // Object detection parameters
-  Fbg= 1.5  ;  // Degree to remove background model (histogram). Larger remove more.
-  Fgain= 0.5;  // Learning rate.
+  Fbg= 1.0  ;  // Degree to remove background model (histogram). Larger value removes more.
+  Fgain= 2.5;  // Learning rate.
 
   NumModel= 5         ;  // Number of object models to be maintained.
   NumFramesInHist= 200;  // Number of frames to make an object histogram.
+
+  BackProjScale= 5.0;  // Scale parameter of calcBackProject
 
   // Object tracking parameters
   NThreshold2= 150 ; // Threshold applied to back projection.
@@ -96,10 +102,12 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
     PROC_VAR(NErode1            );
     PROC_VAR(BinsH              );
     PROC_VAR(BinsS              );
+    PROC_VAR(BinsV              );
     PROC_VAR(Fbg                );
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
     PROC_VAR(NumFramesInHist    );
+    PROC_VAR(BackProjScale      );
     PROC_VAR(NThreshold2        );
     PROC_VAR(NErode2            );
     PROC_VAR(NDilate2           );
@@ -136,10 +144,12 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
     PROC_VAR(NErode1            );
     PROC_VAR(BinsH              );
     PROC_VAR(BinsS              );
+    PROC_VAR(BinsV              );
     PROC_VAR(Fbg                );
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
     PROC_VAR(NumFramesInHist    );
+    PROC_VAR(BackProjScale      );
     PROC_VAR(NThreshold2        );
     PROC_VAR(NErode2            );
     PROC_VAR(NDilate2           );
@@ -171,8 +181,9 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
 {
   float h_range[]= {0, 180};
   float s_range[]= {0, 255};
-  const float* ranges[]= {h_range, s_range};
-  int channels[]= {0, 1}, n_channels= 2;
+  float v_range[]= {0, 255};
+  const float* ranges[]= {h_range, s_range, v_range};
+  int channels[]= {0, 1, 2}, n_channels= 3;
 
   cv::Mat frame_s;
   if(params_.Width*params_.Height>0)
@@ -195,14 +206,14 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
   {
     // Get the Histogram and normalize it
     cv::Mat hist_tmp;
-    int hist_size[]= {params_.BinsH, params_.BinsS};
+    int hist_size[]= {params_.BinsH, params_.BinsS, params_.BinsV};
     cv::calcHist(&frame_hsv, 1, channels, mask_bser_, hist_tmp, n_channels, hist_size, ranges, true, false);
 
     // Add/delete model
     int interval= params_.NumFramesInHist / params_.NumModel;
     if(hist_obj_.size()==0 || i_frame_%interval==0)
     {
-      cv::Mat hist(hist_tmp.size(), hist_tmp.type());
+      cv::Mat hist(n_channels, hist_size, hist_tmp.type());
       hist.setTo(0);
       hist_obj_.push_front(hist);
       if(int(hist_obj_.size()) > params_.NumModel)  hist_obj_.pop_back();
@@ -214,10 +225,10 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
       cv::Mat &hist(*ho_itr);
       // Add current histogram to the model, and
       // Normalize the histogram
-      for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s)
+      for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
       {
-        hist.at<float>(h,s)+= params_.Fgain*std::max(0.0f,hist_tmp.at<float>(h,s)-params_.Fbg*hist_bg_.at<float>(h,s));
-        if(hist.at<float>(h,s)>255)  hist.at<float>(h,s)= 255;
+        hist.at<float>(h,s,v)+= params_.Fgain*std::max(0.0f,hist_tmp.at<float>(h,s,v)-params_.Fbg*hist_bg_.at<float>(h,s,v));
+        if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
       }
     }
   }
@@ -227,7 +238,7 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
   {
     cv::Mat &hist(hist_obj_.back());
     cv::Mat backproj;
-    cv::calcBackProject(&frame_hsv, 1, channels, hist, backproj, ranges, 1, true);
+    cv::calcBackProject(&frame_hsv, 1, channels, hist, backproj, ranges, params_.BackProjScale, true);
     backproj.copyTo(mask_obj1_);
     mask_obj1_&= mask_nonblack;  // Remove black background
     // std::cerr<<mask_obj1_<<std::endl;
@@ -321,9 +332,10 @@ void TObjDetTrackBSP::CalibBG(const std::vector<cv::Mat> &frames)
   std::cerr<<"Calibrating BG..."<<std::endl;
   float h_range[]= {0, 180};
   float s_range[]= {0, 255};
-  const float* ranges[]= {h_range, s_range};
-  int channels[]= {0, 1}, n_channels= 2;
-  int hist_size[]= {params_.BinsH, params_.BinsS};
+  float v_range[]= {0, 255};
+  const float* ranges[]= {h_range, s_range, v_range};
+  int channels[]= {0, 1, 2}, n_channels= 3;
+  int hist_size[]= {params_.BinsH, params_.BinsS, params_.BinsV};
 
   cv::Mat frame_s, frame_hsv;
   cv::Mat hist_tmp;
@@ -341,13 +353,13 @@ void TObjDetTrackBSP::CalibBG(const std::vector<cv::Mat> &frames)
     }
     else
     {
-      for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s)
-        hist_bg_.at<float>(h,s)+= hist_tmp.at<float>(h,s);
+      for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
+        hist_bg_.at<float>(h,s,v)+= hist_tmp.at<float>(h,s,v);
     }
   }
   float f= 1.0/float(frames.size());
-  for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s)
-    hist_bg_.at<float>(h,s)*= f;
+  for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
+    hist_bg_.at<float>(h,s,v)*= f;
 }
 //-------------------------------------------------------------------------------------------
 
@@ -372,9 +384,10 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
   // Get histogram
   float h_range[]= {0, 180};
   float s_range[]= {0, 255};
-  const float* ranges[]= {h_range, s_range};
-  int channels[]= {0, 1}, n_channels= 2;
-  int hist_size[]= {params_.BinsH, params_.BinsS};
+  float v_range[]= {0, 255};
+  const float* ranges[]= {h_range, s_range, v_range};
+  int channels[]= {0, 1, 2}, n_channels= 3;
+  int hist_size[]= {params_.BinsH, params_.BinsS, params_.BinsV};
   cv::Mat frame_s, frame_hsv, mask_s;
   cv::Mat hist_tmp;
   if(params_.Width*params_.Height>0)
@@ -397,10 +410,10 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
     cv::Mat &hist(*ho_itr);
     // Add current histogram to the model, and
     // Normalize the histogram
-    for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s)
+    for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
     {
-      hist.at<float>(h,s)+= hist_tmp.at<float>(h,s);
-      if(hist.at<float>(h,s)>255)  hist.at<float>(h,s)= 255;
+      hist.at<float>(h,s,v)+= hist_tmp.at<float>(h,s,v);
+      if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
     }
   }
 }
@@ -410,4 +423,3 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
 //-------------------------------------------------------------------------------------------
 }  // end of trick
 //-------------------------------------------------------------------------------------------
-
