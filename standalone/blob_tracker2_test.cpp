@@ -9,6 +9,9 @@
              Using the same core programs as the ROS version.
              Supporting to load YAML configuration.
              Supporting camera rectification.
+    \version 0.3
+    \date    May.20, 2019
+             Modified the trackbars.
 
 g++ -g -Wall -O2 -o blob_tracker2_test.out blob_tracker2_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_highgui
 
@@ -56,6 +59,18 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
   if(info.Rectification && pcam_rectifier)
     pcam_rectifier->Rectify(frame, /*border=*/cv::Scalar(0,0,0));
   return frame;
+}
+//-------------------------------------------------------------------------------------------
+
+int SWidth(30), NonZeroMin10(3), NonZeroMax10(30), VPMax10(50), VSMax10(10);
+void ModifyParams(int i, void *ptracker)
+{
+  TBlobTracker2 &tracker(*reinterpret_cast<TBlobTracker2*>(ptracker));
+  tracker.Params().SWidth= float(SWidth);
+  tracker.Params().NonZeroMin= float(NonZeroMin10)/10.0;
+  tracker.Params().NonZeroMax= float(NonZeroMax10)/10.0;
+  tracker.Params().VPMax= float(VPMax10)/10.0;
+  tracker.Params().VSMax= float(VSMax10)/10.0;
 }
 //-------------------------------------------------------------------------------------------
 
@@ -148,7 +163,19 @@ int main(int argc, char**argv)
       trackbar_visible= !trackbar_visible;
       if(trackbar_visible)
       {
+        SWidth= tracker.Params().SWidth;
+        NonZeroMin10= tracker.Params().NonZeroMin*10.0;
+        NonZeroMax10= tracker.Params().NonZeroMax*10.0;
+        VPMax10= tracker.Params().VPMax*10.0;
+        VSMax10= tracker.Params().VSMax*10.0;
         cv::createTrackbar("thresh_v", win, &tracker.Params().ThreshV, 255, NULL);
+        cv::createTrackbar( "NDilate1:", "camera", &tracker.Params().NDilate1, 10, NULL);
+        cv::createTrackbar( "NErode1:", "camera", &tracker.Params().NErode1, 10, NULL);
+        cv::createTrackbar( "SWidth:", "camera", &SWidth, 100, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*NonZeroMin:", "camera", &NonZeroMin10, 200, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*NonZeroMax:", "camera", &NonZeroMax10, 200, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*VPMax:", "camera", &VPMax10, 200, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*VSMax:", "camera", &VSMax10, 200, &ModifyParams, &tracker);
       }
       else
       {
