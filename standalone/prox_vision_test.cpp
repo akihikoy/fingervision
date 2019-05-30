@@ -26,7 +26,7 @@ Usage:
   Press 'W' (shift+'w'): Start/stop video recording.
   Press 'r': Reset (clear) the tracking object.
   Press 'd': On/off the object detection mode (default=on).
-  Click a point on the image: Add the color of the point to the object color model.
+  Shift+Click a point on the image: Add the color of the point to the object color model.
           Tips: This is useful when making an object model manually.
 */
 //-------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ struct TMouseEventData
 };
 void OnMouse(int event, int x, int y, int flags, void *data)
 {
-  if(event == cv::EVENT_LBUTTONDOWN)
+  if(event == cv::EVENT_LBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
   {
     TMouseEventData &d(*reinterpret_cast<TMouseEventData*>(data));
     d.tracker.AddToModel(d.frame, cv::Point(x,y));

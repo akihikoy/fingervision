@@ -92,6 +92,18 @@ struct TIMShowStuff
 };
 std::map<std::string, TIMShowStuff> IMShowStuff;
 
+struct TWindowInfo
+{
+  int CamIdx;  // Camera index.
+  std::string Kind;  // Kind of computer vision.
+  int Index;  // Index of computer vision object (BlobTracker, ObjDetTracker).
+  TWindowInfo()
+    : CamIdx(-1), Kind(), Index(-1)  {}
+  TWindowInfo(int cam_idx, const std::string &k, int idx)
+    : CamIdx(cam_idx), Kind(k), Index(idx)  {}
+};
+std::map<std::string, TWindowInfo> WindowInfo;
+
 #ifdef WITH_STEREO
 std::vector<TStereoInfo> StereoInfo;
 std::vector<TStereo> Stereo;  // Standard stereo
@@ -125,25 +137,17 @@ void OnMouse(int event, int x, int y, int flags, void *data)
     Running=!Running;
     std::cerr<<(Running?"Resume":"Pause (Hit space/R-click to resume)")<<std::endl;
   }
-  if(event == cv::EVENT_LBUTTONDOWN)
+  if(event == cv::EVENT_LBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
   {
-    int i_cam(-1);
-    TObjDetTrackBSP *ptracker(NULL);
-    for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(ObjDetTracker[i].Name==*CurrentWin)
-      {
-        ptracker= &ObjDetTracker[i];
-        i_cam= i;
-        break;
-      }
-    if(ptracker!=NULL)
+    if(WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
     {
+      int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
       cv::Mat frame;
       {
         boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
         Frame[i_cam].copyTo(frame);
       }
-      ptracker->AddToModel(frame, cv::Point(x,y));
+      ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
     }
   }
 }
@@ -171,36 +175,20 @@ bool HandleKeyEvent()
   }
   else if(c=='s')
   {
-    int i_cam(-1);
-    TBlobTracker2 *ptracker(NULL);
-    for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(BlobTracker[i].Name==*CurrentWin)
-      {
-        ptracker= &BlobTracker[i];
-        i_cam= i;
-        break;
-      }
-    if(ptracker!=NULL)
+    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
-      ptracker->SaveCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
-      std::cerr<<"Saved calibration data of "<<ptracker->Name<<" to "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
+      int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+      BlobTracker[idx].SaveCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
+      std::cerr<<"Saved calibration data of "<<BlobTracker[idx].Name<<" to "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
   }
   else if(c=='l')
   {
-    int i_cam(-1);
-    TBlobTracker2 *ptracker(NULL);
-    for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-      if(BlobTracker[i].Name==*CurrentWin)
-      {
-        ptracker= &BlobTracker[i];
-        i_cam= i;
-        break;
-      }
-    if(ptracker!=NULL)
+    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
-      ptracker->LoadCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
-      std::cerr<<"Loaded calibration data of "<<ptracker->Name<<" from "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
+      int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+      BlobTracker[idx].LoadCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
+      std::cerr<<"Loaded calibration data of "<<BlobTracker[idx].Name<<" from "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
   }
   else if(c=='C')
@@ -210,16 +198,8 @@ bool HandleKeyEvent()
     {
       if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
       {
-        // int i_cam(-1);
-        TBlobTracker2 *ptracker(NULL);
-        for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(BlobTracker[i].Name==*CurrentWin)
-          {
-            ptracker= &BlobTracker[i];
-            // i_cam= i;
-            break;
-          }
-        cv::createTrackbar("thresh_v", *CurrentWin, &ptracker->Params().ThreshV, 255, NULL);
+        int idx(WindowInfo[*CurrentWin].Index);
+        cv::createTrackbar("thresh_v", *CurrentWin, &(BlobTracker[idx].Params().ThreshV), 255, NULL);
       }
       else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
       {
@@ -524,6 +504,16 @@ cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify)
 }
 //-------------------------------------------------------------------------------------------
 
+// Capture a sequence of images.
+std::vector<cv::Mat> CaptureSeq(cv::VideoCapture &cap, int i_cam, int num)
+{
+  std::vector<cv::Mat> frames;
+  for(int i(0); i<num; ++i)
+    frames.push_back(Capture(cap, i_cam, /*rectify=*/true));
+  return frames;
+}
+//-------------------------------------------------------------------------------------------
+
 inline std::string CheckYAMLExistence(const std::string &filename)
 {
   std::cerr<<"Loading from YAML: "<<filename<<std::endl;
@@ -613,6 +603,7 @@ int main(int argc, char**argv)
     Stereo[j].SetRecommendedStereoParams();
     Stereo[j].LoadConfigurationsFromYAML(pkg_dir+"/"+info.StereoConfig);
     Stereo[j].Init();
+    WindowInfo[info.Name]= TWindowInfo(-1, "Stereo", j);
     cv::namedWindow(info.Name,1);
     cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
     IMShowStuff[info.Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
@@ -639,6 +630,7 @@ int main(int argc, char**argv)
     BlobTracker[j].Init();
     if(FileExists(BlobCalibPrefix+CamInfo[j].Name+".yaml"))
       BlobTracker[j].LoadCalib(BlobCalibPrefix+CamInfo[j].Name+".yaml");
+    WindowInfo[BlobTracker[j].Name]= TWindowInfo(j, "BlobTracker", j);
     cv::namedWindow(BlobTracker[j].Name,1);
     cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
@@ -653,6 +645,7 @@ int main(int argc, char**argv)
     ObjDetTracker[j].Name= CamInfo[j].Name+"-pxv";
     ObjDetTracker[j].Params()= objdettrack_info[j];
     ObjDetTracker[j].Init();
+    WindowInfo[ObjDetTracker[j].Name]= TWindowInfo(j, "ObjDetTracker", j);
     cv::namedWindow(ObjDetTracker[j].Name,1);
     cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
     IMShowStuff[ObjDetTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
@@ -694,9 +687,8 @@ int main(int argc, char**argv)
   if(ObjDetTracker.size()>0)
   {
     std::vector<std::vector<cv::Mat> > frames(CamInfo.size());
-    for(int i(0); i<ObjDetTracker[0].Params().NCalibBGFrames; ++i)
-      for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
-        frames[i_cam].push_back(Capture(cap[i_cam], i_cam, /*rectify=*/true));
+    for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+      frames[i_cam]= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[i_cam].Params().NCalibBGFrames);
     for(int j(0),j_end(ObjDetTracker.size()); j<j_end; ++j)
       ObjDetTracker[j].CalibBG(frames[j]);
   }
@@ -730,7 +722,7 @@ int main(int argc, char**argv)
           Frame[i_cam]= frame;
           CapTime[i_cam]= GetCurrentTimeL();
         }
-      } 
+      }
 
       // Show windows
       for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
@@ -741,46 +733,20 @@ int main(int argc, char**argv)
       }
 
       // Handle blob tracker calibration request
-      if(DoCalibrate && BlobTracker.size()>0)
+      if(DoCalibrate && BlobTracker.size()>0 && *CurrentWin!="" && WindowInfo[*CurrentWin].Kind=="BlobTracker")
       {
         Running= false;
-        int i_cam(-1);
-        TBlobTracker2 *ptracker(NULL);
-        for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(BlobTracker[i].Name==*CurrentWin)
-          {
-            ptracker= &BlobTracker[i];
-            i_cam= i;
-            break;
-          }
-        if(ptracker!=NULL && i_cam!=-1)
-        {
-          std::vector<cv::Mat> frames;
-          for(int i(0); i<ptracker->Params().NCalibPoints; ++i)
-            frames.push_back(Capture(cap[i_cam], i_cam, /*rectify=*/true));
-          ptracker->Calibrate(frames);
-        }
+        int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, BlobTracker[idx].Params().NCalibPoints);
+        BlobTracker[idx].Calibrate(frames);
         Running= true;
       }
-      if(DoCalibrate && ObjDetTracker.size()>0)
+      if(DoCalibrate && ObjDetTracker.size()>0 && *CurrentWin!="" && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
       {
         Running= false;
-        int i_cam(-1);
-        TObjDetTrackBSP *ptracker(NULL);
-        for(int i(0), i_end(CamInfo.size()); i<i_end; ++i)
-          if(ObjDetTracker[i].Name==*CurrentWin)
-          {
-            ptracker= &ObjDetTracker[i];
-            i_cam= i;
-            break;
-          }
-        if(ptracker!=NULL && i_cam!=-1)
-        {
-          std::vector<cv::Mat> frames;
-          for(int i(0); i<ptracker->Params().NCalibBGFrames; ++i)
-            frames.push_back(Capture(cap[i_cam], i_cam, /*rectify=*/true));
-          ptracker->CalibBG(frames);
-        }
+        int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[idx].Params().NCalibBGFrames);
+        ObjDetTracker[idx].CalibBG(frames);
         Running= true;
       }
       DoCalibrate= false;
