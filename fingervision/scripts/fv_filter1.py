@@ -6,6 +6,9 @@
 #\author  Akihiko Yamaguchi, info@akihikoy.net
 #\version 0.1
 #\date    Aug.10, 2018
+#\version 0.2
+#\date    Jul.3, 2019
+#         Added filters to get velocities of object, filtered velocities, etc.
 import roslib; roslib.load_manifest('ay_py')
 import rospy
 from ay_py.core import *
@@ -72,7 +75,12 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench):
     VecToXYZ(force[3:], msg3.wrench.torque)
   pub_wrench.publish(msg3)
 
-def ProxVision(msg,fv,pub_fobjinfo):
+def MovingAverageFilter(value,log,length):
+  log.append(value)
+  if len(log)>length:  log.pop(0)
+  return np.mean(log,0)
+
+def ProxVision(msg,fv,pub_fobjinfo,options,state):
   cx= msg.width/2
   cy= msg.height/2
   div= float(msg.width+msg.height)/2.0
@@ -92,6 +100,39 @@ def ProxVision(msg,fv,pub_fobjinfo):
     obj_orientation= 0.0
     obj_area= 0.0
 
+  #Temporal filters:
+  if 'state_initialized' not in state:
+    state.state_initialized= True
+    state.last_tm= msg.header.stamp
+    state.last_obj_center= obj_center
+    state.last_obj_orientation= obj_orientation
+    state.last_obj_area= obj_area
+    state.obj_area_log= []
+    state.d_obj_center_log= []
+    state.d_obj_orientation_log= []
+    state.d_obj_area_log= []
+
+  dt= (msg.header.stamp-state.last_tm).to_sec()
+  if dt>0.0:
+    angle_mod= lambda q: Mod(q+0.5*math.pi,math.pi)-0.5*math.pi
+    d_obj_center= [(state.last_obj_center[i]-obj_center[i])/dt for i in (0,1)]
+    d_obj_orientation= angle_mod(state.last_obj_orientation-obj_orientation)/dt
+    d_obj_area= (state.last_obj_area-obj_area)/dt
+  else:
+    d_obj_center= [0.0, 0.0]
+    d_obj_orientation= 0.0
+    d_obj_area= 0.0
+
+  state.last_tm= msg.header.stamp
+  state.last_obj_center= obj_center
+  state.last_obj_orientation= obj_orientation
+  state.last_obj_area= obj_area
+
+  obj_area_filtered= MovingAverageFilter(obj_area,state.obj_area_log,options['filter_len'])
+  d_obj_center_filtered= MovingAverageFilter(d_obj_center,state.d_obj_center_log,options['filter_len'])
+  d_obj_orientation_filtered= MovingAverageFilter(d_obj_orientation,state.d_obj_orientation_log,options['filter_len'])
+  d_obj_area_filtered= MovingAverageFilter(d_obj_area,state.d_obj_area_log,options['filter_len'])
+
   msg2= fingervision_msgs.msg.Filter1ObjInfo()
   msg2.header= msg.header
   msg2.fv= fv
@@ -100,6 +141,13 @@ def ProxVision(msg,fv,pub_fobjinfo):
   msg2.obj_center= obj_center
   msg2.obj_orientation= obj_orientation
   msg2.obj_area= obj_area
+  msg2.d_obj_center= d_obj_center
+  msg2.d_obj_orientation= d_obj_orientation
+  msg2.d_obj_area= d_obj_area
+  msg2.obj_area_filtered= obj_area_filtered
+  msg2.d_obj_center_filtered= d_obj_center_filtered
+  msg2.d_obj_orientation_filtered= d_obj_orientation_filtered
+  msg2.d_obj_area_filtered= d_obj_area_filtered
   pub_fobjinfo.publish(msg2)
 
 if __name__=='__main__':
@@ -110,6 +158,11 @@ if __name__=='__main__':
   side_str= rospy.get_param('~side', side_str)
   side= StrToLR(side_str)
   if side is None:  side= StrToID(side_str)
+
+  options_fobjinfo={
+    'filter_len': 5,
+    }
+  state_fobjinfo= TContainer(debug=True)
 
   #Filtered wrench:
   pub_fwrench= rospy.Publisher(rospy.get_namespace()+'fv_filter1_wrench',
@@ -124,5 +177,5 @@ if __name__=='__main__':
   sub_bm= rospy.Subscriber(rospy.get_namespace()+'{fv}/blob_moves'.format(fv=fv),
                            fingervision_msgs.msg.BlobMoves, lambda msg:BlobMoves(msg,fv,side,pub_fwrench,pub_wrench))
   sub_pv= rospy.Subscriber(rospy.get_namespace()+'{fv}/prox_vision'.format(fv=fv),
-                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv,pub_fobjinfo))
+                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv,pub_fobjinfo,options_fobjinfo,state_fobjinfo))
   rospy.spin()
