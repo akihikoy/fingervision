@@ -125,8 +125,7 @@ int main(int argc, char**argv)
     calib_request= false;
   }
 
-  std::string win("camera");
-  cv::namedWindow(win,1);
+  cv::namedWindow("camera",1);
   bool trackbar_visible(false);
 
   TEasyVideoOut vout;
@@ -168,7 +167,7 @@ int main(int argc, char**argv)
         NonZeroMax10= tracker.Params().NonZeroMax*10.0;
         VPMax10= tracker.Params().VPMax*10.0;
         VSMax10= tracker.Params().VSMax*10.0;
-        cv::createTrackbar("thresh_v", win, &tracker.Params().ThreshV, 255, NULL);
+        cv::createTrackbar("thresh_v", "camera", &tracker.Params().ThreshV, 255, NULL);
         cv::createTrackbar( "NDilate1:", "camera", &tracker.Params().NDilate1, 10, NULL);
         cv::createTrackbar( "NErode1:", "camera", &tracker.Params().NErode1, 10, NULL);
         cv::createTrackbar( "SWidth:", "camera", &SWidth, 100, &ModifyParams, &tracker);
@@ -180,8 +179,8 @@ int main(int argc, char**argv)
       else
       {
         // Remove trackbars from window.
-        cv::destroyWindow(win);
-        cv::namedWindow(win,1);
+        cv::destroyWindow("camera");
+        cv::namedWindow("camera",1);
       }
     }
     else if(c=='c' || calib_request)

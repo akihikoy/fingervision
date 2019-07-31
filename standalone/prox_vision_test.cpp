@@ -188,6 +188,7 @@ int main(int argc, char**argv)
         // Remove trackbars from window.
         cv::destroyWindow("camera");
         cv::namedWindow("camera",1);
+        cv::setMouseCallback("camera", OnMouse, &mouse_data);
       }
     }
     else if(c=='c' || f==0)
