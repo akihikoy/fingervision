@@ -104,6 +104,10 @@ struct TWindowInfo
 };
 std::map<std::string, TWindowInfo> WindowInfo;
 
+// Dim-level of proximity vision.
+double DimLevels[]={0.3,0.7,1.0};
+int DimIdx(0);
+
 #ifdef WITH_STEREO
 std::vector<TStereoInfo> StereoInfo;
 std::vector<TStereo> Stereo;  // Standard stereo
@@ -164,6 +168,11 @@ bool HandleKeyEvent()
     for(std::map<std::string, TEasyVideoOut>::iterator itr(VideoOut.begin()),itr_end(VideoOut.end()); itr!=itr_end; ++itr)
       itr->second.Switch();
   }
+  else if(c=='m')
+  {
+    DimIdx++;
+    if(DimIdx>=int(sizeof(DimLevels)/sizeof(DimLevels[0])))  DimIdx=0;
+  }
   else if(c==' ')
   {
     Running=!Running;
@@ -173,9 +182,27 @@ bool HandleKeyEvent()
   {
     DoCalibrate= true;
   }
+  else if(c=='r')
+  {
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      int idx(WindowInfo[*CurrentWin].Index);
+      ObjDetTracker[idx].ClearObject();
+    }
+  }
+  else if(c=='d')
+  {
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      int idx(WindowInfo[*CurrentWin].Index);
+      if(ObjDetTracker[idx].ModeDetect())  ObjDetTracker[idx].StopDetect();
+      else                                 ObjDetTracker[idx].StartDetect();
+      std::cerr<<"Object detection mode is: "<<(ObjDetTracker[idx].ModeDetect()?"on":"off")<<std::endl;
+    }
+  }
   else if(c=='s')
   {
-    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
       int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
       BlobTracker[idx].SaveCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
@@ -184,14 +211,14 @@ bool HandleKeyEvent()
   }
   else if(c=='l')
   {
-    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
       int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
       BlobTracker[idx].LoadCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
       std::cerr<<"Loaded calibration data of "<<BlobTracker[idx].Name<<" from "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
   }
-  else if(c=='C')
+  else if(c=='C' && CurrentWin!=NULL)
   {
     ShowTrackbars[*CurrentWin].Enabled= !ShowTrackbars[*CurrentWin].Enabled;
     if(ShowTrackbars[*CurrentWin].Enabled)
@@ -427,7 +454,7 @@ void ExecObjDetTrack(int i_cam)
       }
       CamRectifier[i_cam](frame);
       tracker.Step(frame);
-      frame*= 0.3;
+      frame*= DimLevels[DimIdx];
       tracker.Draw(frame);
 
       VideoOut[tracker.Name].Step(frame);

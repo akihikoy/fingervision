@@ -99,6 +99,7 @@ public:
 
   void StartDetect()  {mode_detect_= true;}
   void StopDetect()   {mode_detect_= false;}
+  bool ModeDetect() const {return mode_detect_;}
 
   void ClearObject()  {hist_obj_.clear();}
 

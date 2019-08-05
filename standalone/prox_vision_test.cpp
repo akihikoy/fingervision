@@ -26,6 +26,7 @@ Usage:
   Press 'W' (shift+'w'): Start/stop video recording.
   Press 'r': Reset (clear) the tracking object.
   Press 'd': On/off the object detection mode (default=on).
+  Press 'm': Change the dimming-level of the displayed image (0.3 -> 0.7 -> 1.0 -> 0.3 -> ...).
   Shift+Click a point on the image: Add the color of the point to the object color model.
           Tips: This is useful when making an object model manually.
 */
@@ -132,12 +133,13 @@ int main(int argc, char**argv)
   cv::namedWindow("camera",1);
   TMouseEventData mouse_data(frame_src,tracker);
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
-  bool trackbar_visible(false), detecting_mode(true);
+  bool trackbar_visible(false);
 
   TEasyVideoOut vout;
   vout.SetfilePrefix("/tmp/objtr");
 
   int show_fps(0);
+  double dim_levels[]={0.3,0.7,1.0};  int dim_idx(0);
   for(int f(0);;++f)
   {
     frame= Capture(cap, cam_info[0], &cam_rectifier);
@@ -146,7 +148,7 @@ int main(int argc, char**argv)
     if(f>0)
     {
       tracker.Step(frame);
-      frame*= 0.3;
+      frame*= dim_levels[dim_idx];
       tracker.Draw(frame);
     }
 
@@ -156,16 +158,20 @@ int main(int argc, char**argv)
     char c(cv::waitKey(1));
     if(c=='\x1b'||c=='q') break;
     else if(char(c)=='W')  vout.Switch();
+    else if(c=='m')
+    {
+      dim_idx++;
+      if(dim_idx>=int(sizeof(dim_levels)/sizeof(dim_levels[0])))  dim_idx=0;
+    }
     else if(c=='r')
     {
       tracker.ClearObject();
     }
     else if(c=='d')
     {
-      detecting_mode= !detecting_mode;
-      if(detecting_mode)  tracker.StartDetect();
-      else                tracker.StopDetect();
-      std::cerr<<"Object detection mode is: "<<(detecting_mode?"on":"off")<<std::endl;
+      if(tracker.ModeDetect())  tracker.StopDetect();
+      else                      tracker.StartDetect();
+      std::cerr<<"Object detection mode is: "<<(tracker.ModeDetect()?"on":"off")<<std::endl;
     }
     else if(c=='C')
     {
