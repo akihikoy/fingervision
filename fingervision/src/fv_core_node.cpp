@@ -104,9 +104,9 @@ struct TWindowInfo
 };
 std::map<std::string, TWindowInfo> WindowInfo;
 
-// Dim-level of proximity vision.
-double DimLevels[]={0.3,0.7,1.0};
-int DimIdx(0);
+// Dim-levels.
+double DimLevels[]={0.0,0.3,0.7,1.0};
+int DimIdxBT(3),DimIdxPV(1);
 
 #ifdef WITH_STEREO
 std::vector<TStereoInfo> StereoInfo;
@@ -168,10 +168,18 @@ bool HandleKeyEvent()
     for(std::map<std::string, TEasyVideoOut>::iterator itr(VideoOut.begin()),itr_end(VideoOut.end()); itr!=itr_end; ++itr)
       itr->second.Switch();
   }
-  else if(c=='m')
+  else if(c=='m' && CurrentWin!=NULL)
   {
-    DimIdx++;
-    if(DimIdx>=int(sizeof(DimLevels)/sizeof(DimLevels[0])))  DimIdx=0;
+    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    {
+      DimIdxBT++;
+      if(DimIdxBT>=int(sizeof(DimLevels)/sizeof(DimLevels[0])))  DimIdxBT=0;
+    }
+    else if(WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      DimIdxPV++;
+      if(DimIdxPV>=int(sizeof(DimLevels)/sizeof(DimLevels[0])))  DimIdxPV=0;
+    }
   }
   else if(c==' ')
   {
@@ -381,8 +389,11 @@ void ExecBlobTrack(int i_cam)
         Frame[i_cam].copyTo(frame);
         t_cap= CapTime[i_cam];
       }
+      VideoOut[tracker.Name+"-orig"].Step(frame);  // Record original video
+
       CamRectifier[i_cam](frame);
       tracker.Step(frame);
+      frame*= DimLevels[DimIdxBT];
       tracker.Draw(frame);
 
       VideoOut[tracker.Name].Step(frame);
@@ -452,9 +463,11 @@ void ExecObjDetTrack(int i_cam)
         Frame[i_cam].copyTo(frame);
         t_cap= CapTime[i_cam];
       }
+      VideoOut[tracker.Name+"-orig"].Step(frame);  // Record original video
+
       CamRectifier[i_cam](frame);
       tracker.Step(frame);
-      frame*= DimLevels[DimIdx];
+      frame*= DimLevels[DimIdxPV];
       tracker.Draw(frame);
 
       VideoOut[tracker.Name].Step(frame);
@@ -662,6 +675,7 @@ int main(int argc, char**argv)
     cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     VideoOut[BlobTracker[j].Name].SetfilePrefix(vout_base+BlobTracker[j].Name);
+    VideoOut[BlobTracker[j].Name+"-orig"].SetfilePrefix(vout_base+BlobTracker[j].Name+"-orig");
     ShowTrackbars[BlobTracker[j].Name].Enabled= false;
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
@@ -677,6 +691,7 @@ int main(int argc, char**argv)
     cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
     IMShowStuff[ObjDetTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     VideoOut[ObjDetTracker[j].Name].SetfilePrefix(vout_base+ObjDetTracker[j].Name);
+    VideoOut[ObjDetTracker[j].Name+"-orig"].SetfilePrefix(vout_base+ObjDetTracker[j].Name+"-orig");
     ShowTrackbars[ObjDetTracker[j].Name].Kind= "ObjDetTracker";
   }
 

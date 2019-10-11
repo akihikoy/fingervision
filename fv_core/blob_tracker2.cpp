@@ -146,12 +146,15 @@ TBlobTracker2Params::TBlobTracker2Params()
   // Filter by Circularity
   SBDParams.filterByCircularity = true;
   SBDParams.minCircularity = 0.10;
+  SBDParams.maxCircularity = std::numeric_limits<float>::max();
   // Filter by Convexity
   SBDParams.filterByConvexity = true;
   SBDParams.minConvexity = 0.87;
+  SBDParams.maxConvexity = std::numeric_limits<float>::max();
   // Filter by Inertia
   SBDParams.filterByInertia = true;
   SBDParams.minInertiaRatio = 0.01;
+  SBDParams.maxInertiaRatio = std::numeric_limits<float>::max();
 
   // For preprocessing:
   ThreshH= 180;
@@ -193,12 +196,16 @@ void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std:
     PROC_VAR(SBDParams,maxThreshold        );
     PROC_VAR(SBDParams,filterByArea        );
     PROC_VAR(SBDParams,minArea             );
+    PROC_VAR(SBDParams,maxArea             );
     PROC_VAR(SBDParams,filterByCircularity );
     PROC_VAR(SBDParams,minCircularity      );
+    PROC_VAR(SBDParams,maxCircularity      );
     PROC_VAR(SBDParams,filterByConvexity   );
     PROC_VAR(SBDParams,minConvexity        );
+    PROC_VAR(SBDParams,maxConvexity        );
     PROC_VAR(SBDParams,filterByInertia     );
     PROC_VAR(SBDParams,minInertiaRatio     );
+    PROC_VAR(SBDParams,maxInertiaRatio     );
     #undef PROC_VAR
     #define PROC_VAR(x)  fs<<#x<<itr->x;
     PROC_VAR(ThreshH      );
@@ -240,12 +247,16 @@ void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::stri
     PROC_VAR(SBDParams,maxThreshold        );
     PROC_VAR(SBDParams,filterByArea        );
     PROC_VAR(SBDParams,minArea             );
+    PROC_VAR(SBDParams,maxArea             );
     PROC_VAR(SBDParams,filterByCircularity );
     PROC_VAR(SBDParams,minCircularity      );
+    PROC_VAR(SBDParams,maxCircularity      );
     PROC_VAR(SBDParams,filterByConvexity   );
     PROC_VAR(SBDParams,minConvexity        );
+    PROC_VAR(SBDParams,maxConvexity        );
     PROC_VAR(SBDParams,filterByInertia     );
     PROC_VAR(SBDParams,minInertiaRatio     );
+    PROC_VAR(SBDParams,maxInertiaRatio     );
     #undef PROC_VAR
     #define PROC_VAR(x)  if(!(*itr)[#x].empty())  (*itr)[#x]>>cf.x;
     PROC_VAR(ThreshH      );

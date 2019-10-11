@@ -141,7 +141,7 @@ public:
   // Automatically switch Rec/Stop.
   void Switch()
     {
-      if(!writer_.isOpened())  Rec();
+      if(!is_recording_)  Rec();
       else  Stop();
     }
 
@@ -159,7 +159,7 @@ public:
   */
   void VizRec(cv::Mat &frame, int pos=0, int rad=5, int margin=3) const;
 
-  bool IsRecording() const {return writer_.isOpened();}
+  bool IsRecording() const {return is_recording_;}
   const double& FPS() const {return fps_est_.FPS;}
 
   void SetfilePrefix(const std::string &v)  {file_prefix_= v;}
@@ -170,6 +170,7 @@ private:
   cv::VideoWriter writer_;
   cv::Size img_size_;
   TFPSEstimator fps_est_;
+  bool is_recording_, stop_requested_;
 };
 //-------------------------------------------------------------------------------------------
 

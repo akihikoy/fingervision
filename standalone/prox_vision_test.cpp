@@ -139,7 +139,7 @@ int main(int argc, char**argv)
   vout.SetfilePrefix("/tmp/objtr");
 
   int show_fps(0);
-  double dim_levels[]={0.3,0.7,1.0};  int dim_idx(0);
+  double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(1);
   for(int f(0);;++f)
   {
     frame= Capture(cap, cam_info[0], &cam_rectifier);

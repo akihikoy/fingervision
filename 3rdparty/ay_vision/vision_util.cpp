@@ -400,7 +400,9 @@ TEasyVideoOut::TEasyVideoOut(const double &init_fps)
     file_prefix_ ("/tmp/video"),
     file_suffix_ (".avi"),
     img_size_ (0,0),
-    fps_est_ (init_fps, /*alpha=*/0.05)
+    fps_est_ (init_fps, /*alpha=*/0.05),
+    is_recording_(false),
+    stop_requested_(false)
 {
 }
 //-------------------------------------------------------------------------------------------
@@ -408,7 +410,7 @@ TEasyVideoOut::TEasyVideoOut(const double &init_fps)
 // Start recording.
 void TEasyVideoOut::Rec()
 {
-  if(!writer_.isOpened())
+  if(!is_recording_)
   {
     int i(0);
     std::string file_name;
@@ -420,6 +422,7 @@ void TEasyVideoOut::Rec()
       ++i;
     } while(FileExists(file_name));
     OpenVideoOut(writer_, file_name.c_str(), fps_est_.FPS, img_size_);
+    is_recording_= true;
   }
 }
 //-------------------------------------------------------------------------------------------
@@ -427,11 +430,8 @@ void TEasyVideoOut::Rec()
 // Stop recording.
 void TEasyVideoOut::Stop()
 {
-  if(writer_.isOpened())
-  {
-    writer_.release();
-    std::cerr<<"###Finished: video output"<<std::endl;
-  }
+  if(is_recording_)
+    stop_requested_= true;
 }
 //-------------------------------------------------------------------------------------------
 
@@ -443,7 +443,7 @@ void TEasyVideoOut::Step(const cv::Mat &frame)
   // update fps
   fps_est_.Step();
 
-  if(writer_.isOpened())
+  if(is_recording_)
   {
     if(frame.depth()==CV_8U && frame.channels()==3)
       writer_<<frame;
@@ -465,6 +465,16 @@ void TEasyVideoOut::Step(const cv::Mat &frame)
       writer_<<frame3;
     }
   }
+  if(stop_requested_)
+  {
+    if(writer_.isOpened())
+    {
+      writer_.release();
+      std::cerr<<"###Finished: video output"<<std::endl;
+    }
+    is_recording_= false;
+    stop_requested_= false;
+  }
 }
 //-------------------------------------------------------------------------------------------
 
@@ -473,7 +483,7 @@ void TEasyVideoOut::Step(const cv::Mat &frame)
 */
 void TEasyVideoOut::VizRec(cv::Mat &frame, int pos, int rad, int margin) const
 {
-  if(writer_.isOpened())
+  if(is_recording_)
   {
     cv::Point2d pt((rad+margin), (rad+margin));
     switch(pos)

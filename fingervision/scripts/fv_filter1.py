@@ -18,7 +18,7 @@ import fingervision_msgs.msg
 import fingervision_msgs.srv
 import geometry_msgs.msg
 
-def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench):
+def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
   cx= msg.width/2
   cy= msg.height/2
   div= float(msg.width+msg.height)/2.0
@@ -26,7 +26,7 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench):
     fscale= [1.0,1.0,1.0]
     rxy= ((mv.Pox-cx)/div, (mv.Poy-cy)/div)
     fxy= (mv.DPx, mv.DPy)
-    fz= la.norm(fxy) # max(0.0,mv.DS)
+    fz= la.norm(fxy) if options['normal_f_mode']=='xy_norm' else (max(0.0,mv.DS) if options['normal_f_mode']=='marker_size' else None)
     if side==RIGHT:
       f= [+(fxy[0]*fscale[0]), -(fz*fscale[2]), -(fxy[1]*fscale[1])]
       p= [+rxy[0], -rxy[1]]
@@ -151,17 +151,26 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
   pub_fobjinfo.publish(msg2)
 
 if __name__=='__main__':
+  options={
+    'normal_f_mode': 'xy_norm',  #Options: 'xy_norm','marker_size'
+    'filter_len': 5,
+    }
+
   rospy.init_node('fv_filter1')
   fv= 'fv'
   side_str= 'r'
   fv= rospy.get_param('~fv', fv)
   side_str= rospy.get_param('~side', side_str)
+  options['normal_f_mode']= rospy.get_param('~normal_f_mode', options['normal_f_mode'])
+  options['filter_len']= rospy.get_param('~filter_len', options['filter_len'])
   side= StrToLR(side_str)
   if side is None:  side= StrToID(side_str)
 
-  options_fobjinfo={
-    'filter_len': 5,
-    }
+  print '''FV-Filter {node}
+    FV: {fv}
+    Side: {side}
+    Options: {options}'''.format(node=rospy.get_name(),fv=fv,side=side,options=options)
+
   state_fobjinfo= TContainer(debug=True)
 
   #Filtered wrench:
@@ -175,7 +184,7 @@ if __name__=='__main__':
                                 fingervision_msgs.msg.Filter1ObjInfo, queue_size=10)
 
   sub_bm= rospy.Subscriber(rospy.get_namespace()+'{fv}/blob_moves'.format(fv=fv),
-                           fingervision_msgs.msg.BlobMoves, lambda msg:BlobMoves(msg,fv,side,pub_fwrench,pub_wrench))
+                           fingervision_msgs.msg.BlobMoves, lambda msg:BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options))
   sub_pv= rospy.Subscriber(rospy.get_namespace()+'{fv}/prox_vision'.format(fv=fv),
-                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv,pub_fobjinfo,options_fobjinfo,state_fobjinfo))
+                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv,pub_fobjinfo,options,state_fobjinfo))
   rospy.spin()
