@@ -1,6 +1,6 @@
 #!/bin/bash
-exposure=112
-wb=3850
+exposure=160
+wb=6200
 v0=0
 v1=1
 if [[ "$1" == "local"* ]];then
