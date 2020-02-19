@@ -6,11 +6,6 @@
     \date    Oct.29, 2014
 */
 //-------------------------------------------------------------------------------------------
-#ifdef _WIN32
-  // Windows magic:
-  #include "stdafx.h"
-#endif
-//-------------------------------------------------------------------------------------------
 #include "ay_vision/vision_util.h"
 #include "ay_cpp/cpp_util.h"
 #include "ay_cpp/sys_util.h"
