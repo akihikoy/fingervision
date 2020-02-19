@@ -14,7 +14,7 @@ cf. testl/cv/simple_blob_tracker4.cpp
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <boost/function.hpp>
+// #include <boost/function.hpp>
 #include <iostream>
 //-------------------------------------------------------------------------------------------
 namespace trick

@@ -16,7 +16,7 @@ cf. testl/cv/obj_det_track3.cpp
 #include <opencv2/video/background_segm.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <boost/function.hpp>
+// #include <boost/function.hpp>
 #include <iostream>
 //-------------------------------------------------------------------------------------------
 namespace trick
