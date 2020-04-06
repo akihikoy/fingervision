@@ -44,10 +44,12 @@ bool Running(true), Shutdown(false), DoCalibrate(false);
 std::string *CurrentWin(NULL);
 
 /*FPS control parameters.
-  FrameSkip: Video image is processed every 1+FrameSkip frames.
+  FrameSkip: Video images is processed every 1+FrameSkip frames.
              FrameSkip=0: processing every frame.
   TargetFPS: Video image is processed at this FPS.
              TargetFPS=0: processing every frame.
+  CaptureFPS: Image is captured at this FPS.
+             CaptureFPS=0: capture as fast as possible.
   NOTE: Do not set FrameSkip and TargetFPS simultaneously, which would be confusing.
   Pseudo code:
     for each frame f:
@@ -62,6 +64,7 @@ std::string *CurrentWin(NULL);
 */
 int FrameSkip(0);  // 0: no skip
 double TargetFPS(0);  // 0: no FPS control
+double CaptureFPS(0);  // 0: no FPS control
 
 std::string BlobCalibPrefix("blob_");
 std::vector<TCameraInfo> CamInfo;
@@ -135,8 +138,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
     std::cerr<<"CurrentWin: "<<*CurrentWin<<std::endl;
   }
 
-  // if(flags!=0)  return;
-  if(event == cv::EVENT_RBUTTONDOWN)
+  if(event == cv::EVENT_RBUTTONDOWN && flags == 0)
   {
     Running=!Running;
     std::cerr<<(Running?"Resume":"Pause (Hit space/R-click to resume)")<<std::endl;
@@ -152,6 +154,14 @@ void OnMouse(int event, int x, int y, int flags, void *data)
         Frame[i_cam].copyTo(frame);
       }
       ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
+    }
+  }
+  if(event == cv::EVENT_RBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
+  {
+    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    {
+      int idx(WindowInfo[*CurrentWin].Index);
+      BlobTracker[idx].RemovePointAt(cv::Point2f(x,y));
     }
   }
 }
@@ -583,6 +593,7 @@ int main(int argc, char**argv)
   node.param("vout_base",vout_base,vout_base);
   node.param("frame_skip",FrameSkip,FrameSkip);
   node.param("target_fps",TargetFPS,TargetFPS);
+  node.param("capture_fps",CaptureFPS,CaptureFPS);
   std::cerr<<"pkg_dir: "<<pkg_dir<<std::endl;
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
   std::cerr<<"blobtrack_config: "<<blobtrack_config<<std::endl;
@@ -749,7 +760,7 @@ int main(int argc, char**argv)
     th_stereo.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecStereo,j))));
   #endif
 
-  // ros::Rate loop_rate(5);  // 5 Hz
+  ros::Rate rate(CaptureFPS>0.0?CaptureFPS:1);
   for(int f(0);ros::ok();++f)
   {
     if(Running)
@@ -800,6 +811,8 @@ int main(int argc, char**argv)
         show_fps=VideoOut.begin()->second.FPS()*4;
       }
       --show_fps;
+
+      if(CaptureFPS>0.0)  rate.sleep();
 
     }  // Running
     else

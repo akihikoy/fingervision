@@ -31,19 +31,25 @@ struct TPointMove2
 };
 void DrawPointMoves2(cv::Mat &img, const std::vector<TPointMove2> &move,
     const cv::Scalar &col1, const cv::Scalar &col2,
-    const float &ds_emp=4.0,   // Emphasize (scale) ratio of DS to draw
-    const float &dp_emp=10.0,  // Emphasize (scale) ratio of DP to draw
-    const cv::Mat &img_th=cv::Mat()  // Processed image
+    const float &ds_emp,  // Emphasize (scale) ratio of DS
+    const float &dp_emp,  // Emphasize (scale) ratio of DP
+    const cv::Mat &img_th,  // Processed image
+    bool is_thresholded,  // If img_th is thresholded
+    const float &s_width  // Width of search ROI of each keypoint
   );
-// Track individual blobs.  prev: base, curr: current.
+// Track individual blobs.
 void TrackKeyPoints2(
-    const std::vector<cv::KeyPoint> &prev,
-    const std::vector<cv::KeyPoint> &curr,
-    std::vector<TPointMove2> &move,
-    const float &dist_min,  // Minimum distance change (i.e. sensitivity)
-    const float &dist_max,  // Maximum distance change (too large might be noise)
-    const float &ds_min,  // Minimum size change (i.e. sensitivity)
-    const float &ds_max  // Maximum size change (too large might be noise)
+    const cv::Mat &img_th,  // Preprocessed image
+    bool is_thresholded,   // If img_th is thresholded
+    const cv::SimpleBlobDetector &detector,  // Blob detector
+    const std::vector<cv::KeyPoint> &orig,  // Original keypoints
+    std::vector<TPointMove2> &move,  // Must be previous movement
+    const float &s_width,  // Width of search ROI of each keypoint
+    const float &nonzero_min,  // Minimum ratio of nonzero pixels in ROI over original keypoint size.
+    const float &nonzero_max,  // Maximum ratio of nonzero pixels in ROI over original keypoint size.
+    const float &vp_max,  // Maximum position change (too large one might be noise)
+    const float &vs_max,  // Maximum size change (too large one might be noise)
+    const int   &n_reset  // When number of tracking failure in a row exceeds this, tracking is reset
   );
 //-------------------------------------------------------------------------------------------
 
@@ -53,6 +59,7 @@ struct TBlobTracker2Params
   cv::SimpleBlobDetector::Params SBDParams;
 
   // For preprocessing:
+  bool ThresholdingImg;  // Thresholding the input image where Thresh*, NDilate1, NErode1 are used.
   int ThreshH;
   int ThreshS;
   int ThreshV;
@@ -60,8 +67,8 @@ struct TBlobTracker2Params
   int NErode1;
   // For keypoint tracking;
   float SWidth;  // Width of search ROI of each keypoint
-  float NonZeroMin; // Minimum ratio of nonzero pixels in ROI over original keypoint size.
-  float NonZeroMax; // Maximum ratio of nonzero pixels in ROI over original keypoint size.
+  float NonZeroMin; // Minimum ratio of nonzero pixels in ROI over original keypoint size (used only when ThresholdingImg==true).
+  float NonZeroMax; // Maximum ratio of nonzero pixels in ROI over original keypoint size (used only when ThresholdingImg==true).
   float VPMax;  // Maximum position change (too large one might be noise)
   float VSMax;  // Maximum size change (too large one might be noise)
   int   NReset;  // When number of tracking failure in a row exceeds this, tracking is reset
@@ -92,6 +99,9 @@ public:
   void Step(const cv::Mat &img);
   void Draw(cv::Mat &img);
   void Calibrate(const std::vector<cv::Mat> &images);
+
+  // Remove a keypoint around p.
+  void RemovePointAt(const cv::Point2f &p, const float &max_dist=30.0);
 
   void SaveCalib(const std::string &file_name) const;
   void LoadCalib(const std::string &file_name);

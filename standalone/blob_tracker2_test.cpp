@@ -79,6 +79,22 @@ void ModifyParams(int i, void *ptracker)
 }
 //-------------------------------------------------------------------------------------------
 
+struct TMouseEventData
+{
+  cv::Mat &frame;
+  TBlobTracker2 &tracker;
+  TMouseEventData(cv::Mat &f, TBlobTracker2 &t) : frame(f), tracker(t) {}
+};
+void OnMouse(int event, int x, int y, int flags, void *data)
+{
+  if(event == cv::EVENT_RBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
+  {
+    TMouseEventData &d(*reinterpret_cast<TMouseEventData*>(data));
+    d.tracker.RemovePointAt(cv::Point2f(x,y));
+  }
+}
+//-------------------------------------------------------------------------------------------
+
 int main(int argc, char**argv)
 {
   std::string cam("0"), config_file;
@@ -130,7 +146,11 @@ int main(int argc, char**argv)
     calib_request= false;
   }
 
+  cv::Mat frame;
+
   cv::namedWindow("camera",1);
+  TMouseEventData mouse_data(frame,tracker);
+  cv::setMouseCallback("camera", OnMouse, &mouse_data);
   bool trackbar_visible(false);
 
   TEasyVideoOut vout;
@@ -138,7 +158,6 @@ int main(int argc, char**argv)
 
   int show_fps(0);
   double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(3);
-  cv::Mat frame;
   for(int f(0);;++f)
   {
     frame= Capture(cap, cam_info[0], &cam_rectifier);
@@ -190,11 +209,11 @@ int main(int argc, char**argv)
         cv::createTrackbar( "100*SBDParams.minConvexity:", "camera", &SBDParams_minConvexity100, 100, &ModifyParams, &tracker);
         cv::createTrackbar( "NDilate1:", "camera", &tracker.Params().NDilate1, 10, NULL);
         cv::createTrackbar( "NErode1:", "camera", &tracker.Params().NErode1, 10, NULL);
-        cv::createTrackbar( "SWidth:", "camera", &SWidth, 100, &ModifyParams, &tracker);
+        cv::createTrackbar( "SWidth:", "camera", &SWidth, 400, &ModifyParams, &tracker);
         cv::createTrackbar( "10*NonZeroMin:", "camera", &NonZeroMin10, 200, &ModifyParams, &tracker);
         cv::createTrackbar( "10*NonZeroMax:", "camera", &NonZeroMax10, 200, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*VPMax:", "camera", &VPMax10, 200, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*VSMax:", "camera", &VSMax10, 200, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*VPMax:", "camera", &VPMax10, 500, &ModifyParams, &tracker);
+        cv::createTrackbar( "10*VSMax:", "camera", &VSMax10, 500, &ModifyParams, &tracker);
       }
       else
       {

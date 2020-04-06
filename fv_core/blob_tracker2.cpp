@@ -23,16 +23,36 @@ void DrawPointMoves2(cv::Mat &img, const std::vector<TPointMove2> &move,
     const cv::Scalar &col1, const cv::Scalar &col2,
     const float &ds_emp,  // Emphasize (scale) ratio of DS
     const float &dp_emp,  // Emphasize (scale) ratio of DP
-    const cv::Mat &img_th  // Processed image
+    const cv::Mat &img_th,  // Processed image
+    bool is_thresholded,  // If img_th is thresholded
+    const float &s_width  // Width of search ROI of each keypoint
   )
 {
   // Debug mode:
-  if(img_th.cols*img_th.rows>0)
+  if(is_thresholded)
   {
-    // img*= 0.4;
-    cv::Mat img_ths[3]= {0.4*img_th,0.2*img_th,0.0*img_th}, img_thc;
-    cv::merge(img_ths,3,img_thc);
-    img+= img_thc;
+    if(img_th.cols*img_th.rows>0)
+    {
+      // img*= 0.4;
+      cv::Mat img_ths[3]= {0.4*img_th,0.2*img_th,0.0*img_th}, img_thc;
+      cv::merge(img_ths,3,img_thc);
+      img+= img_thc;
+    }
+  }
+
+  // Draw ROIs
+  for(int i(0),i_end(move.size()); i<i_end; ++i)
+  {
+    const TPointMove2 &mi(move[i]);
+    cv::Point2f pc= mi.Po + mi.DP;  // Current marker position.
+    cv::Rect roi(pc.x-s_width*0.5, pc.y-s_width*0.5, s_width, s_width);
+    if(roi.x<0)  {roi.width+= roi.x; roi.x= 0;}
+    if(roi.y<0)  {roi.height+= roi.y; roi.y= 0;}
+    if(roi.width<=0 || roi.height<=0)  continue;
+    if(roi.x+roi.width>img_th.cols)  {roi.width= img_th.cols-roi.x;}
+    if(roi.y+roi.height>img_th.rows)  {roi.height= img_th.rows-roi.y;}
+    if(roi.width<=0 || roi.height<=0)  continue;
+    cv::rectangle(img, roi, col2, 1);
   }
 
   // for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
@@ -42,12 +62,17 @@ void DrawPointMoves2(cv::Mat &img, const std::vector<TPointMove2> &move,
     // cv::circle(img, m->Po, m->So, col1, ds_emp*m->DS);
     // cv::line(img, m->Po, m->Po+dp_emp*m->DP, col2, 3);
   // }
-  for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
-    cv::circle(img, m->Po, std::max(0.0f,m->So), col1, std::max(0.0f,ds_emp*m->DS));
-  for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
-    cv::circle(img, m->Po+dp_emp*m->DP, std::max(0.0f,m->So+ds_emp*m->DS), col2);
+  int i(0);
+  for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m,++i)
+  {
+    cv::circle(img, m->Po, std::max(0.0f,m->So), col1, 1/*std::max(0.0f,ds_emp*m->DS)*/);
+    std::stringstream ss; ss<<i;
+    cv::putText(img, ss.str(), m->Po+cv::Point2f(3+std::max(0.0f,m->So),0), cv::FONT_HERSHEY_SIMPLEX, 0.3, col1, 1, CV_AA);
+  }
   for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
     cv::line(img, m->Po, m->Po+dp_emp*m->DP, col2, 3);
+  for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
+    cv::circle(img, m->Po+dp_emp*m->DP, std::max(0.0f,m->So+ds_emp*m->DS), col2, std::max(0.0f,ds_emp*m->DS));
 }
 //-------------------------------------------------------------------------------------------
 
@@ -66,8 +91,10 @@ void InitKeyPointMove(const std::vector<cv::KeyPoint> &orig, std::vector<TPointM
 }
 //-------------------------------------------------------------------------------------------
 
+// Track individual blobs.
 void TrackKeyPoints2(
     const cv::Mat &img_th,  // Preprocessed image
+    bool is_thresholded,   // If img_th is thresholded
     const cv::SimpleBlobDetector &detector,  // Blob detector
     const std::vector<cv::KeyPoint> &orig,  // Original keypoints
     std::vector<TPointMove2> &move,  // Must be previous movement
@@ -92,6 +119,7 @@ void TrackKeyPoints2(
     // Reset when number of tracking failures in a row exceeds a threshold
     if(mi.NTrackFailed>n_reset)
     {
+      std::cerr<<"TrackKeyPoints2::MESSAGE:: blob tracking reset: "<<i<<std::endl;
       mi.Po= oi.pt;
       mi.So= oi.size;
       mi.DP= cv::Point2f(0.0,0.0);
@@ -101,6 +129,8 @@ void TrackKeyPoints2(
     ++mi.NTrackFailed;
 
     // We will consider ROI around the current marker.
+    if(0.25*s_width<sc)
+      std::cerr<<"TrackKeyPoints2::WARNING:: s_width may be too small for a blob size: "<<s_width<<", "<<i<<", "<<sc<<std::endl;
     cv::Rect roi(pc.x-s_width*0.5, pc.y-s_width*0.5, s_width, s_width);
     if(roi.x<0)  {roi.width+= roi.x; roi.x= 0;}
     if(roi.y<0)  {roi.height+= roi.y; roi.y= 0;}
@@ -110,12 +140,35 @@ void TrackKeyPoints2(
     if(roi.width<=0 || roi.height<=0)  continue;
 
     // Count the nonzero pixels in ROI.
-    float nonzero_ratio= cv::countNonZero(img_th(roi)) / (4*oi.size*oi.size);
-    if(nonzero_ratio<nonzero_min || nonzero_ratio>nonzero_max)  continue;
+    if(is_thresholded)
+    {
+      float nonzero_ratio= cv::countNonZero(img_th(roi)) / (4*oi.size*oi.size);
+      if(nonzero_ratio<nonzero_min || nonzero_ratio>nonzero_max)  continue;
+    }
 
     // Detect a marker; if the number of keypoints is not 1, considered as an error.
+    keypoints.clear();
     detector.detect(img_th(roi), keypoints);
-    if(keypoints.size() != 1)  continue;
+    if(keypoints.size() == 0)
+    {
+      // std::cerr<<"TrackKeyPoints2::MESSAGE:: blob tracking failed: "<<i<<", # of keypoints: "<<keypoints.size()<<std::endl;
+      continue;
+    }
+    else if(keypoints.size() > 1)
+    {
+      float vp_norm_min(0.0),j_min(-1);
+      for(int j(0),j_end(keypoints.size()); j!=j_end; ++j)
+      {
+        cv::Point2f vp= cv::Point2f(roi.x,roi.y) + keypoints[j].pt - pc;
+        float vp_norm(cv::sqrt(vp.x*vp.x + vp.y*vp.y));
+        if(j_min<0 || vp_norm<vp_norm_min)
+        {
+          j_min= j;
+          vp_norm_min= vp_norm;
+        }
+      }
+      if(j_min!=0)  keypoints[0]= keypoints[j_min];
+    }
     // Conversion to absolute position:
     keypoints[0].pt+= cv::Point2f(roi.x,roi.y);
 
@@ -127,6 +180,10 @@ void TrackKeyPoints2(
       mi.DP= keypoints[0].pt - mi.Po;
       mi.DS= std::max(0.0f, keypoints[0].size - mi.So);
       mi.NTrackFailed= 0;
+    }
+    else
+    {
+      // std::cerr<<"TrackKeyPoints2::MESSAGE:: blob tracking failed: "<<i<<", vp,vs: "<<vp_norm<<", "<<vs<<std::endl;
     }
   }
 }
@@ -157,6 +214,7 @@ TBlobTracker2Params::TBlobTracker2Params()
   SBDParams.maxInertiaRatio = std::numeric_limits<float>::max();
 
   // For preprocessing:
+  ThresholdingImg= true;  // Thresholding the input image where Thresh*, NDilate1, NErode1 are used.
   ThreshH= 180;
   ThreshS= 255;
   ThreshV= 40;
@@ -208,6 +266,7 @@ void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std:
     PROC_VAR(SBDParams,maxInertiaRatio     );
     #undef PROC_VAR
     #define PROC_VAR(x)  fs<<#x<<itr->x;
+    PROC_VAR(ThresholdingImg      );
     PROC_VAR(ThreshH      );
     PROC_VAR(ThreshS      );
     PROC_VAR(ThreshV      );
@@ -259,6 +318,7 @@ void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::stri
     PROC_VAR(SBDParams,maxInertiaRatio     );
     #undef PROC_VAR
     #define PROC_VAR(x)  if(!(*itr)[#x].empty())  (*itr)[#x]>>cf.x;
+    PROC_VAR(ThresholdingImg      );
     PROC_VAR(ThreshH      );
     PROC_VAR(ThreshS      );
     PROC_VAR(ThreshV      );
@@ -294,10 +354,17 @@ void TBlobTracker2::Init()
 
 void TBlobTracker2::Preprocess(const cv::Mat &img, cv::Mat &img_th)
 {
-  cv::cvtColor(img, img_th, cv::COLOR_BGR2HSV);
-  cv::inRange(img_th, cv::Scalar(0, 0, 0), cv::Scalar(params_.ThreshH, params_.ThreshS, params_.ThreshV), img_th);
-  cv::dilate(img_th,img_th,cv::Mat(),cv::Point(-1,-1), params_.NDilate1);
-  cv::erode(img_th,img_th,cv::Mat(),cv::Point(-1,-1), params_.NErode1);
+  if(params_.ThresholdingImg)
+  {
+    cv::cvtColor(img, img_th, cv::COLOR_BGR2HSV);
+    cv::inRange(img_th, cv::Scalar(0, 0, 0), cv::Scalar(params_.ThreshH, params_.ThreshS, params_.ThreshV), img_th);
+    cv::dilate(img_th,img_th,cv::Mat(),cv::Point(-1,-1), params_.NDilate1);
+    cv::erode(img_th,img_th,cv::Mat(),cv::Point(-1,-1), params_.NErode1);
+  }
+  else
+  {
+    img.copyTo(img_th);
+  }
 }
 //-------------------------------------------------------------------------------------------
 
@@ -307,7 +374,7 @@ void TBlobTracker2::Step(const cv::Mat &img)
   Preprocess(img, img_th_);
 
   TrackKeyPoints2(
-      img_th_, *detector_, keypoints_orig_, keypoints_move_,
+      img_th_, params_.ThresholdingImg, *detector_, keypoints_orig_, keypoints_move_,
       params_.SWidth, params_.NonZeroMin, params_.NonZeroMax, params_.VPMax, params_.VSMax, params_.NReset);
 }
 //-------------------------------------------------------------------------------------------
@@ -315,7 +382,8 @@ void TBlobTracker2::Step(const cv::Mat &img)
 void TBlobTracker2::Draw(cv::Mat &img)
 {
   DrawPointMoves2(img, keypoints_move_, cv::Scalar(255,0,0), cv::Scalar(0,0,255),
-      params_.DSEmp, params_.DPEmp, img_th_);
+      params_.DSEmp, params_.DPEmp, img_th_, params_.ThresholdingImg,
+      params_.SWidth);
 }
 //-------------------------------------------------------------------------------------------
 
@@ -332,7 +400,7 @@ void TBlobTracker2::Calibrate(const std::vector<cv::Mat> &images)
     Preprocess(images[i], img_th_);
     InitKeyPointMove(keypoints_orig_, move);
     TrackKeyPoints2(
-        img_th_, *detector_, keypoints_orig_, move,
+        img_th_, params_.ThresholdingImg, *detector_, keypoints_orig_, move,
         params_.SWidth, params_.NonZeroMin, params_.NonZeroMax, params_.VPMax, params_.VSMax, params_.NReset);
     for(int j(move.size()-1); j>=0; --j)
     {
@@ -344,6 +412,29 @@ void TBlobTracker2::Calibrate(const std::vector<cv::Mat> &images)
   std::cerr<<"keypoints_orig_.size()= "<<keypoints_orig_.size()<<std::endl;
   InitKeyPointMove(keypoints_orig_, keypoints_move_);
   std::cerr<<"Done."<<std::endl;
+}
+//-------------------------------------------------------------------------------------------
+
+// Remove a keypoint around (x,y).
+void TBlobTracker2::RemovePointAt(const cv::Point2f &p, const float &max_dist)
+{
+  int i_closest(-1);
+  float d, d_closest(0.0f);
+  for(int i(0),i_end(keypoints_orig_.size()); i!=i_end; ++i)
+  {
+    d= cv::norm(keypoints_orig_[i].pt-p);
+    if(d<max_dist && (i_closest<0 || d<d_closest))
+    {
+      i_closest= i;
+      d_closest= d;
+    }
+  }
+  if(i_closest>=0)
+  {
+    keypoints_orig_.erase(keypoints_orig_.begin()+i_closest);
+    keypoints_move_.erase(keypoints_move_.begin()+i_closest);
+    InitKeyPointMove(keypoints_orig_, keypoints_move_);
+  }
 }
 //-------------------------------------------------------------------------------------------
 
