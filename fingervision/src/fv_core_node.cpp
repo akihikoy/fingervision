@@ -23,6 +23,7 @@
 #include "fingervision_msgs/BlobMoves.h"
 #include "fingervision_msgs/ProxVision.h"
 #include "fingervision_msgs/SetInt32.h"
+#include "fingervision_msgs/SetString.h"
 //-------------------------------------------------------------------------------------------
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -285,6 +286,52 @@ bool Resume(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 {
   std::cerr<<"Resumed..."<<std::endl;
   Running= true;
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+bool StartRecord(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  for(std::map<std::string, TEasyVideoOut>::iterator itr(VideoOut.begin()),itr_end(VideoOut.end()); itr!=itr_end; ++itr)
+    itr->second.Rec();
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+bool StopRecord(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  for(std::map<std::string, TEasyVideoOut>::iterator itr(VideoOut.begin()),itr_end(VideoOut.end()); itr!=itr_end; ++itr)
+    itr->second.Stop();
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+void SetVideoPrefix(const std::string &file_prefix)
+{
+  #ifdef WITH_STEREO
+  for(int j(0),j_end(Stereo.size());j<j_end;++j)
+  {
+    VideoOut[info.Name].SetfilePrefix(file_prefix+info.Name);
+  }
+  #endif
+  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  {
+    VideoOut[BlobTracker[j].Name].SetfilePrefix(file_prefix+BlobTracker[j].Name);
+    VideoOut[BlobTracker[j].Name+"-orig"].SetfilePrefix(file_prefix+BlobTracker[j].Name+"-orig");
+  }
+  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  {
+    VideoOut[ObjDetTracker[j].Name].SetfilePrefix(file_prefix+ObjDetTracker[j].Name);
+    VideoOut[ObjDetTracker[j].Name+"-orig"].SetfilePrefix(file_prefix+ObjDetTracker[j].Name+"-orig");
+  }
+}
+//-------------------------------------------------------------------------------------------
+
+bool SetVideoPrefix(fingervision_msgs::SetString::Request &req, fingervision_msgs::SetString::Response &res)
+{
+  std::cerr<<"Setting video prefix as "<<req.data<<"..."<<std::endl;
+  SetVideoPrefix(req.data);
+  res.result= true;
   return true;
 }
 //-------------------------------------------------------------------------------------------
@@ -658,7 +705,6 @@ int main(int argc, char**argv)
     cv::namedWindow(info.Name,1);
     cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
     IMShowStuff[info.Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    VideoOut[info.Name].SetfilePrefix(vout_base+info.Name);
     ShowTrackbars[info.Name].Enabled= false;
 
     StereoB[j].LoadCameraParametersFromYAML(pkg_dir+"/"+info.StereoParam);
@@ -685,8 +731,6 @@ int main(int argc, char**argv)
     cv::namedWindow(BlobTracker[j].Name,1);
     cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    VideoOut[BlobTracker[j].Name].SetfilePrefix(vout_base+BlobTracker[j].Name);
-    VideoOut[BlobTracker[j].Name+"-orig"].SetfilePrefix(vout_base+BlobTracker[j].Name+"-orig");
     ShowTrackbars[BlobTracker[j].Name].Enabled= false;
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
@@ -701,10 +745,10 @@ int main(int argc, char**argv)
     cv::namedWindow(ObjDetTracker[j].Name,1);
     cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
     IMShowStuff[ObjDetTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    VideoOut[ObjDetTracker[j].Name].SetfilePrefix(vout_base+ObjDetTracker[j].Name);
-    VideoOut[ObjDetTracker[j].Name+"-orig"].SetfilePrefix(vout_base+ObjDetTracker[j].Name+"-orig");
     ShowTrackbars[ObjDetTracker[j].Name].Kind= "ObjDetTracker";
   }
+
+  SetVideoPrefix(vout_base);
 
   #ifdef WITH_STEREO
   CloudPub.resize(Stereo.size());
@@ -722,6 +766,9 @@ int main(int argc, char**argv)
 
   ros::ServiceServer srv_pause= node.advertiseService("pause", &Pause);
   ros::ServiceServer srv_resume= node.advertiseService("resume", &Resume);
+  ros::ServiceServer srv_start_record= node.advertiseService("start_record", &StartRecord);
+  ros::ServiceServer srv_stop_record= node.advertiseService("stop_record", &StopRecord);
+  ros::ServiceServer srv_set_video_prefix= node.advertiseService("set_video_prefix", &SetVideoPrefix);
   ros::ServiceServer srv_set_frame_skip= node.advertiseService("set_frame_skip", &SetFrameSkip);
   ros::ServiceServer srv_stop_detect_obj= node.advertiseService("stop_detect_obj", &StopDetectObj);
   ros::ServiceServer srv_start_detect_obj= node.advertiseService("start_detect_obj", &StartDetectObj);
