@@ -145,7 +145,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
   }
   if(event == cv::EVENT_LBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
   {
-    if(WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
     {
       int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
       cv::Mat frame;
@@ -158,7 +158,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
   }
   if(event == cv::EVENT_RBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
   {
-    if(WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
       int idx(WindowInfo[*CurrentWin].Index);
       BlobTracker[idx].RemovePointAt(cv::Point2f(x,y));
@@ -786,7 +786,7 @@ int main(int argc, char**argv)
       }
 
       // Handle blob tracker calibration request
-      if(DoCalibrate && BlobTracker.size()>0 && *CurrentWin!="" && WindowInfo[*CurrentWin].Kind=="BlobTracker")
+      if(DoCalibrate && BlobTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
       {
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
@@ -794,7 +794,7 @@ int main(int argc, char**argv)
         BlobTracker[idx].Calibrate(frames);
         Running= true;
       }
-      if(DoCalibrate && ObjDetTracker.size()>0 && *CurrentWin!="" && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+      if(DoCalibrate && ObjDetTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
       {
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
