@@ -60,16 +60,6 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
 }
 //-------------------------------------------------------------------------------------------
 
-int BS_History(1), Fbg20(1), Fgain20(1);
-void ModifyParams(int i, void *ptracker)
-{
-  TObjDetTrackBSP &tracker(*reinterpret_cast<TObjDetTrackBSP*>(ptracker));
-  tracker.Params().BS_History= BS_History;
-  tracker.Params().Fbg= float(Fbg20)/20.0;
-  tracker.Params().Fgain= float(Fgain20)/20.0;
-}
-//-------------------------------------------------------------------------------------------
-
 struct TMouseEventData
 {
   cv::Mat &frame;
@@ -178,16 +168,13 @@ int main(int argc, char**argv)
       trackbar_visible= !trackbar_visible;
       if(trackbar_visible)
       {
-        BS_History= tracker.Params().BS_History;
-        Fbg20= tracker.Params().Fbg*20.0;
-        Fgain20= tracker.Params().Fgain*20.0;
-        cv::createTrackbar( "History:", "camera", &BS_History, 100, &ModifyParams, &tracker);
-        cv::createTrackbar( "20*f_bg:", "camera", &Fbg20, 100, &ModifyParams, &tracker);
-        cv::createTrackbar( "20*f_gain:", "camera", &Fgain20, 100, &ModifyParams, &tracker);
-        cv::createTrackbar( "N-Erode(1):", "camera", &tracker.Params().NErode1, 10, NULL);
-        cv::createTrackbar( "N-Erode(2):", "camera", &tracker.Params().NErode2, 20, NULL);
-        cv::createTrackbar( "N-Dilate(2):", "camera", &tracker.Params().NDilate2, 20, NULL);
-        cv::createTrackbar( "Threshold(2):", "camera", &tracker.Params().NThreshold2, 255, NULL);
+        CreateTrackbar<float>("History:", "camera", &tracker.Params().BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("Fbg:",     "camera", &tracker.Params().Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("Fgain:",   "camera", &tracker.Params().Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("N-Erode(1):",   "camera", &tracker.Params().NErode1,     0, 10, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("N-Erode(2):",   "camera", &tracker.Params().NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("N-Dilate(2):",  "camera", &tracker.Params().NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("Threshold(2):", "camera", &tracker.Params().NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
       }
       else
       {
