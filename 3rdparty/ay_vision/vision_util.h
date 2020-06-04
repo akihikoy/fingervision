@@ -197,7 +197,7 @@ struct TCameraInfo
 };
 //-------------------------------------------------------------------------------------------
 bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap);
-bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait=1000, int max_count=0);
+bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait=1000, int max_count=0, bool(*check_to_stop)(void)=NULL);
 void Print(const std::vector<TCameraInfo> &cam_info);
 void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name);
 void ReadFromYAML(std::vector<TCameraInfo> &cam_info, const std::string &file_name);

@@ -128,6 +128,12 @@ using namespace trick;
 // #define print(var) std::cout<<#var"= "<<(var)<<std::endl
 //-------------------------------------------------------------------------------------------
 
+bool IsShutdown()
+{
+  return Shutdown || ros::isShuttingDown() || !ros::ok();
+}
+//-------------------------------------------------------------------------------------------
+
 /*
   Right click: pause/resume
 */
@@ -589,8 +595,8 @@ cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify)
     boost::mutex::scoped_lock lock(*MutCamCapture[i_cam]);
     while(!cap.read(frame))
     {
-      if(CapWaitReopen(CamInfo[i_cam],cap)) continue;
-      else  return cv::Mat();
+      if(IsShutdown() || !CapWaitReopen(CamInfo[i_cam],cap,/*ms_wait=*/1000,/*max_count=*/0,/*check_to_stop=*/IsShutdown))
+        return cv::Mat();
     }
   }
   if(CamInfo[i_cam].CapWidth!=CamInfo[i_cam].Width || CamInfo[i_cam].CapHeight!=CamInfo[i_cam].Height)
@@ -808,7 +814,7 @@ int main(int argc, char**argv)
   #endif
 
   ros::Rate rate(CaptureFPS>0.0?CaptureFPS:1);
-  for(int f(0);ros::ok();++f)
+  for(int f(0);!IsShutdown();++f)
   {
     if(Running)
     {

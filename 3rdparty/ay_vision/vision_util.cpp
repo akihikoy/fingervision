@@ -555,11 +555,12 @@ bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap)
 //-------------------------------------------------------------------------------------------
 
 // Use when there is a trouble in capturing to wait for recovering the reconnection.
-bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait, int max_count)
+bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait, int max_count, bool(*check_to_stop)(void))
 {
   cap.release();
   for(int i(0); ((max_count>0) ? (i<max_count) : true); ++i)
   {
+    if(check_to_stop && check_to_stop())  break;
     char c(cv::waitKey(ms_wait));
     if(c=='\x1b'||c=='q')  break;
     cap.release();
