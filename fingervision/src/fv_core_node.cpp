@@ -588,14 +588,15 @@ void ExecObjDetTrack(int i_cam)
 }
 //-------------------------------------------------------------------------------------------
 
-cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify)
+cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify, bool auto_reopen=true)
 {
   cv::Mat frame;
   {
     boost::mutex::scoped_lock lock(*MutCamCapture[i_cam]);
     while(!cap.read(frame))
     {
-      if(IsShutdown() || !CapWaitReopen(CamInfo[i_cam],cap,/*ms_wait=*/1000,/*max_count=*/0,/*check_to_stop=*/IsShutdown))
+      if(!auto_reopen || IsShutdown()
+        || !CapWaitReopen(CamInfo[i_cam],cap,/*ms_wait=*/1000,/*max_count=*/0,/*check_to_stop=*/IsShutdown))
         return cv::Mat();
     }
   }
@@ -637,6 +638,7 @@ int main(int argc, char**argv)
   std::string objdettrack_config("config/cam1.yaml");
   std::string blob_calib_prefix("blob_");
   std::string vout_base("/tmp/vout-");
+  bool camera_auto_reopen(true);
 
   node.param("pkg_dir",pkg_dir,pkg_dir);
   node.param("cam_config",cam_config,cam_config);
@@ -647,6 +649,7 @@ int main(int argc, char**argv)
   node.param("frame_skip",FrameSkip,FrameSkip);
   node.param("target_fps",TargetFPS,TargetFPS);
   node.param("capture_fps",CaptureFPS,CaptureFPS);
+  node.param("camera_auto_reopen",camera_auto_reopen,camera_auto_reopen);
   std::cerr<<"pkg_dir: "<<pkg_dir<<std::endl;
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
   std::cerr<<"blobtrack_config: "<<blobtrack_config<<std::endl;
@@ -821,7 +824,8 @@ int main(int argc, char**argv)
       // Capture from cameras:
       for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
       {
-        cv::Mat frame= Capture(cap[i_cam], i_cam, /*rectify=*/false);
+        cv::Mat frame= Capture(cap[i_cam], i_cam, /*rectify=*/false, camera_auto_reopen);
+        if(frame.empty())  Shutdown=true;
         if(FrameSkip<=0 || f%(FrameSkip+1)==0)
         {
           boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
@@ -829,6 +833,7 @@ int main(int argc, char**argv)
           CapTime[i_cam]= GetCurrentTimeL();
         }
       }
+      if(IsShutdown())  break;
 
       // Show windows
       for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
