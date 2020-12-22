@@ -568,7 +568,6 @@ void ExecObjDetTrack(int i_cam)
         prox_vision.ObjM_nu= vnu;
 
         prox_vision.ObjS.resize(objs.rows*objs.cols);
-        prox_vision.ObjS.resize(objs.rows*objs.cols);
         for(int r(0),rend(objs.rows),i(0);r<rend;++r) for(int c(0),cend(objs.cols);c<cend;++c,++i)
           prox_vision.ObjS[i]= objs.at<float>(r,c);
 
