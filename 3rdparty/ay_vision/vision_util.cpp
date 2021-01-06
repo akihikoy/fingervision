@@ -16,64 +16,6 @@
 #include <iostream>
 #include <iomanip>
 //-------------------------------------------------------------------------------------------
-namespace cv
-{
-void write(cv::FileStorage &fs, const std::string&, const cv::Point2f &x)
-{
-  #define PROC_VAR(v)  fs<<#v<<x.v;
-  fs<<"{";
-  PROC_VAR(x);
-  PROC_VAR(y);
-  fs<<"}";
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value)
-{
-  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
-  PROC_VAR(x);
-  PROC_VAR(y);
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void write(cv::FileStorage &fs, const std::string&, const cv::KeyPoint &x)
-{
-  #define PROC_VAR(v)  fs<<#v<<x.v;
-  fs<<"{";
-  PROC_VAR(angle);
-  PROC_VAR(class_id);
-  PROC_VAR(octave);
-  PROC_VAR(pt);
-  PROC_VAR(response);
-  PROC_VAR(size);
-  fs<<"}";
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value)
-{
-  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
-  PROC_VAR(angle);
-  PROC_VAR(class_id);
-  PROC_VAR(octave);
-  PROC_VAR(pt);
-  PROC_VAR(response);
-  PROC_VAR(size);
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-// void write(cv::FileStorage &fs, const std::string&, const cv::SimpleBlobDetector::Params &x)
-// {
-  // x.write(fs);
-// }
-// //-------------------------------------------------------------------------------------------
-// void read(const cv::FileNode &data, cv::SimpleBlobDetector::Params &x, const cv::SimpleBlobDetector::Params &default_value)
-// {
-  // x.read(data);
-// }
-//-------------------------------------------------------------------------------------------
-}  // namespace cv
-//-------------------------------------------------------------------------------------------
 namespace trick
 {
 using namespace std;
@@ -581,6 +523,7 @@ void Print(const std::vector<TCameraInfo> &cam_info)
     PROC_VAR(Width       );
     PROC_VAR(Height      );
     PROC_VAR(PixelFormat );
+    PROC_VAR(HFlip       );
     PROC_VAR(NRotate90   );
     PROC_VAR(CapWidth    );
     PROC_VAR(CapHeight   );
@@ -601,23 +544,7 @@ void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &fi
   fs<<"CameraInfo"<<"[";
   for(std::vector<TCameraInfo>::const_iterator itr(cam_info.begin()),itr_end(cam_info.end()); itr!=itr_end; ++itr)
   {
-    #define PROC_VAR(x)  fs<<#x<<itr->x;
-    fs<<"{";
-    PROC_VAR(DevID       );
-    PROC_VAR(Width       );
-    PROC_VAR(Height      );
-    PROC_VAR(PixelFormat );
-    PROC_VAR(NRotate90   );
-    PROC_VAR(CapWidth    );
-    PROC_VAR(CapHeight   );
-    PROC_VAR(Name        );
-    PROC_VAR(Rectification);
-    PROC_VAR(Alpha        );
-    PROC_VAR(K            );
-    PROC_VAR(D            );
-    PROC_VAR(R            );
-    fs<<"}";
-    #undef PROC_VAR
+    fs<<(*itr);
   }
   fs<<"]";
   fs.release();
@@ -632,21 +559,7 @@ void ReadFromYAML(std::vector<TCameraInfo> &cam_info, const std::string &file_na
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TCameraInfo cf;
-    #define PROC_VAR(x)  if(!(*itr)[#x].empty())  (*itr)[#x]>>cf.x;
-    PROC_VAR(DevID       );
-    PROC_VAR(Width       );
-    PROC_VAR(Height      );
-    PROC_VAR(PixelFormat );
-    PROC_VAR(NRotate90   );
-    PROC_VAR(CapWidth    );
-    PROC_VAR(CapHeight   );
-    PROC_VAR(Name        );
-    PROC_VAR(Rectification);
-    PROC_VAR(Alpha        );
-    PROC_VAR(K            );
-    PROC_VAR(D            );
-    PROC_VAR(R            );
-    #undef PROC_VAR
+    (*itr)>>cf;
     cam_info.push_back(cf);
   }
   fs.release();
@@ -742,3 +655,110 @@ void TCameraRectifier::Rectify(cv::Mat &frame, const cv::Scalar& border)
 }  // end of trick
 //-------------------------------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------------------------------
+namespace cv
+{
+
+void write(cv::FileStorage &fs, const std::string&, const cv::Point2f &x)
+{
+  #define PROC_VAR(v)  fs<<#v<<x.v;
+  fs<<"{";
+  PROC_VAR(x);
+  PROC_VAR(y);
+  fs<<"}";
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value)
+{
+  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
+  PROC_VAR(x);
+  PROC_VAR(y);
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+void write(cv::FileStorage &fs, const std::string&, const cv::KeyPoint &x)
+{
+  #define PROC_VAR(v)  fs<<#v<<x.v;
+  fs<<"{";
+  PROC_VAR(angle);
+  PROC_VAR(class_id);
+  PROC_VAR(octave);
+  PROC_VAR(pt);
+  PROC_VAR(response);
+  PROC_VAR(size);
+  fs<<"}";
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value)
+{
+  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
+  PROC_VAR(angle);
+  PROC_VAR(class_id);
+  PROC_VAR(octave);
+  PROC_VAR(pt);
+  PROC_VAR(response);
+  PROC_VAR(size);
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+
+// void write(cv::FileStorage &fs, const std::string&, const cv::SimpleBlobDetector::Params &x)
+// {
+  // x.write(fs);
+// }
+// //-------------------------------------------------------------------------------------------
+// void read(const cv::FileNode &data, cv::SimpleBlobDetector::Params &x, const cv::SimpleBlobDetector::Params &default_value)
+// {
+  // x.read(data);
+// }
+// //-------------------------------------------------------------------------------------------
+
+void write(cv::FileStorage &fs, const std::string&, const trick::TCameraInfo &x)
+{
+  #define PROC_VAR(v)  fs<<#v<<x.v;
+  fs<<"{";
+  PROC_VAR(DevID       );
+  PROC_VAR(Width       );
+  PROC_VAR(Height      );
+  PROC_VAR(PixelFormat );
+  PROC_VAR(HFlip       );
+  PROC_VAR(NRotate90   );
+  PROC_VAR(CapWidth    );
+  PROC_VAR(CapHeight   );
+  PROC_VAR(Name        );
+  PROC_VAR(Rectification);
+  PROC_VAR(Alpha        );
+  PROC_VAR(K            );
+  PROC_VAR(D            );
+  PROC_VAR(R            );
+  fs<<"}";
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+void read(const cv::FileNode &data, trick::TCameraInfo &x, const trick::TCameraInfo &default_value)
+{
+  #define PROC_VAR(v)  if(!data[#v].empty())  data[#v]>>x.v;
+  PROC_VAR(DevID       );
+  PROC_VAR(Width       );
+  PROC_VAR(Height      );
+  PROC_VAR(PixelFormat );
+  PROC_VAR(HFlip       );
+  PROC_VAR(NRotate90   );
+  PROC_VAR(CapWidth    );
+  PROC_VAR(CapHeight   );
+  PROC_VAR(Name        );
+  PROC_VAR(Rectification);
+  PROC_VAR(Alpha        );
+  PROC_VAR(K            );
+  PROC_VAR(D            );
+  PROC_VAR(R            );
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------
+}  // namespace cv
+//-------------------------------------------------------------------------------------------

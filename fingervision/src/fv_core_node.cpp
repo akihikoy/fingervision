@@ -601,6 +601,7 @@ cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify, bool auto_reopen
   }
   if(CamInfo[i_cam].CapWidth!=CamInfo[i_cam].Width || CamInfo[i_cam].CapHeight!=CamInfo[i_cam].Height)
     cv::resize(frame,frame,cv::Size(CamInfo[i_cam].Width,CamInfo[i_cam].Height));
+  if(CamInfo[i_cam].HFlip)  cv::flip(frame, frame, /*horizontal*/1);
   Rotate90N(frame,frame,CamInfo[i_cam].NRotate90);
   if(rectify)  CamRectifier[i_cam](frame);
   return frame;

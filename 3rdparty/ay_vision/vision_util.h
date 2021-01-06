@@ -17,46 +17,6 @@
 #include <list>
 #include <iostream>
 //-------------------------------------------------------------------------------------------
-namespace cv
-{
-void write(cv::FileStorage &fs, const std::string&, const cv::Point2f &x);
-void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value=cv::Point2f());
-void write(cv::FileStorage &fs, const std::string&, const cv::KeyPoint &x);
-void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
-// void write(cv::FileStorage &fs, const std::string&, const cv::SimpleBlobDetector::Params &x);
-// void read(const cv::FileNode &data, cv::SimpleBlobDetector::Params &x, const cv::SimpleBlobDetector::Params &default_value=cv::SimpleBlobDetector::Params());
-
-// For saving vector of vector.
-template<typename T>
-void write(cv::FileStorage &fs, const std::string&, const std::vector<std::vector<T> > &x)
-{
-  fs<<"[";
-  for(typename std::vector<std::vector<T> >::const_iterator itr(x.begin()),end(x.end());itr!=end;++itr)
-  {
-    fs<<*itr;
-  }
-  fs<<"]";
-}
-
-// Define a new bool reader in order to accept "true/false"-like values.
-inline void read_bool(const cv::FileNode &node, bool &value, const bool &default_value)
-{
-  std::string s(static_cast<std::string>(node));
-  if(s=="y"||s=="Y"||s=="yes"||s=="Yes"||s=="YES"||s=="true"||s=="True"||s=="TRUE"||s=="on"||s=="On"||s=="ON")
-    {value=true; return;}
-  if(s=="n"||s=="N"||s=="no"||s=="No"||s=="NO"||s=="false"||s=="False"||s=="FALSE"||s=="off"||s=="Off"||s=="OFF")
-    {value=false; return;}
-  value= static_cast<int>(node);
-}
-// Specialize cv::operator>> for bool.
-template<> inline void operator >> (const cv::FileNode& n, bool& value)
-{
-  read_bool(n, value, false);
-}
-//-------------------------------------------------------------------------------------------
-
-}  // namespace cv
-//-------------------------------------------------------------------------------------------
 namespace trick
 {
 //-------------------------------------------------------------------------------------------
@@ -202,14 +162,15 @@ struct TCameraInfo
   std::string DevID;  // Video device ID (int) or Video/stream path (string)
   int Width, Height;  // Image size
   std::string PixelFormat;
-  int NRotate90;
+  int HFlip;  // Whether flip image (horizontally), applied before NRotate90
+  int NRotate90;  // Number of 90-deg rotations
   int CapWidth, CapHeight;  // Capture size (if zero, Width/Height is used; if not zero, captured image is resized to (Width,Height))
   std::string Name;
   int Rectification;  // Whether rectify image or not
   double Alpha;     // Scaling factor
   cv::Mat K, D, R;  // Camera, distortion, and rectification matrices
   TCameraInfo()
-      : NRotate90(0), CapWidth(0), CapHeight(0), Rectification(0), Alpha(1.0) {}
+      : HFlip(0), NRotate90(0), CapWidth(0), CapHeight(0), Rectification(0), Alpha(1.0) {}
 };
 //-------------------------------------------------------------------------------------------
 bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap);
@@ -390,6 +351,51 @@ void TrackbarPrintOnTrack(const TExtendedTrackbarInfo<T> &info, void*)
 
 //-------------------------------------------------------------------------------------------
 }  // end of trick
+//-------------------------------------------------------------------------------------------
+namespace cv
+{
+//-------------------------------------------------------------------------------------------
+void write(cv::FileStorage &fs, const std::string&, const cv::Point2f &x);
+void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value=cv::Point2f());
+void write(cv::FileStorage &fs, const std::string&, const cv::KeyPoint &x);
+void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
+// void write(cv::FileStorage &fs, const std::string&, const cv::SimpleBlobDetector::Params &x);
+// void read(const cv::FileNode &data, cv::SimpleBlobDetector::Params &x, const cv::SimpleBlobDetector::Params &default_value=cv::SimpleBlobDetector::Params());
+
+void write(cv::FileStorage &fs, const std::string&, const trick::TCameraInfo &x);
+void read(const cv::FileNode &data, trick::TCameraInfo &x, const trick::TCameraInfo &default_value=trick::TCameraInfo());
+
+// For saving vector of vector.
+template<typename T>
+void write(cv::FileStorage &fs, const std::string&, const std::vector<std::vector<T> > &x)
+{
+  fs<<"[";
+  for(typename std::vector<std::vector<T> >::const_iterator itr(x.begin()),end(x.end());itr!=end;++itr)
+  {
+    fs<<*itr;
+  }
+  fs<<"]";
+}
+
+// Define a new bool reader in order to accept "true/false"-like values.
+inline void read_bool(const cv::FileNode &node, bool &value, const bool &default_value)
+{
+  std::string s(static_cast<std::string>(node));
+  if(s=="y"||s=="Y"||s=="yes"||s=="Yes"||s=="YES"||s=="true"||s=="True"||s=="TRUE"||s=="on"||s=="On"||s=="ON")
+    {value=true; return;}
+  if(s=="n"||s=="N"||s=="no"||s=="No"||s=="NO"||s=="false"||s=="False"||s=="FALSE"||s=="off"||s=="Off"||s=="OFF")
+    {value=false; return;}
+  value= static_cast<int>(node);
+}
+// Specialize cv::operator>> for bool.
+template<> inline void operator >> (const cv::FileNode& n, bool& value)
+{
+  read_bool(n, value, false);
+}
+//-------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------
+}  // namespace cv
 //-------------------------------------------------------------------------------------------
 #endif // vision_util_h
 //-------------------------------------------------------------------------------------------
