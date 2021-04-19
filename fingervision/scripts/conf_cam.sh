@@ -1,0 +1,1 @@
+../../tools/conf_cam.sh
