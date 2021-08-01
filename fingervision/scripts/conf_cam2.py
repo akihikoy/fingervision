@@ -10,13 +10,15 @@ Usage:
     CAMERA_CONFIG_IN_YAML: Camera configuration text in YAML format.
   $ ./conf_cam2.py /dev/video0 "b64:CAMERA_CONFIG_IN_BASE64"
     CAMERA_CONFIG_IN_BASE64: Camera configuration text in Base64 format.
-  $ ./conf_cam2.py /dev/video0 "file:CAMERA_CONFIG_YAML_FILE"
+  $ ./conf_cam2.py /dev/video0 "file:[KEYS:]CAMERA_CONFIG_YAML_FILE"
     CAMERA_CONFIG_YAML_FILE: Camera configuration YAML file name.
+    KEYS: Keys to specify CAMERA_CONFIG in the YAML file.
 
   Examples:
     $ ./conf_cam2.py /dev/video0 "yaml:{Backlight Compensation: 0, Brightness: 0, Contrast: 64, Exposure (Absolute): 525, 'Exposure, Auto': 0, Gain: 0, Gamma: 45, Hue: 0, 'Iris, Absolute': 5, Saturation: 100, Sharpness: 20, White Balance Temperature: 5000, 'White Balance Temperature, Auto': 1}"
     $ ./conf_cam2.py /dev/video0 "b64:eJx1jr0KwjAURnef4m5VyJDWtkK2tog6V3C+lmCDbVKSGxDEdzep1c3t/nzn4zxr7O6DuvUEjRknqR2SMloAZ1DbeNfSuXltjCaLjgSUOYP9YzLOWwnr6urM4EluBBRZwVYAyffJoPJkkhk/oNLLMI4oIC8YHL2cT8nJKhfCS1MAdgxaJG8Xm5TzWNz2aKePUBawS69IQo0D6k7CWQZ/G6FQui157P2b+Jmlr9Ub+RpRhw=="
     $ ./conf_cam2.py /dev/video0 "file:cam_conf1.yaml"
+    $ ./conf_cam2.py /dev/video0 "file:CameraParams:0:cam_conf4.yaml"
 
 '''
 import os,sys
@@ -24,6 +26,7 @@ import subprocess
 import yaml
 import base64
 import zlib
+import re
 
 def ExecCmd(cmd):
   p= subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -64,7 +67,11 @@ if __name__=='__main__':
   elif values[:4]=='b64:':
     d= DecodeDictB64(values[4:])
   elif values[:5]=='file:':
-    d= yaml.load(open(values[5:],'r').read())
+    keys_filename= values[5:].split(':')
+    filename= keys_filename[-1]
+    keys= [int(key) if re.match(r'\+?[0-9]+',key) else key for key in keys_filename[:-1]]
+    d= yaml.load(open(filename,'r').read())
+    for key in keys:  d= d[key]
   else:
     raise Exception('Unrecognized value type:', values)
   SetCtrlValues(cam_dev, d)
