@@ -56,6 +56,18 @@ def SetCtrlValues(cam_dev, ctrl_values):
   for ctrl,value in ctrl_values.iteritems():
     SetCtrlValue(cam_dev, ctrl, value)
 
+def LoadFromYAML(filename):
+  assert(os.path.exists(filename))
+  fp= open(filename,'r')
+  pos1= fp.tell()
+  line1= fp.readline()
+  if line1[:6]!='%YAML:':
+    fp.seek(pos1)
+  Loader= yaml.Loader
+  yaml.add_multi_constructor('!', lambda loader,tag_suffix,node: loader.construct_yaml_map(node), Loader=Loader)
+  yaml.add_multi_constructor('tag', lambda loader,tag_suffix,node: loader.construct_yaml_map(node), Loader=Loader)
+  return yaml.load(fp.read(), Loader=Loader)
+
 if __name__=='__main__':
   if len(sys.argv)<=1:  raise Exception('Specify a camera device.')
   if len(sys.argv)<=2:  raise Exception('Specify camera configuration.')
@@ -70,7 +82,8 @@ if __name__=='__main__':
     keys_filename= values[5:].split(':')
     filename= keys_filename[-1]
     keys= [int(key) if re.match(r'\+?[0-9]+',key) else key for key in keys_filename[:-1]]
-    d= yaml.load(open(filename,'r').read())
+    #d= yaml.load(open(filename,'r').read())
+    d= LoadFromYAML(filename)
     for key in keys:  d= d[key]
   else:
     raise Exception('Unrecognized value type:', values)
