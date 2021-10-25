@@ -172,7 +172,7 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
 
 void TObjDetTrackBSP::Init()
 {
-  bkg_sbtr_= new cv::BackgroundSubtractorMOG2(params_.BS_History, params_.BS_VarThreshold, params_.BS_DetectShadows);
+  bkg_sbtr_= cv::createBackgroundSubtractorMOG2(params_.BS_History, params_.BS_VarThreshold, params_.BS_DetectShadows);
   i_frame_= 0;
 }
 //-------------------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
   cv::inRange(frame_hsv, cv::Scalar(0, 0, 0), cv::Scalar(params_.ThreshBlkH, params_.ThreshBlkS, params_.ThreshBlkV), mask_nonblack);
   mask_nonblack= 255-mask_nonblack;
 
-  (*bkg_sbtr_)(frame_s, mask_bs_, 1./float(params_.BS_History));
+  bkg_sbtr_->apply(frame_s, mask_bs_, 1./float(params_.BS_History));
   mask_bs_&= mask_nonblack;  // Remove black background
   cv::erode(mask_bs_, mask_bser_, cv::Mat(), cv::Point(-1,-1), params_.NErode1);
   mask_bser_&= mask_nonblack;  // Remove black background

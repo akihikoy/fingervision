@@ -18,6 +18,7 @@ cf. testl/cv/obj_det_track3.cpp
 #include <opencv2/imgproc/imgproc.hpp>
 // #include <boost/function.hpp>
 #include <iostream>
+#include <list>
 //-------------------------------------------------------------------------------------------
 namespace trick
 {

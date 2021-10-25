@@ -59,10 +59,9 @@ bool TStereo::LoadConfigurationsFromYAML(const std::string &file_name)
   }
   cv::FileNode data= fs["StereoConfig"];
   #define PROC_VAR(x)  if(!data[#x].empty())  data[#x]>>sp_.x;
-  PROC_VAR( minDisparity        );
   PROC_VAR( numberOfDisparities );
-  PROC_VAR( preset              );
-  PROC_VAR( SADWindowSize       );
+  PROC_VAR( blockSize           );
+  PROC_VAR( minDisparity        );
   PROC_VAR( preFilterCap        );
   PROC_VAR( uniquenessRatio     );
   PROC_VAR( P1                  );
@@ -70,7 +69,6 @@ bool TStereo::LoadConfigurationsFromYAML(const std::string &file_name)
   PROC_VAR( speckleWindowSize   );
   PROC_VAR( speckleRange        );
   PROC_VAR( disp12MaxDiff       );
-  PROC_VAR( fullDP              );
   PROC_VAR( GrayScale           );
   #undef PROC_VAR
   std::string StereoMethod, LensType;
@@ -96,10 +94,9 @@ void TStereo::SetRecommendedStereoParams()
   int min_disp= std::max(0, n_disp-16*8);
   int w_size= 5;
 
-  sp_.preset                = cv::StereoBM::BASIC_PRESET;
-  sp_.minDisparity          = min_disp;
   sp_.numberOfDisparities   = n_disp;
-  sp_.SADWindowSize         = w_size;
+  sp_.blockSize             = w_size;
+  sp_.minDisparity          = min_disp;
   sp_.preFilterCap          = 0;
   sp_.uniquenessRatio       = 0;
   sp_.P1                    = 8*3*w_size*w_size;
@@ -107,16 +104,15 @@ void TStereo::SetRecommendedStereoParams()
   sp_.speckleWindowSize     = 0;
   sp_.speckleRange          = 0;
   sp_.disp12MaxDiff         = 0;
-  sp_.fullDP                = false;
 
   sp_.StereoMethod          = TStereoParams::smSGBM;
   sp_.GrayScale             = true;
   sp_.LensType              = TStereoParams::ltBasic;
 
   #define print(x)  std::cerr<<"Recommended parameter["#x"]= "<<sp_.x<<std::endl
-  print( minDisparity          );
   print( numberOfDisparities   );
-  print( SADWindowSize         );
+  print( blockSize             );
+  print( minDisparity          );
   print( P1                    );
   print( P2                    );
 }
@@ -158,21 +154,16 @@ void TStereo::Init()
 
   if(sp_.StereoMethod==TStereoParams::smBM)
   {
-    stereo_bm_.init(sp_.preset, sp_.numberOfDisparities, sp_.SADWindowSize);
+    stereo_bm_= cv::StereoBM::create(sp_.numberOfDisparities, sp_.blockSize);
   }
   else if(sp_.StereoMethod==TStereoParams::smSGBM)
   {
-    stereo_sgbm_.minDisparity          = sp_.minDisparity          ;
-    stereo_sgbm_.numberOfDisparities   = sp_.numberOfDisparities   ;
-    stereo_sgbm_.SADWindowSize         = sp_.SADWindowSize         ;
-    stereo_sgbm_.preFilterCap          = sp_.preFilterCap          ;
-    stereo_sgbm_.uniquenessRatio       = sp_.uniquenessRatio       ;
-    stereo_sgbm_.P1                    = sp_.P1                    ;
-    stereo_sgbm_.P2                    = sp_.P2                    ;
-    stereo_sgbm_.speckleWindowSize     = sp_.speckleWindowSize     ;
-    stereo_sgbm_.speckleRange          = sp_.speckleRange          ;
-    stereo_sgbm_.disp12MaxDiff         = sp_.disp12MaxDiff         ;
-    stereo_sgbm_.fullDP                = sp_.fullDP                ;
+    stereo_sgbm_= cv::StereoSGBM::create(
+            sp_.minDisparity, sp_.numberOfDisparities, sp_.blockSize,
+            sp_.P1, sp_.P2, sp_.disp12MaxDiff,
+            sp_.preFilterCap, sp_.uniquenessRatio,
+            sp_.speckleWindowSize, sp_.speckleRange
+            /*, mode*/);
   }
 }
 //-------------------------------------------------------------------------------------------
@@ -190,9 +181,9 @@ void TStereo::Proc(const cv::Mat &frame_l, const cv::Mat &frame_r)
   // TODO:FIXME: REDUCE THE IMAGE SIZES...?
 
   if(sp_.StereoMethod==TStereoParams::smBM)
-    stereo_bm_(frame1_, frame2_, disparity_);
+    stereo_bm_->compute(frame1_, frame2_, disparity_);
   else if(sp_.StereoMethod==TStereoParams::smSGBM)
-    stereo_sgbm_(frame1_, frame2_, disparity_);
+    stereo_sgbm_->compute(frame1_, frame2_, disparity_);
 
   // cv::filterSpeckles(disparity_, /*newVal=*/0, /*maxSpeckleSize=*/10, /*maxDiff=*/16, buf_);
 }

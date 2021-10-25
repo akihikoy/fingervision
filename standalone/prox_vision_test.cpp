@@ -10,7 +10,7 @@
              Supporting to load YAML configuration.
              Supporting camera rectification.
 
-g++ -g -Wall -O2 -o prox_vision_test.out prox_vision_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_video -lopencv_highgui
+g++ -g -Wall -O2 -o prox_vision_test.out prox_vision_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_video -lopencv_highgui -lopencv_videoio
 
 Run:
   $ ./prox_vision_test.out [CAMERA_NUMBER [WIDTH HEIGHT]]

@@ -13,7 +13,7 @@
     \date    May.20, 2019
              Modified the trackbars.
 
-g++ -g -Wall -O2 -o blob_tracker2_test.out blob_tracker2_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_highgui
+g++ -g -Wall -O2 -o blob_tracker2_test.out blob_tracker2_test.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_calib3d -lopencv_highgui -lopencv_videoio
 
 Run:
   $ ./blob_tracker2_test.out [CAMERA_NUMBER [WIDTH HEIGHT]]

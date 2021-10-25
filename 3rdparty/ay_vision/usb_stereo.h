@@ -32,12 +32,11 @@ struct TCameraParams
 struct TStereoParams
 {
   // For cv::StereoBM and cv::StereoSGBM
-  int minDisparity;
   int numberOfDisparities;
+  int blockSize;
   // For cv::StereoBM
-  int preset;
   // For cv::StereoSGBM
-  int SADWindowSize;
+  int minDisparity;
   int preFilterCap;
   int uniquenessRatio;
   int P1;
@@ -45,7 +44,6 @@ struct TStereoParams
   int speckleWindowSize;
   int speckleRange;
   int disp12MaxDiff;
-  bool fullDP;
   // Extension
   enum TStereoMethod {smBM=1, smSGBM=2};
   int StereoMethod;  // 1: StereoBM, 2: StereoSGBM
@@ -109,8 +107,8 @@ private:
   cv::Size img_size_in_, img_size_out_;  // cv::Size(width,height)
   TCameraParams cp_;
   TStereoParams sp_;
-  cv::StereoBM stereo_bm_;
-  cv::StereoSGBM stereo_sgbm_;
+  cv::Ptr<cv::StereoBM> stereo_bm_;
+  cv::Ptr<cv::StereoSGBM> stereo_sgbm_;
 
   // For undistort rectify map
   cv::Mat map11_, map12_, map21_, map22_;

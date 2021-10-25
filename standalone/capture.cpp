@@ -9,7 +9,7 @@
              Supporting to load YAML configuration.
              Supporting camera rectification.
 
-g++ -g -Wall -O2 -o capture.out capture.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_highgui
+g++ -g -Wall -O2 -o capture.out capture.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_highgui -lopencv_videoio
 
 Run:
   $ ./capture.out [CAMERA_NUMBER [WIDTH HEIGHT]]

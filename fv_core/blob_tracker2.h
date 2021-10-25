@@ -41,7 +41,7 @@ void DrawPointMoves2(cv::Mat &img, const std::vector<TPointMove2> &move,
 void TrackKeyPoints2(
     const cv::Mat &img_th,  // Preprocessed image
     bool is_thresholded,   // If img_th is thresholded
-    const cv::SimpleBlobDetector &detector,  // Blob detector
+    cv::SimpleBlobDetector &detector,  // Blob detector
     const std::vector<cv::KeyPoint> &orig,  // Original keypoints
     std::vector<TPointMove2> &move,  // Must be previous movement
     const float &s_width,  // Width of search ROI of each keypoint

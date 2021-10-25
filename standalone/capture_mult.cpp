@@ -5,7 +5,7 @@
     \version 0.1
     \date    Aug.09, 2018
 
-g++ -g -Wall -O2 -o capture_mult.out capture_mult.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_highgui
+g++ -g -Wall -O2 -o capture_mult.out capture_mult.cpp -I../3rdparty -I../fv_core -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_highgui -lopencv_videoio
 
 Run:
   $ ./capture_mult.out [CAMERA_NUMBER [WIDTH HEIGHT [CAMERA_NUMBER [WIDTH HEIGHT ...]]]]

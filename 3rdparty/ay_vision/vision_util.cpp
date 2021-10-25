@@ -76,12 +76,12 @@ void GetMedian(const cv::Mat &src, int &x_med, int &y_med)
 //-------------------------------------------------------------------------------------------
 
 // Extract rows of src and store to dst (works for &dst==&src)
-void ExtractRows(const cv::Mat &src, const cv::vector<int> &idx, cv::Mat &dst)
+void ExtractRows(const cv::Mat &src, const std::vector<int> &idx, cv::Mat &dst)
 {
   cv::Mat buf(src);
   dst.create(idx.size(),buf.cols,buf.type());
   int r(0);
-  for(cv::vector<int>::const_iterator itr(idx.begin()),itr_end(idx.end()); itr!=itr_end; ++itr,++r)
+  for(std::vector<int>::const_iterator itr(idx.begin()),itr_end(idx.end()); itr!=itr_end; ++itr,++r)
     buf.row(*itr).copyTo(dst.row(r));
 }
 //-------------------------------------------------------------------------------------------
@@ -317,6 +317,14 @@ void ProjectPointsToRectifiedImg(const cv::Mat &points3d, const cv::Mat &P, cv::
     // else if(*itr>10000.0f)  *itr= 10000.0f;
   // }
   //*DBG*/std::cerr<<"..points2d="<<points2d<<std::endl;
+}
+//-------------------------------------------------------------------------------------------
+
+void DrawCrossOnCenter(cv::Mat &img, int size, const cv::Scalar &col, int thickness)
+{
+  int hsize(size/2);
+  cv::line(img, cv::Point(img.cols/2-hsize,img.rows/2), cv::Point(img.cols/2+hsize,img.rows/2), col, thickness);
+  cv::line(img, cv::Point(img.cols/2,img.rows/2-hsize), cv::Point(img.cols/2,img.rows/2+hsize), col, thickness);
 }
 //-------------------------------------------------------------------------------------------
 

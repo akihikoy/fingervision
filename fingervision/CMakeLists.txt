@@ -27,10 +27,14 @@ set(THIRDPARTY_DIR ${PROJECT_BASE_DIR}/3rdparty)
 include_directories(${FV_CORE_DIR})
 include_directories(${THIRDPARTY_DIR})
 
-# ++++OPENCV-2.x++++
-find_package(OpenCV 2 REQUIRED)
+# ++++OPENCV-3.x++++
+find_package(OpenCV 3 REQUIRED)
 message("OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
 message("OpenCV_LIBRARIES: ${OpenCV_LIBRARIES}")
+# ++++OPENCV-2.x++++
+# find_package(OpenCV 2 REQUIRED)
+# message("OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
+# message("OpenCV_LIBRARIES: ${OpenCV_LIBRARIES}")
 # ++++OPENCV-2.4.13++++
 # # NOTE: Install OpenCV 2.4.13 on ~/.local from source which includes cv::fisheye
 # # We don't use opencv found by any prior running of find_package

@@ -55,7 +55,7 @@ void GetMedian(const cv::Mat &src, int &x_med, int &y_med);
 //-------------------------------------------------------------------------------------------
 
 // Extract rows of src and store to dst (works for &dst==&src)
-void ExtractRows(const cv::Mat &src, const cv::vector<int> &idx, cv::Mat &dst);
+void ExtractRows(const cv::Mat &src, const std::vector<int> &idx, cv::Mat &dst);
 //-------------------------------------------------------------------------------------------
 
 // Find the largest contour and return info. bin_src should be a binary image.
@@ -77,12 +77,7 @@ cv::Mat ClipPolygon(const cv::Mat &polygon_subject, const cv::Mat &polygon_clip)
 void ProjectPointsToRectifiedImg(const cv::Mat &points3d, const cv::Mat &P, cv::Mat &points2d);
 //-------------------------------------------------------------------------------------------
 
-inline void DrawCrossOnCenter(cv::Mat &img, int size, const cv::Scalar &col, int thickness=1)
-{
-  int hsize(size/2);
-  cv::line(img, cv::Point(img.cols/2-hsize,img.rows/2), cv::Point(img.cols/2+hsize,img.rows/2), col, thickness);
-  cv::line(img, cv::Point(img.cols/2,img.rows/2-hsize), cv::Point(img.cols/2,img.rows/2+hsize), col, thickness);
-}
+void DrawCrossOnCenter(cv::Mat &img, int size, const cv::Scalar &col, int thickness=1);
 //-------------------------------------------------------------------------------------------
 
 // Convert a mask to a color image.
