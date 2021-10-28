@@ -26,7 +26,8 @@ Usage:
   Press 'q' or Esc: Exit the program.
   Press 'c': Calibrate the tracker (detecting markers and storing the initial positions and sizes).
              Tips: Show a white paper or white wall during the calibration.
-  Press 'C': Show/hide the parameter configuration trackbars.
+  Press 'C': Switch the parameter configuration trackbar mode.
+  Press 'P': Save the tracker parameter into a file in /tmp.
   Press 'W' (shift+'w'): Start/stop video recording.
   Press 'p': Print the calibration result.
   Press 's': Save the calibration result to file "blob_calib.yaml".
@@ -45,6 +46,15 @@ using namespace std;
 using namespace trick;
 //-------------------------------------------------------------------------------------------
 
+TBlobTracker2 *PTracker(NULL);
+template<typename T>
+void OnTrack2(const TExtendedTrackbarInfo<T> &info, void*)
+{
+  TrackbarPrintOnTrack(info, NULL);
+  if(PTracker!=NULL)  PTracker->Init();
+}
+//-------------------------------------------------------------------------------------------
+
 cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL)
 {
   cv::Mat frame;
@@ -60,23 +70,6 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
   if(info.Rectification && pcam_rectifier)
     pcam_rectifier->Rectify(frame, /*border=*/cv::Scalar(0,0,0));
   return frame;
-}
-//-------------------------------------------------------------------------------------------
-
-int SWidth(30), NonZeroMin10(3), NonZeroMax10(30), VPMax10(50), VSMax10(10);
-int SBDParams_minArea(30), SBDParams_maxArea(640), SBDParams_minCircularity100(60), SBDParams_minConvexity100(60);
-void ModifyParams(int i, void *ptracker)
-{
-  TBlobTracker2 &tracker(*reinterpret_cast<TBlobTracker2*>(ptracker));
-  tracker.Params().SBDParams.minArea= float(SBDParams_minArea);
-  tracker.Params().SBDParams.maxArea= float(SBDParams_maxArea);
-  tracker.Params().SBDParams.minCircularity= float(SBDParams_minCircularity100)/100.0;
-  tracker.Params().SBDParams.minConvexity= float(SBDParams_minConvexity100)/100.0;
-  tracker.Params().SWidth= float(SWidth);
-  tracker.Params().NonZeroMin= float(NonZeroMin10)/10.0;
-  tracker.Params().NonZeroMax= float(NonZeroMax10)/10.0;
-  tracker.Params().VPMax= float(VPMax10)/10.0;
-  tracker.Params().VSMax= float(VSMax10)/10.0;
 }
 //-------------------------------------------------------------------------------------------
 
@@ -149,10 +142,11 @@ int main(int argc, char**argv)
 
   cv::Mat frame;
 
+  std::string win("camera");
   cv::namedWindow("camera",1);
   TMouseEventData mouse_data(frame,tracker);
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
-  bool trackbar_visible(false);
+  int trackbar_mode(0);
 
   TEasyVideoOut vout;
   vout.SetfilePrefix("/tmp/blobtr");
@@ -189,38 +183,46 @@ int main(int argc, char**argv)
       tracker.LoadCalib(blob_calib_yaml);
       std::cerr<<"Loaded calibration data from "<<blob_calib_yaml<<std::endl;
     }
+    else if(c=='P')
+    {
+      std::vector<TBlobTracker2Params> p;
+      p.push_back(tracker.Params());
+      WriteToYAML(p,"/tmp/blobtr_params.yaml");
+      std::cerr<<"Parameters of the tracker are saved into /tmp/blobtr_params.yaml"<<std::endl;
+    }
     else if(c=='C')
     {
-      trackbar_visible= !trackbar_visible;
-      if(trackbar_visible)
+      ++trackbar_mode;
+      if(trackbar_mode==1)
       {
-        SBDParams_minArea= tracker.Params().SBDParams.minArea;
-        SBDParams_maxArea= tracker.Params().SBDParams.maxArea;
-        SBDParams_minCircularity100= tracker.Params().SBDParams.minCircularity*100.0;
-        SBDParams_minConvexity100= tracker.Params().SBDParams.minConvexity*100.0;
-        SWidth= tracker.Params().SWidth;
-        NonZeroMin10= tracker.Params().NonZeroMin*10.0;
-        NonZeroMax10= tracker.Params().NonZeroMax*10.0;
-        VPMax10= tracker.Params().VPMax*10.0;
-        VSMax10= tracker.Params().VSMax*10.0;
-        cv::createTrackbar("thresh_v", "camera", &tracker.Params().ThreshV, 255, NULL);
-        cv::createTrackbar( "SBDParams.minArea:", "camera", &SBDParams_minArea, 640, &ModifyParams, &tracker);
-        cv::createTrackbar( "SBDParams.maxArea:", "camera", &SBDParams_maxArea, 1600, &ModifyParams, &tracker);
-        cv::createTrackbar( "100*SBDParams.minCircularity:", "camera", &SBDParams_minCircularity100, 100, &ModifyParams, &tracker);
-        cv::createTrackbar( "100*SBDParams.minConvexity:", "camera", &SBDParams_minConvexity100, 100, &ModifyParams, &tracker);
-        cv::createTrackbar( "NDilate1:", "camera", &tracker.Params().NDilate1, 10, NULL);
-        cv::createTrackbar( "NErode1:", "camera", &tracker.Params().NErode1, 10, NULL);
-        cv::createTrackbar( "SWidth:", "camera", &SWidth, 400, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*NonZeroMin:", "camera", &NonZeroMin10, 200, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*NonZeroMax:", "camera", &NonZeroMax10, 200, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*VPMax:", "camera", &VPMax10, 500, &ModifyParams, &tracker);
-        cv::createTrackbar( "10*VSMax:", "camera", &VSMax10, 500, &ModifyParams, &tracker);
+        CreateTrackbar<int>("ThreshV", win, &tracker.Params().ThreshV, 0, 255, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("NDilate1:", win, &tracker.Params().NDilate1, 0, 10, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("NErode1:", win, &tracker.Params().NErode1, 0, 10, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("SWidth:", win, &tracker.Params().SWidth, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("NonZeroMin:", win, &tracker.Params().NonZeroMin, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("NonZeroMax:", win, &tracker.Params().NonZeroMax, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("VPMax:", win, &tracker.Params().VPMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("VSMax:", win, &tracker.Params().VSMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("NReset:", win, &tracker.Params().NReset, 0, 20, 1, &TrackbarPrintOnTrack);
+      }
+      else if(trackbar_mode==2)
+      {
+        // Remove trackbars from window.
+        cv::destroyWindow(win);
+        cv::namedWindow(win,1);
+        PTracker= &tracker;
+        CreateTrackbar<float>("SBDParams.minArea", win, &tracker.Params().SBDParams.minArea, 0.0, 20000.0, 1.0, &OnTrack2);
+        CreateTrackbar<float>("SBDParams.maxArea", win, &tracker.Params().SBDParams.maxArea, 0.0, 20000.0, 1.0, &OnTrack2);
+        CreateTrackbar<float>("SBDParams.minCircularity:", win, &tracker.Params().SBDParams.minCircularity, 0.0, 1.0, 0.01, &OnTrack2);
+        CreateTrackbar<float>("SBDParams.minConvexity:", win, &tracker.Params().SBDParams.minConvexity, 0.0, 1.0, 0.01, &OnTrack2);
+        CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &tracker.Params().SBDParams.minInertiaRatio, 0.0, 1.0, 0.01, &OnTrack2);
       }
       else
       {
+        trackbar_mode= 0;
         // Remove trackbars from window.
-        cv::destroyWindow("camera");
-        cv::namedWindow("camera",1);
+        cv::destroyWindow(win);
+        cv::namedWindow(win,1);
       }
     }
     else if(c=='c' || calib_request)

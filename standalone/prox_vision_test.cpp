@@ -23,6 +23,7 @@ Usage:
   Press 'q' or Esc: Exit the program.
   Press 'c': Calibrate the tracker (constructing the background color model).
   Press 'C': Show/hide the parameter configuration trackbars.
+  Press 'P': Save the tracker parameter into a file in /tmp.
   Press 'W' (shift+'w'): Start/stop video recording.
   Press 'r': Reset (clear) the tracking object.
   Press 'd': On/off the object detection mode (default=on).
@@ -163,6 +164,13 @@ int main(int argc, char**argv)
       if(tracker.ModeDetect())  tracker.StopDetect();
       else                      tracker.StartDetect();
       std::cerr<<"Object detection mode is: "<<(tracker.ModeDetect()?"on":"off")<<std::endl;
+    }
+    else if(c=='P')
+    {
+      std::vector<TObjDetTrackBSPParams> p;
+      p.push_back(tracker.Params());
+      WriteToYAML(p,"/tmp/objtr_params.yaml");
+      std::cerr<<"Parameters of the tracker are saved into /tmp/objtr_params.yaml"<<std::endl;
     }
     else if(c=='C')
     {
