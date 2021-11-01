@@ -127,8 +127,9 @@ int main(int argc, char**argv)
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
   bool trackbar_visible(false);
 
-  TEasyVideoOut vout;
+  TEasyVideoOut vout, vout_orig;
   vout.SetfilePrefix("/tmp/objtr");
+  vout_orig.SetfilePrefix("/tmp/objtr-orig");
 
   int show_fps(0);
   double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(1);
@@ -136,6 +137,7 @@ int main(int argc, char**argv)
   {
     frame= Capture(cap, cam_info[0], &cam_rectifier);
     frame.copyTo(frame_src);
+    vout_orig.Step(frame);
 
     if(f>0)
     {
@@ -149,7 +151,7 @@ int main(int argc, char**argv)
     cv::imshow("camera", frame);
     char c(cv::waitKey(1));
     if(c=='\x1b'||c=='q') break;
-    else if(char(c)=='W')  vout.Switch();
+    else if(char(c)=='W')  {vout.Switch(); vout_orig.Switch();}
     else if(c=='m')
     {
       dim_idx++;

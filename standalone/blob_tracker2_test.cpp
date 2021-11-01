@@ -148,14 +148,16 @@ int main(int argc, char**argv)
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
   int trackbar_mode(0);
 
-  TEasyVideoOut vout;
+  TEasyVideoOut vout, vout_orig;
   vout.SetfilePrefix("/tmp/blobtr");
+  vout_orig.SetfilePrefix("/tmp/blobtr-orig");
 
   int show_fps(0);
   double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(3);
   for(int f(0);;++f)
   {
     frame= Capture(cap, cam_info[0], &cam_rectifier);
+    vout_orig.Step(frame);
 
     tracker.Step(frame);
     frame*= dim_levels[dim_idx];
@@ -166,7 +168,7 @@ int main(int argc, char**argv)
     cv::imshow("camera", frame);
     char c(cv::waitKey(1));
     if(c=='\x1b'||c=='q') break;
-    else if(char(c)=='W')  vout.Switch();
+    else if(char(c)=='W')  {vout.Switch(); vout_orig.Switch();}
     else if(c=='m')
     {
       dim_idx++;
