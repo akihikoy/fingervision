@@ -468,7 +468,13 @@ void ReadFromYAML(std::vector<cv::KeyPoint> &keypoints, const std::string &file_
   keypoints.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["KeyPoints"];
-  data>>keypoints;
+  // data>>keypoints;
+  for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
+  {
+    cv::KeyPoint kp;
+    *itr>>kp;
+    keypoints.push_back(kp);
+  }
   fs.release();
 }
 //-------------------------------------------------------------------------------------------
@@ -668,25 +674,25 @@ void TCameraRectifier::Rectify(cv::Mat &frame, const cv::Scalar& border)
 namespace cv
 {
 
-void write(cv::FileStorage &fs, const std::string&, const cv::Point2f &x)
-{
-  #define PROC_VAR(v)  fs<<#v<<x.v;
-  fs<<"{";
-  PROC_VAR(x);
-  PROC_VAR(y);
-  fs<<"}";
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value)
-{
-  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
-  PROC_VAR(x);
-  PROC_VAR(y);
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void write(cv::FileStorage &fs, const std::string&, const cv::KeyPoint &x)
+// void write(cv::FileStorage &fs, const cv::String&, const cv::Point2f &x)
+// {
+//   #define PROC_VAR(v)  fs<<#v<<x.v;
+//   fs<<"{";
+//   PROC_VAR(x);
+//   PROC_VAR(y);
+//   fs<<"}";
+//   #undef PROC_VAR
+// }
+// //-------------------------------------------------------------------------------------------
+// void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value)
+// {
+//   #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
+//   PROC_VAR(x);
+//   PROC_VAR(y);
+//   #undef PROC_VAR
+// }
+// //-------------------------------------------------------------------------------------------
+void write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x)
 {
   #define PROC_VAR(v)  fs<<#v<<x.v;
   fs<<"{";
@@ -713,7 +719,7 @@ void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default
 }
 //-------------------------------------------------------------------------------------------
 
-// void write(cv::FileStorage &fs, const std::string&, const cv::SimpleBlobDetector::Params &x)
+// void write(cv::FileStorage &fs, const cv::String&, const cv::SimpleBlobDetector::Params &x)
 // {
   // x.write(fs);
 // }
@@ -724,7 +730,7 @@ void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default
 // }
 // //-------------------------------------------------------------------------------------------
 
-void write(cv::FileStorage &fs, const std::string&, const trick::TCameraInfo &x)
+void write(cv::FileStorage &fs, const cv::String&, const trick::TCameraInfo &x)
 {
   #define PROC_VAR(v)  fs<<#v<<x.v;
   fs<<"{";
