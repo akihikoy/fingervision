@@ -148,6 +148,9 @@ private:
 };
 //-------------------------------------------------------------------------------------------
 
+// NOTE: kp_write and kp_read are different from write and read in OpenCV 3.4+ for KeyPoint.
+void kp_write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
+void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
 void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name);
 void ReadFromYAML(std::vector<cv::KeyPoint> &keypoints, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
@@ -352,8 +355,8 @@ namespace cv
 //-------------------------------------------------------------------------------------------
 // void write(cv::FileStorage &fs, const cv::String&, const cv::Point2f &x);
 // void read(const cv::FileNode &data, cv::Point2f &x, const cv::Point2f &default_value=cv::Point2f());
-void write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
-void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
+// void write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
+// void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
 // void write(cv::FileStorage &fs, const cv::String&, const cv::SimpleBlobDetector::Params &x);
 // void read(const cv::FileNode &data, cv::SimpleBlobDetector::Params &x, const cv::SimpleBlobDetector::Params &default_value=cv::SimpleBlobDetector::Params());
 

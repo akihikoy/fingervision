@@ -448,6 +448,32 @@ void TEasyVideoOut::VizRec(cv::Mat &frame, int pos, int rad, int margin) const
 }
 //-------------------------------------------------------------------------------------------
 
+void kp_write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x)
+{
+  #define PROC_VAR(v)  fs<<#v<<x.v;
+  fs<<"{";
+  PROC_VAR(angle);
+  PROC_VAR(class_id);
+  PROC_VAR(octave);
+  PROC_VAR(pt);
+  PROC_VAR(response);
+  PROC_VAR(size);
+  fs<<"}";
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
+void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value)
+{
+  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
+  PROC_VAR(angle);
+  PROC_VAR(class_id);
+  PROC_VAR(octave);
+  PROC_VAR(pt);
+  PROC_VAR(response);
+  PROC_VAR(size);
+  #undef PROC_VAR
+}
+//-------------------------------------------------------------------------------------------
 
 void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name)
 {
@@ -456,7 +482,7 @@ void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &
   fs<<"KeyPoints"<<"[";
   for(std::vector<cv::KeyPoint>::const_iterator itr(keypoints.begin()),itr_end(keypoints.end()); itr!=itr_end; ++itr)
   {
-    fs<<*itr;
+    kp_write(fs,"",*itr);
   }
   fs<<"]";
   fs.release();
@@ -472,7 +498,7 @@ void ReadFromYAML(std::vector<cv::KeyPoint> &keypoints, const std::string &file_
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     cv::KeyPoint kp;
-    *itr>>kp;
+    kp_read(*itr,kp,cv::KeyPoint());
     keypoints.push_back(kp);
   }
   fs.release();
@@ -692,32 +718,32 @@ namespace cv
 //   #undef PROC_VAR
 // }
 // //-------------------------------------------------------------------------------------------
-void write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x)
-{
-  #define PROC_VAR(v)  fs<<#v<<x.v;
-  fs<<"{";
-  PROC_VAR(angle);
-  PROC_VAR(class_id);
-  PROC_VAR(octave);
-  PROC_VAR(pt);
-  PROC_VAR(response);
-  PROC_VAR(size);
-  fs<<"}";
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
-void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value)
-{
-  #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
-  PROC_VAR(angle);
-  PROC_VAR(class_id);
-  PROC_VAR(octave);
-  PROC_VAR(pt);
-  PROC_VAR(response);
-  PROC_VAR(size);
-  #undef PROC_VAR
-}
-//-------------------------------------------------------------------------------------------
+// void write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x)
+// {
+//   #define PROC_VAR(v)  fs<<#v<<x.v;
+//   fs<<"{";
+//   PROC_VAR(angle);
+//   PROC_VAR(class_id);
+//   PROC_VAR(octave);
+//   PROC_VAR(pt);
+//   PROC_VAR(response);
+//   PROC_VAR(size);
+//   fs<<"}";
+//   #undef PROC_VAR
+// }
+// //-------------------------------------------------------------------------------------------
+// void read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value)
+// {
+//   #define PROC_VAR(v)  if(!data[#v].empty()) data[#v]>>x.v;
+//   PROC_VAR(angle);
+//   PROC_VAR(class_id);
+//   PROC_VAR(octave);
+//   PROC_VAR(pt);
+//   PROC_VAR(response);
+//   PROC_VAR(size);
+//   #undef PROC_VAR
+// }
+// //-------------------------------------------------------------------------------------------
 
 // void write(cv::FileStorage &fs, const cv::String&, const cv::SimpleBlobDetector::Params &x)
 // {
