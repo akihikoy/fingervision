@@ -24,6 +24,7 @@
 #include "fingervision_msgs/ProxVision.h"
 #include "fingervision_msgs/SetInt32.h"
 #include "fingervision_msgs/SetString.h"
+#include "fingervision_msgs/TakeSnapshot.h"
 //-------------------------------------------------------------------------------------------
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -347,6 +348,33 @@ bool SetFrameSkip(fingervision_msgs::SetInt32::Request &req, fingervision_msgs::
   std::cerr<<"Setting frame skip as "<<req.data<<"..."<<std::endl;
   FrameSkip= req.data;
   res.result= true;
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+bool TakeSnapshot(fingervision_msgs::TakeSnapshot::Request &req, fingervision_msgs::TakeSnapshot::Response &res)
+{
+  res.files.clear();
+  std::string filename, timestamp;
+  cv::Mat frame;
+  int64_t t_cap(0);
+  for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+  {
+    {
+      boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
+      Frame[i_cam].copyTo(frame);
+      t_cap= CapTime[i_cam];
+    }
+    std::stringstream ss;
+    ss<<t_cap;
+    timestamp= ss.str();
+    {
+      filename= req.prefix+"-"+CamInfo[i_cam].Name+"-"+timestamp+req.ext;
+      cv::imwrite(filename, frame);
+      res.files.push_back(filename);
+      std::cerr<<"Saved a snapshot: "<<filename<<std::endl;
+    }
+  }
   return true;
 }
 //-------------------------------------------------------------------------------------------
@@ -779,6 +807,7 @@ int main(int argc, char**argv)
   ros::ServiceServer srv_stop_record= node.advertiseService("stop_record", &StopRecord);
   ros::ServiceServer srv_set_video_prefix= node.advertiseService("set_video_prefix", &SetVideoPrefix);
   ros::ServiceServer srv_set_frame_skip= node.advertiseService("set_frame_skip", &SetFrameSkip);
+  ros::ServiceServer srv_take_snapshot= node.advertiseService("take_snapshot", &TakeSnapshot);
   ros::ServiceServer srv_stop_detect_obj= node.advertiseService("stop_detect_obj", &StopDetectObj);
   ros::ServiceServer srv_start_detect_obj= node.advertiseService("start_detect_obj", &StartDetectObj);
   ros::ServiceServer srv_clear_obj= node.advertiseService("clear_obj", &ClearObj);

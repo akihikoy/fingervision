@@ -1,0 +1,12 @@
+#Filename(camera) = [prefix]-CameraName-TimeStamp[ext]
+
+#File prefix
+string prefix
+
+#File extension (.png, .jpg, etc.)
+string ext
+
+---
+
+#Snapshot file names
+string[] files
