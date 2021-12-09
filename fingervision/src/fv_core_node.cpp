@@ -30,6 +30,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <camera_info_manager/camera_info_manager.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -86,6 +89,7 @@ std::map<std::string, TShowTrackbars> ShowTrackbars;
 
 std::vector<ros::Publisher> BlobPub;
 std::vector<ros::Publisher> PXVPub;
+std::vector<image_transport::Publisher> ImgPub;  // Image publisher [i_cam]
 std::vector<cv::Mat> Frame;
 std::vector<int64_t> CapTime;
 std::vector<boost::shared_ptr<boost::mutex> > MutCamCapture;  // Mutex for capture
@@ -615,6 +619,48 @@ void ExecObjDetTrack(int i_cam)
 }
 //-------------------------------------------------------------------------------------------
 
+void ExecImgPublisher(int i_cam)
+{
+  TCameraInfo &info(CamInfo[i_cam]);
+  cv::Mat frame;
+  int64_t t_cap(0);
+  ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
+  for(int seq(0); !Shutdown; ++seq)
+  {
+    if(Running)
+    {
+      if(CapTime[i_cam]==t_cap)
+      {
+        usleep(10*1000);
+        continue;
+      }
+      if(TargetFPS>0.0)  rate.sleep();
+
+      {
+        boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
+        Frame[i_cam].copyTo(frame);
+        t_cap= CapTime[i_cam];
+      }
+
+      CamRectifier[i_cam](frame);
+
+      // Publish image
+      {
+        std_msgs::Header header;
+        header.stamp= ros::Time::now();
+        header.frame_id= info.Name;
+        ImgPub[i_cam].publish( cv_bridge::CvImage(header, "bgr8", frame).toImageMsg() );
+      }
+      // usleep(10*1000);
+    }  // Running
+    else
+    {
+      usleep(200*1000);
+    }
+  }
+}
+//-------------------------------------------------------------------------------------------
+
 cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify, bool auto_reopen=true)
 {
   cv::Mat frame;
@@ -666,7 +712,7 @@ int main(int argc, char**argv)
   std::string objdettrack_config("config/cam1.yaml");
   std::string blob_calib_prefix("blob_");
   std::string vout_base("/tmp/vout-");
-  bool camera_auto_reopen(true);
+  bool camera_auto_reopen(true), publish_image(false);
 
   node.param("pkg_dir",pkg_dir,pkg_dir);
   node.param("cam_config",cam_config,cam_config);
@@ -678,6 +724,7 @@ int main(int argc, char**argv)
   node.param("target_fps",TargetFPS,TargetFPS);
   node.param("capture_fps",CaptureFPS,CaptureFPS);
   node.param("camera_auto_reopen",camera_auto_reopen,camera_auto_reopen);
+  node.param("publish_image",publish_image,publish_image);
   std::cerr<<"pkg_dir: "<<pkg_dir<<std::endl;
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
   std::cerr<<"blobtrack_config: "<<blobtrack_config<<std::endl;
@@ -801,6 +848,20 @@ int main(int argc, char**argv)
   for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
     PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/prox_vision", 1);
 
+  image_transport::ImageTransport imgtr(node);
+  typedef boost::shared_ptr<camera_info_manager::CameraInfoManager> CamInfoMngrPtr;
+  std::vector<CamInfoMngrPtr> info_manager;
+  if(publish_image)
+  {
+    ImgPub.resize(CamInfo.size());
+    info_manager.resize(CamInfo.size());
+    for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+    {
+      ImgPub[i_cam]= imgtr.advertise(ros::this_node::getNamespace()+"/"+CamInfo[i_cam].Name, 1);
+      info_manager[i_cam]= CamInfoMngrPtr(new camera_info_manager::CameraInfoManager(ros::NodeHandle("/"+CamInfo[i_cam].Name), CamInfo[i_cam].Name, /*camera_info_url=*/""));
+    }
+  }
+
   ros::ServiceServer srv_pause= node.advertiseService("pause", &Pause);
   ros::ServiceServer srv_resume= node.advertiseService("resume", &Resume);
   ros::ServiceServer srv_start_record= node.advertiseService("start_record", &StartRecord);
@@ -838,6 +899,10 @@ int main(int argc, char**argv)
   std::vector<boost::shared_ptr<boost::thread> > th_objdettrack;
   for(int j(0),j_end(CamInfo.size());j<j_end;++j)
     th_objdettrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecObjDetTrack,j))));
+
+  std::vector<boost::shared_ptr<boost::thread> > th_imgpub;
+  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+    th_imgpub.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecImgPublisher,j))));
 
   #ifdef WITH_STEREO
   std::vector<boost::shared_ptr<boost::thread> > th_stereo;
@@ -916,6 +981,8 @@ int main(int argc, char**argv)
     th_blobtrack[j]->join();
   for(int j(0),j_end(th_objdettrack.size());j<j_end;++j)
     th_objdettrack[j]->join();
+  for(int j(0),j_end(th_imgpub.size());j<j_end;++j)
+    th_imgpub[j]->join();
   #ifdef WITH_STEREO
   for(int j(0),j_end(th_stereo.size());j<j_end;++j)
     th_stereo[j]->join();

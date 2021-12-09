@@ -108,6 +108,7 @@ target_link_libraries(fv_core_node
       fv_prox_vision
       ay_vision
       ${OpenCV_LIBRARIES}
+      libcv_bridge.so
       boost_thread
       boost_system
       )
