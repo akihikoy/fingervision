@@ -530,8 +530,9 @@ bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap)
   if(fourcc.size()>0)  cap.set(CV_CAP_PROP_FOURCC,CV_FOURCC(fourcc[0],fourcc[1],fourcc[2],fourcc[3]));
   if(info.CapWidth==0)  info.CapWidth= info.Width;
   if(info.CapHeight==0)  info.CapHeight= info.Height;
-  cap.set(CV_CAP_PROP_FRAME_WIDTH, info.CapWidth);
-  cap.set(CV_CAP_PROP_FRAME_HEIGHT, info.CapHeight);
+  if(info.CapWidth>0)  cap.set(CV_CAP_PROP_FRAME_WIDTH, info.CapWidth);
+  if(info.CapHeight>0)  cap.set(CV_CAP_PROP_FRAME_HEIGHT, info.CapHeight);
+  if(info.FPS>0)  cap.set(CV_CAP_PROP_FPS, info.FPS);
   return true;
 }
 //-------------------------------------------------------------------------------------------
@@ -562,6 +563,7 @@ void Print(const std::vector<TCameraInfo> &cam_info)
     PROC_VAR(DevID       );
     PROC_VAR(Width       );
     PROC_VAR(Height      );
+    PROC_VAR(FPS         );
     PROC_VAR(PixelFormat );
     PROC_VAR(HFlip       );
     PROC_VAR(NRotate90   );
@@ -763,6 +765,7 @@ void write(cv::FileStorage &fs, const cv::String&, const trick::TCameraInfo &x)
   PROC_VAR(DevID       );
   PROC_VAR(Width       );
   PROC_VAR(Height      );
+  PROC_VAR(FPS         );
   PROC_VAR(PixelFormat );
   PROC_VAR(HFlip       );
   PROC_VAR(NRotate90   );
@@ -784,6 +787,7 @@ void read(const cv::FileNode &data, trick::TCameraInfo &x, const trick::TCameraI
   PROC_VAR(DevID       );
   PROC_VAR(Width       );
   PROC_VAR(Height      );
+  PROC_VAR(FPS         );
   PROC_VAR(PixelFormat );
   PROC_VAR(HFlip       );
   PROC_VAR(NRotate90   );

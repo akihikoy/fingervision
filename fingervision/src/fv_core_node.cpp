@@ -673,6 +673,7 @@ cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify, bool auto_reopen
         return cv::Mat();
     }
   }
+  // TODO:Define a PreProc function in ay_vision and replace the following code.
   if(CamInfo[i_cam].CapWidth!=CamInfo[i_cam].Width || CamInfo[i_cam].CapHeight!=CamInfo[i_cam].Height)
     cv::resize(frame,frame,cv::Size(CamInfo[i_cam].Width,CamInfo[i_cam].Height));
   if(CamInfo[i_cam].HFlip)  cv::flip(frame, frame, /*horizontal*/1);

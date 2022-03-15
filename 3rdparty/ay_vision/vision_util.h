@@ -159,7 +159,8 @@ struct TCameraInfo
 {
   std::string DevID;  // Video device ID (int) or Video/stream path (string)
   int Width, Height;  // Image size
-  std::string PixelFormat;
+  int FPS;  // Video frame rate
+  std::string PixelFormat;  // Video codec (e.g. MJPG, YUYV)
   int HFlip;  // Whether flip image (horizontally), applied before NRotate90
   int NRotate90;  // Number of 90-deg rotations
   int CapWidth, CapHeight;  // Capture size (if zero, Width/Height is used; if not zero, captured image is resized to (Width,Height))
@@ -168,7 +169,11 @@ struct TCameraInfo
   double Alpha;     // Scaling factor
   cv::Mat K, D, R;  // Camera, distortion, and rectification matrices
   TCameraInfo()
-      : HFlip(0), NRotate90(0), CapWidth(0), CapHeight(0), Rectification(0), Alpha(1.0) {}
+      : DevID("0"),
+        Width(0), Height(0), FPS(0),
+        HFlip(0), NRotate90(0),
+        CapWidth(0), CapHeight(0),
+        Rectification(0), Alpha(1.0) {}
 };
 //-------------------------------------------------------------------------------------------
 bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap);
