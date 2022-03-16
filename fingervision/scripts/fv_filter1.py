@@ -152,7 +152,7 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
 
 if __name__=='__main__':
   options={
-    'normal_f_mode': 'xy_norm',  #Options: 'xy_norm','marker_size'
+    'normal_f_mode': 'marker_size',  #Options: 'xy_norm','marker_size'
     'filter_len': 5,
     }
 

@@ -902,8 +902,9 @@ int main(int argc, char**argv)
     th_objdettrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecObjDetTrack,j))));
 
   std::vector<boost::shared_ptr<boost::thread> > th_imgpub;
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
-    th_imgpub.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecImgPublisher,j))));
+  if(publish_image)
+    for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+      th_imgpub.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecImgPublisher,j))));
 
   #ifdef WITH_STEREO
   std::vector<boost::shared_ptr<boost::thread> > th_stereo;
@@ -982,8 +983,9 @@ int main(int argc, char**argv)
     th_blobtrack[j]->join();
   for(int j(0),j_end(th_objdettrack.size());j<j_end;++j)
     th_objdettrack[j]->join();
-  for(int j(0),j_end(th_imgpub.size());j<j_end;++j)
-    th_imgpub[j]->join();
+  if(publish_image)
+    for(int j(0),j_end(th_imgpub.size());j<j_end;++j)
+      th_imgpub[j]->join();
   #ifdef WITH_STEREO
   for(int j(0),j_end(th_stereo.size());j<j_end;++j)
     th_stereo[j]->join();
