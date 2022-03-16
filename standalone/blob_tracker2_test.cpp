@@ -197,9 +197,18 @@ int main(int argc, char**argv)
       ++trackbar_mode;
       if(trackbar_mode==1)
       {
+        CreateTrackbar<bool>("ThresholdingImg", win, &tracker.Params().ThresholdingImg, &TrackbarPrintOnTrack);
         CreateTrackbar<int>("ThreshV", win, &tracker.Params().ThreshV, 0, 255, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("ThreshH", win, &tracker.Params().ThreshH, 0, 255, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("ThreshS", win, &tracker.Params().ThreshS, 0, 255, 1, &TrackbarPrintOnTrack);
         CreateTrackbar<int>("NDilate1:", win, &tracker.Params().NDilate1, 0, 10, 1, &TrackbarPrintOnTrack);
         CreateTrackbar<int>("NErode1:", win, &tracker.Params().NErode1, 0, 10, 1, &TrackbarPrintOnTrack);
+      }
+      else if(trackbar_mode==2)
+      {
+        // Remove trackbars from window.
+        cv::destroyWindow(win);
+        cv::namedWindow(win,1);
         CreateTrackbar<float>("SWidth:", win, &tracker.Params().SWidth, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
         CreateTrackbar<float>("NonZeroMin:", win, &tracker.Params().NonZeroMin, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
         CreateTrackbar<float>("NonZeroMax:", win, &tracker.Params().NonZeroMax, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
@@ -207,7 +216,7 @@ int main(int argc, char**argv)
         CreateTrackbar<float>("VSMax:", win, &tracker.Params().VSMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
         CreateTrackbar<int>("NReset:", win, &tracker.Params().NReset, 0, 20, 1, &TrackbarPrintOnTrack);
       }
-      else if(trackbar_mode==2)
+      else if(trackbar_mode==3)
       {
         // Remove trackbars from window.
         cv::destroyWindow(win);
@@ -218,6 +227,17 @@ int main(int argc, char**argv)
         CreateTrackbar<float>("SBDParams.minCircularity:", win, &tracker.Params().SBDParams.minCircularity, 0.0, 1.0, 0.01, &OnTrack2);
         CreateTrackbar<float>("SBDParams.minConvexity:", win, &tracker.Params().SBDParams.minConvexity, 0.0, 1.0, 0.01, &OnTrack2);
         CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &tracker.Params().SBDParams.minInertiaRatio, 0.0, 1.0, 0.01, &OnTrack2);
+      }
+      else if(trackbar_mode==4)
+      {
+        // Remove trackbars from window.
+        cv::destroyWindow(win);
+        cv::namedWindow(win,1);
+        CreateTrackbar<float>("DistMaxCalib:", win, &tracker.Params().DistMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("DSMaxCalib:", win, &tracker.Params().DSMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+        CreateTrackbar<int>("NCalibPoints:", win, &tracker.Params().NCalibPoints, 0, 200, 1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("DPEmp:", win, &tracker.Params().DPEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+        CreateTrackbar<float>("DSEmp:", win, &tracker.Params().DSEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
       }
       else
       {
