@@ -421,5 +421,30 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
 
 
 //-------------------------------------------------------------------------------------------
+// Utility
+//-------------------------------------------------------------------------------------------
+
+void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &params, int &trackbar_mode, bool &init_request)
+{
+  const std::string &win(window_name);
+  if(trackbar_mode==1)
+  {
+    CreateTrackbar<float>("History:", win, &params.BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("Fbg:",     win, &params.Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("Fgain:",   win, &params.Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("N-Erode(1):",   win, &params.NErode1,     0, 10, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("N-Erode(2):",   win, &params.NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("N-Dilate(2):",  win, &params.NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("Threshold(2):", win, &params.NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
+  }
+  else
+  {
+    trackbar_mode= 0;
+  }
+}
+//-------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------
 }  // end of trick
 //-------------------------------------------------------------------------------------------

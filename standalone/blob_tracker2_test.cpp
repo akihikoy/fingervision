@@ -46,15 +46,6 @@ using namespace std;
 using namespace trick;
 //-------------------------------------------------------------------------------------------
 
-TBlobTracker2 *PTracker(NULL);
-template<typename T>
-void OnTrack2(const TExtendedTrackbarInfo<T> &info, void*)
-{
-  TrackbarPrintOnTrack(info, NULL);
-  if(PTracker!=NULL)  PTracker->Init();
-}
-//-------------------------------------------------------------------------------------------
-
 cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL)
 {
   cv::Mat frame;
@@ -147,6 +138,7 @@ int main(int argc, char**argv)
   TMouseEventData mouse_data(frame,tracker);
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
   int trackbar_mode(0);
+  bool init_request(false);
 
   TEasyVideoOut vout, vout_orig;
   vout.SetfilePrefix("/tmp/blobtr");
@@ -156,6 +148,12 @@ int main(int argc, char**argv)
   double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(3);
   for(int f(0);;++f)
   {
+    if(init_request)
+    {
+      tracker.Init();
+      init_request= false;
+    }
+
     frame= Capture(cap, cam_info[0], &cam_rectifier);
     vout_orig.Step(frame);
 
@@ -194,58 +192,12 @@ int main(int argc, char**argv)
     }
     else if(c=='C')
     {
+      // Remove trackbars from window.
+      cv::destroyWindow(win);
+      cv::namedWindow(win,1);
       ++trackbar_mode;
-      if(trackbar_mode==1)
-      {
-        CreateTrackbar<bool>("ThresholdingImg", win, &tracker.Params().ThresholdingImg, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("ThreshV", win, &tracker.Params().ThreshV, 0, 255, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("ThreshH", win, &tracker.Params().ThreshH, 0, 255, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("ThreshS", win, &tracker.Params().ThreshS, 0, 255, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("NDilate1:", win, &tracker.Params().NDilate1, 0, 10, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("NErode1:", win, &tracker.Params().NErode1, 0, 10, 1, &TrackbarPrintOnTrack);
-      }
-      else if(trackbar_mode==2)
-      {
-        // Remove trackbars from window.
-        cv::destroyWindow(win);
-        cv::namedWindow(win,1);
-        CreateTrackbar<float>("SWidth:", win, &tracker.Params().SWidth, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("NonZeroMin:", win, &tracker.Params().NonZeroMin, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("NonZeroMax:", win, &tracker.Params().NonZeroMax, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("VPMax:", win, &tracker.Params().VPMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("VSMax:", win, &tracker.Params().VSMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("NReset:", win, &tracker.Params().NReset, 0, 20, 1, &TrackbarPrintOnTrack);
-      }
-      else if(trackbar_mode==3)
-      {
-        // Remove trackbars from window.
-        cv::destroyWindow(win);
-        cv::namedWindow(win,1);
-        PTracker= &tracker;
-        CreateTrackbar<float>("SBDParams.minArea", win, &tracker.Params().SBDParams.minArea, 0.0, 20000.0, 1.0, &OnTrack2);
-        CreateTrackbar<float>("SBDParams.maxArea", win, &tracker.Params().SBDParams.maxArea, 0.0, 20000.0, 1.0, &OnTrack2);
-        CreateTrackbar<float>("SBDParams.minCircularity:", win, &tracker.Params().SBDParams.minCircularity, 0.0, 1.0, 0.01, &OnTrack2);
-        CreateTrackbar<float>("SBDParams.minConvexity:", win, &tracker.Params().SBDParams.minConvexity, 0.0, 1.0, 0.01, &OnTrack2);
-        CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &tracker.Params().SBDParams.minInertiaRatio, 0.0, 1.0, 0.01, &OnTrack2);
-      }
-      else if(trackbar_mode==4)
-      {
-        // Remove trackbars from window.
-        cv::destroyWindow(win);
-        cv::namedWindow(win,1);
-        CreateTrackbar<float>("DistMaxCalib:", win, &tracker.Params().DistMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("DSMaxCalib:", win, &tracker.Params().DSMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("NCalibPoints:", win, &tracker.Params().NCalibPoints, 0, 200, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("DPEmp:", win, &tracker.Params().DPEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("DSEmp:", win, &tracker.Params().DSEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
-      }
-      else
-      {
-        trackbar_mode= 0;
-        // Remove trackbars from window.
-        cv::destroyWindow(win);
-        cv::namedWindow(win,1);
-      }
+      CreateTrackbars(win, tracker.Params(), trackbar_mode, init_request);
+      cv::setMouseCallback("camera", OnMouse, &mouse_data);
     }
     else if(c=='c' || calib_request)
     {

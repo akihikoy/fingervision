@@ -11,6 +11,8 @@ cf. testl/cv/simple_blob_tracker4.cpp
 #ifndef blob_tracker2_h
 #define blob_tracker2_h
 //-------------------------------------------------------------------------------------------
+#include "ay_vision/vision_util.h"
+//-------------------------------------------------------------------------------------------
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -120,6 +122,14 @@ private:
 
   cv::Mat img_th_;
 };
+//-------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------
+// Utility
+//-------------------------------------------------------------------------------------------
+
+void CreateTrackbars(const std::string &window_name, TBlobTracker2Params &params, int &trackbar_mode, bool &init_request);
 //-------------------------------------------------------------------------------------------
 
 

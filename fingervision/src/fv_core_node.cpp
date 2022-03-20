@@ -45,7 +45,7 @@
 //-------------------------------------------------------------------------------------------
 namespace trick
 {
-bool Running(true), Shutdown(false), DoCalibrate(false);
+bool Running(true), Shutdown(false), CalibrationRequest(false), TrackerInitRequest(false);
 std::string *CurrentWin(NULL);
 
 /*FPS control parameters.
@@ -82,8 +82,10 @@ void DummyRectify(cv::Mat&) {}  // Do nothing function
 std::map<std::string, TEasyVideoOut> VideoOut;
 struct TShowTrackbars
 {
-  bool Enabled;
+  // bool Enabled;
   std::string Kind;
+  int Mode;
+  TShowTrackbars() : /*Enabled(false),*/ Mode(0) {}
 };
 std::map<std::string, TShowTrackbars> ShowTrackbars;
 
@@ -210,7 +212,7 @@ bool HandleKeyEvent()
   }
   else if(c=='c')
   {
-    DoCalibrate= true;
+    CalibrationRequest= true;
   }
   else if(c=='r')
   {
@@ -250,35 +252,21 @@ bool HandleKeyEvent()
   }
   else if(c=='C' && CurrentWin!=NULL)
   {
-    ShowTrackbars[*CurrentWin].Enabled= !ShowTrackbars[*CurrentWin].Enabled;
-    if(ShowTrackbars[*CurrentWin].Enabled)
+    cv::destroyWindow(*CurrentWin);
+    cv::namedWindow(*CurrentWin,1);
+    if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
     {
-      if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
-      {
-        int idx(WindowInfo[*CurrentWin].Index);
-        cv::createTrackbar("thresh_v", *CurrentWin, &(BlobTracker[idx].Params().ThreshV), 255, NULL);
-      }
-      else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
-      {
-        std::cerr<<"Not implemented yet. Show trackbars for ObjDetTracker"<<std::endl;
-      }
+      int idx(WindowInfo[*CurrentWin].Index);
+      ++ShowTrackbars[*CurrentWin].Mode;
+      CreateTrackbars(*CurrentWin, BlobTracker[idx].Params(), ShowTrackbars[*CurrentWin].Mode, TrackerInitRequest);
     }
-    else
+    else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
     {
-      // Remove trackbars from window.
-      if(ShowTrackbars[*CurrentWin].Kind=="BlobTracker")
-      {
-        cv::destroyWindow(*CurrentWin);
-        cv::namedWindow(*CurrentWin,1);
-        cv::setMouseCallback(*CurrentWin, OnMouse, CurrentWin);
-      }
-      else if(ShowTrackbars[*CurrentWin].Kind=="ObjDetTracker")
-      {
-        cv::destroyWindow(*CurrentWin);
-        cv::namedWindow(*CurrentWin,1);
-        cv::setMouseCallback(*CurrentWin, OnMouse, CurrentWin);
-      }
+      int idx(WindowInfo[*CurrentWin].Index);
+      ++ShowTrackbars[*CurrentWin].Mode;
+      CreateTrackbars(*CurrentWin, ObjDetTracker[idx].Params(), ShowTrackbars[*CurrentWin].Mode, TrackerInitRequest);
     }
+    cv::setMouseCallback(*CurrentWin, OnMouse, CurrentWin);
   }
 
   return true;
@@ -472,6 +460,12 @@ void ExecBlobTrack(int i_cam)
   {
     if(Running)
     {
+      if(TrackerInitRequest && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
+      {
+        tracker.Init();
+        TrackerInitRequest= false;
+      }
+
       if(CapTime[i_cam]==t_cap)
       {
         usleep(10*1000);
@@ -546,6 +540,12 @@ void ExecObjDetTrack(int i_cam)
   {
     if(Running)
     {
+      if(TrackerInitRequest && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+      {
+        tracker.Init();
+        TrackerInitRequest= false;
+      }
+
       if(CapTime[i_cam]==t_cap)
       {
         usleep(10*1000);
@@ -790,7 +790,7 @@ int main(int argc, char**argv)
     cv::namedWindow(info.Name,1);
     cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
     IMShowStuff[info.Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    ShowTrackbars[info.Name].Enabled= false;
+    ShowTrackbars[info.Name].Kind= "Stereo";
 
     StereoB[j].LoadCameraParametersFromYAML(pkg_dir+"/"+info.StereoParam);
     StereoB[j].SetImageSize(
@@ -816,7 +816,6 @@ int main(int argc, char**argv)
     cv::namedWindow(BlobTracker[j].Name,1);
     cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    ShowTrackbars[BlobTracker[j].Name].Enabled= false;
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
 
@@ -940,7 +939,7 @@ int main(int argc, char**argv)
       }
 
       // Handle blob tracker calibration request
-      if(DoCalibrate && BlobTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
+      if(CalibrationRequest && BlobTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
       {
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
@@ -948,7 +947,7 @@ int main(int argc, char**argv)
         BlobTracker[idx].Calibrate(frames);
         Running= true;
       }
-      if(DoCalibrate && ObjDetTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+      if(CalibrationRequest && ObjDetTracker.size()>0 && CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
       {
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
@@ -956,7 +955,7 @@ int main(int argc, char**argv)
         ObjDetTracker[idx].CalibBG(frames);
         Running= true;
       }
-      DoCalibrate= false;
+      CalibrationRequest= false;
 
       // usleep(10*1000);
       if(show_fps==0)

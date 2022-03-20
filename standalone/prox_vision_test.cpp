@@ -125,7 +125,8 @@ int main(int argc, char**argv)
   cv::namedWindow("camera",1);
   TMouseEventData mouse_data(frame_src,tracker);
   cv::setMouseCallback("camera", OnMouse, &mouse_data);
-  bool trackbar_visible(false);
+  int trackbar_mode(0);
+  bool init_request(false);
 
   TEasyVideoOut vout, vout_orig;
   vout.SetfilePrefix("/tmp/objtr");
@@ -135,6 +136,12 @@ int main(int argc, char**argv)
   double dim_levels[]={0.0,0.3,0.7,1.0};  int dim_idx(1);
   for(int f(0);;++f)
   {
+    if(init_request)
+    {
+      tracker.Init();
+      init_request= false;
+    }
+
     frame= Capture(cap, cam_info[0], &cam_rectifier);
     frame.copyTo(frame_src);
     vout_orig.Step(frame);
@@ -176,24 +183,12 @@ int main(int argc, char**argv)
     }
     else if(c=='C')
     {
-      trackbar_visible= !trackbar_visible;
-      if(trackbar_visible)
-      {
-        CreateTrackbar<float>("History:", "camera", &tracker.Params().BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("Fbg:",     "camera", &tracker.Params().Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<float>("Fgain:",   "camera", &tracker.Params().Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("N-Erode(1):",   "camera", &tracker.Params().NErode1,     0, 10, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("N-Erode(2):",   "camera", &tracker.Params().NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("N-Dilate(2):",  "camera", &tracker.Params().NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
-        CreateTrackbar<int>("Threshold(2):", "camera", &tracker.Params().NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
-      }
-      else
-      {
-        // Remove trackbars from window.
-        cv::destroyWindow("camera");
-        cv::namedWindow("camera",1);
-        cv::setMouseCallback("camera", OnMouse, &mouse_data);
-      }
+      // Remove trackbars from window.
+      cv::destroyWindow("camera");
+      cv::namedWindow("camera",1);
+      ++trackbar_mode;
+      CreateTrackbars("camera", tracker.Params(), trackbar_mode, init_request);
+      cv::setMouseCallback("camera", OnMouse, &mouse_data);
     }
     else if(c=='c' || f==0)
     {

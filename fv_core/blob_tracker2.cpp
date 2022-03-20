@@ -453,6 +453,68 @@ void TBlobTracker2::LoadCalib(const std::string &file_name)
 
 
 //-------------------------------------------------------------------------------------------
+// Utility
+//-------------------------------------------------------------------------------------------
+
+template<typename T>
+void TrackbarPrintOnTrackAndInit(const TExtendedTrackbarInfo<T> &info, void *vp_init_request)
+{
+  TrackbarPrintOnTrack(info, NULL);
+  if(vp_init_request!=NULL)
+  {
+    bool *p_init_request= reinterpret_cast<bool*>(vp_init_request);
+    *p_init_request= true;
+  }
+}
+//-------------------------------------------------------------------------------------------
+
+void CreateTrackbars(const std::string &window_name, TBlobTracker2Params &params, int &trackbar_mode, bool &init_request)
+{
+  const std::string &win(window_name);
+  if(trackbar_mode==1)
+  {
+    CreateTrackbar<bool>("ThresholdingImg", win, &params.ThresholdingImg, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshV", win, &params.ThreshV, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshH", win, &params.ThreshH, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshS", win, &params.ThreshS, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NDilate1:", win, &params.NDilate1, 0, 10, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NErode1:", win, &params.NErode1, 0, 10, 1, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==2)
+  {
+    CreateTrackbar<float>("SWidth:", win, &params.SWidth, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("NonZeroMin:", win, &params.NonZeroMin, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("NonZeroMax:", win, &params.NonZeroMax, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("VPMax:", win, &params.VPMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("VSMax:", win, &params.VSMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NReset:", win, &params.NReset, 0, 20, 1, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==3)
+  {
+    CreateTrackbar<float>("SBDParams.minArea", win, &params.SBDParams.minArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.maxArea", win, &params.SBDParams.maxArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.minCircularity:", win, &params.SBDParams.minCircularity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.minConvexity:", win, &params.SBDParams.minConvexity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &params.SBDParams.minInertiaRatio, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+  }
+  else if(trackbar_mode==4)
+  {
+    CreateTrackbar<float>("DistMaxCalib:", win, &params.DistMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("DSMaxCalib:", win, &params.DSMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NCalibPoints:", win, &params.NCalibPoints, 0, 200, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("DPEmp:", win, &params.DPEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("DSEmp:", win, &params.DSEmp, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+  }
+  else
+  {
+    trackbar_mode= 0;
+  }
+}
+//-------------------------------------------------------------------------------------------
+
+
+
+//-------------------------------------------------------------------------------------------
 }  // end of trick
 //-------------------------------------------------------------------------------------------
 
