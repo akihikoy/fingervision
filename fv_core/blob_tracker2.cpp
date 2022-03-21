@@ -191,27 +191,32 @@ void TrackKeyPoints2(
 
 TBlobTracker2Params::TBlobTracker2Params()
 {
-  SBDParams.filterByColor= 0;
-  SBDParams.blobColor= 0;
-  // Change thresholds
-  SBDParams.minThreshold = 5;
-  SBDParams.maxThreshold = 200;
+  // Binarization parameters.
+  SBDParams.minThreshold= 5;
+  SBDParams.maxThreshold= 200;
+  SBDParams.thresholdStep= 10;
+  // Filter by (binary) color (Applied to a binary image).
+  SBDParams.filterByColor= true;
+  SBDParams.blobColor= 0;  // blobColor=0 to extract dark blobs and blobColor=255 to extract light blobs.
   // Filter by Area.
   SBDParams.filterByArea = true;
   SBDParams.minArea= 10;
   SBDParams.maxArea= 150;
   // Filter by Circularity
-  SBDParams.filterByCircularity = true;
-  SBDParams.minCircularity = 0.10;
-  SBDParams.maxCircularity = std::numeric_limits<float>::max();
+  SBDParams.filterByCircularity= true;
+  SBDParams.minCircularity= 0.10;
+  SBDParams.maxCircularity= std::numeric_limits<float>::max();
   // Filter by Convexity
-  SBDParams.filterByConvexity = true;
-  SBDParams.minConvexity = 0.87;
-  SBDParams.maxConvexity = std::numeric_limits<float>::max();
+  SBDParams.filterByConvexity= true;
+  SBDParams.minConvexity= 0.87;
+  SBDParams.maxConvexity= std::numeric_limits<float>::max();
   // Filter by Inertia
-  SBDParams.filterByInertia = true;
-  SBDParams.minInertiaRatio = 0.01;
-  SBDParams.maxInertiaRatio = std::numeric_limits<float>::max();
+  SBDParams.filterByInertia= true;
+  SBDParams.minInertiaRatio= 0.01;
+  SBDParams.maxInertiaRatio= std::numeric_limits<float>::max();
+  // Other parameters
+  SBDParams.minDistBetweenBlobs= 10;
+  SBDParams.minRepeatability= 2;
 
   // For preprocessing:
   ThresholdingImg= true;  // Thresholding the input image where Thresh*, NDilate1, NErode1 are used.
@@ -247,24 +252,9 @@ void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std:
   for(std::vector<TBlobTracker2Params>::const_iterator itr(blob_params.begin()),itr_end(blob_params.end()); itr!=itr_end; ++itr)
   {
     fs<<"{";
-    #define PROC_VAR(x,y)  fs<<#x"_"#y<<itr->x.y;
-    PROC_VAR(SBDParams,filterByColor       );
-    PROC_VAR(SBDParams,blobColor           );
-    PROC_VAR(SBDParams,minThreshold        );
-    PROC_VAR(SBDParams,maxThreshold        );
-    PROC_VAR(SBDParams,filterByArea        );
-    PROC_VAR(SBDParams,minArea             );
-    PROC_VAR(SBDParams,maxArea             );
-    PROC_VAR(SBDParams,filterByCircularity );
-    PROC_VAR(SBDParams,minCircularity      );
-    PROC_VAR(SBDParams,maxCircularity      );
-    PROC_VAR(SBDParams,filterByConvexity   );
-    PROC_VAR(SBDParams,minConvexity        );
-    PROC_VAR(SBDParams,maxConvexity        );
-    PROC_VAR(SBDParams,filterByInertia     );
-    PROC_VAR(SBDParams,minInertiaRatio     );
-    PROC_VAR(SBDParams,maxInertiaRatio     );
-    #undef PROC_VAR
+    fs<<"SBDParams"<<"{";
+    itr->SBDParams.write(fs);
+    fs<<"}";
     #define PROC_VAR(x)  fs<<#x<<itr->x;
     PROC_VAR(ThresholdingImg      );
     PROC_VAR(ThreshH      );
@@ -299,6 +289,8 @@ void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::stri
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TBlobTracker2Params cf;
+//<<<DEPRECATED:This part is kept for the backward compatibility (parameters starts with SBDParams_).
+//NOTE: Use SBDParams dictionary instead.
     #define PROC_VAR(x,y)  if(!(*itr)[#x"_"#y].empty())  (*itr)[#x"_"#y]>>cf.x.y;
     PROC_VAR(SBDParams,filterByColor       );
     PROC_VAR(SBDParams,blobColor           );
@@ -317,6 +309,8 @@ void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::stri
     PROC_VAR(SBDParams,minInertiaRatio     );
     PROC_VAR(SBDParams,maxInertiaRatio     );
     #undef PROC_VAR
+//-END OF DEPRECATED>>>
+    if(!(*itr)["SBDParams"].empty())  cf.SBDParams.read((*itr)["SBDParams"]);
     #define PROC_VAR(x)  if(!(*itr)[#x].empty())  (*itr)[#x]>>cf.x;
     PROC_VAR(ThresholdingImg      );
     PROC_VAR(ThreshH      );
@@ -491,11 +485,17 @@ void CreateTrackbars(const std::string &window_name, TBlobTracker2Params &params
   }
   else if(trackbar_mode==3)
   {
+    CreateTrackbar<float>("SBDParams.minThreshold", win, &params.SBDParams.minThreshold, 0.0, 255.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.maxThreshold", win, &params.SBDParams.maxThreshold, 0.0, 255.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.thresholdStep", win, &params.SBDParams.thresholdStep, 0.0, 255.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<bool>("SBDParams.filterByColor", win, &params.SBDParams.filterByColor, &TrackbarPrintOnTrackAndInit<bool>, &init_request);
     CreateTrackbar<float>("SBDParams.minArea", win, &params.SBDParams.minArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.maxArea", win, &params.SBDParams.maxArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.minCircularity:", win, &params.SBDParams.minCircularity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.minConvexity:", win, &params.SBDParams.minConvexity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
-    CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &params.SBDParams.minInertiaRatio, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &params.SBDParams.minInertiaRatio, 0.0, 10.0, 0.0001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<float>("SBDParams.minDistBetweenBlobs:", win, &params.SBDParams.minDistBetweenBlobs, 0.0, 1000.0, 0.1, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+    CreateTrackbar<size_t>("SBDParams.minRepeatability:", win, &params.SBDParams.minRepeatability, 1, 10, 1, &TrackbarPrintOnTrackAndInit<size_t>, &init_request);
   }
   else if(trackbar_mode==4)
   {
