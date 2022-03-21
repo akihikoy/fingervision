@@ -40,7 +40,7 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
     p,f= p_f[:2], p_f[2:]
     tscale= 1.0
     tau= np.cross([p[0],0.0,p[1]],f)*tscale
-    return f+tau.tolist()
+    return np.concatenate((f,tau.tolist()))
   def convert_dstate(p_f):
     p,f= p_f[:2], p_f[2:]
     fz= abs(f[1])
@@ -49,11 +49,14 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
     elif fz<2.5:  dstate= 3
     else:  dstate= 5
     return dstate
-  posforce_array= [convert_raw(mv) for mv in msg.data]
-  force_array= [convert_wrench(p_f) for p_f in posforce_array]
+  posforce_array= np.array([convert_raw(mv) for mv in msg.data])
+  force_array= np.array([convert_wrench(p_f) for p_f in posforce_array])
   dstate_array= [convert_dstate(p_f) for p_f in posforce_array]
   if len(force_array)>0:
-    force= [sum([force[d] for force in force_array])/float(len(force_array)) for d in xrange(6)]
+    if options['reduction_mode']=='mean':  force= np.mean(force_array, axis=0)
+    elif options['reduction_mode'] in ('median','median+'):
+      force= np.percentile(force_array, 50., axis=0)
+      if options['reduction_mode']=='median+':  force[1]= np.percentile(force_array[:,1], 75.)
   else:
     force= []
   dstate= sum(dstate_array)
@@ -61,8 +64,8 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
   msg2= fingervision_msgs.msg.Filter1Wrench()
   msg2.header= msg.header
   msg2.fv= fv
-  msg2.posforce_array= np.array(posforce_array).ravel()  #Serialized
-  msg2.force_array= np.array(force_array).ravel()  #Serialized
+  msg2.posforce_array= posforce_array.ravel()  #Serialized
+  msg2.force_array= force_array.ravel()  #Serialized
   msg2.dstate_array= dstate_array
   msg2.force= force
   msg2.dstate= dstate
@@ -153,6 +156,7 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
 if __name__=='__main__':
   options={
     'normal_f_mode': 'marker_size',  #Options: 'xy_norm','marker_size'
+    'reduction_mode': 'mean',  #Options: 'mean','median','median+'
     'filter_len': 5,
     }
 
@@ -162,6 +166,7 @@ if __name__=='__main__':
   fv= rospy.get_param('~fv', fv)
   side_str= rospy.get_param('~side', side_str)
   options['normal_f_mode']= rospy.get_param('~normal_f_mode', options['normal_f_mode'])
+  options['reduction_mode']= rospy.get_param('~reduction_mode', options['reduction_mode'])
   options['filter_len']= rospy.get_param('~filter_len', options['filter_len'])
   side= StrToLR(side_str)
   if side is None:  side= StrToID(side_str)

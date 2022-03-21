@@ -479,8 +479,8 @@ void CreateTrackbars(const std::string &window_name, TBlobTracker2Params &params
     CreateTrackbar<float>("SWidth:", win, &params.SWidth, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("NonZeroMin:", win, &params.NonZeroMin, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("NonZeroMax:", win, &params.NonZeroMax, 0.0, 20.0, 0.01, &TrackbarPrintOnTrack);
-    CreateTrackbar<float>("VPMax:", win, &params.VPMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
-    CreateTrackbar<float>("VSMax:", win, &params.VSMax, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("VPMax:", win, &params.VPMax, 0.0, 50.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("VSMax:", win, &params.VSMax, 0.0, 50.0, 0.1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NReset:", win, &params.NReset, 0, 20, 1, &TrackbarPrintOnTrack);
   }
   else if(trackbar_mode==3)
