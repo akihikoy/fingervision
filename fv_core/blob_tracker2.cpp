@@ -57,22 +57,22 @@ void DrawPointMoves2(cv::Mat &img, const std::vector<TPointMove2> &move,
 
   // for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
   // {
-    // // cv::circle(img, m->Po, m->So, col1);
-    // // cv::circle(img, m->Po, m->So+ds_emp*m->DS, col2, ds_emp*m->DS);
-    // cv::circle(img, m->Po, m->So, col1, ds_emp*m->DS);
+    // // cv::circle(img, m->Po, 0.5f*m->So, col1);
+    // // cv::circle(img, m->Po, 0.5f*(m->So+ds_emp*m->DS), col2, ds_emp*m->DS);
+    // cv::circle(img, m->Po, 0.5f*m->So, col1, ds_emp*m->DS);
     // cv::line(img, m->Po, m->Po+dp_emp*m->DP, col2, 3);
   // }
   int i(0);
   for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m,++i)
   {
-    cv::circle(img, m->Po, std::max(0.0f,m->So), col1, 1/*std::max(0.0f,ds_emp*m->DS)*/);
+    cv::circle(img, m->Po, std::max(0.0f,0.5f*m->So), col1, 1/*std::max(0.0f,ds_emp*m->DS)*/);
     std::stringstream ss; ss<<i;
     cv::putText(img, ss.str(), m->Po+cv::Point2f(3+std::max(0.0f,m->So),0), cv::FONT_HERSHEY_SIMPLEX, 0.3, col1, 1, CV_AA);
   }
   for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
     cv::line(img, m->Po, m->Po+dp_emp*m->DP, col2, 3);
   for(std::vector<TPointMove2>::const_iterator m(move.begin()),m_end(move.end()); m!=m_end; ++m)
-    cv::circle(img, m->Po+dp_emp*m->DP, std::max(0.0f,m->So+ds_emp*m->DS), col2, std::max(0.0f,ds_emp*m->DS));
+    cv::circle(img, m->Po+dp_emp*m->DP, std::max(0.0f,0.5f*(m->So+ds_emp*m->DS)), col2, std::max(0.0f,ds_emp*m->DS));
 }
 //-------------------------------------------------------------------------------------------
 
