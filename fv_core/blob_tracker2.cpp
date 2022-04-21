@@ -129,7 +129,7 @@ void TrackKeyPoints2(
     ++mi.NTrackFailed;
 
     // We will consider ROI around the current marker.
-    if(0.25*s_width<sc)
+    if(0.5*s_width<sc)
       std::cerr<<"TrackKeyPoints2::WARNING:: s_width may be too small for a blob size: "<<s_width<<", "<<i<<", "<<sc<<std::endl;
     cv::Rect roi(pc.x-s_width*0.5, pc.y-s_width*0.5, s_width, s_width);
     if(roi.x<0)  {roi.width+= roi.x; roi.x= 0;}
