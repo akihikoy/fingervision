@@ -63,6 +63,7 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
 
   msg2= fingervision_msgs.msg.Filter1Wrench()
   msg2.header= msg.header
+  msg2.header.frame_id= fv  #NOTE: Overwriting with a new frame ID (this is useful for duplication).
   msg2.fv= fv
   msg2.posforce_array= posforce_array.ravel()  #Serialized
   msg2.force_array= force_array.ravel()  #Serialized
@@ -73,6 +74,7 @@ def BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options):
 
   msg3= geometry_msgs.msg.WrenchStamped()
   msg3.header= msg.header
+  msg3.header.frame_id= fv  #NOTE: Overwriting with a new frame ID (this is useful for duplication).
   if len(force)==6:
     VecToXYZ(force[:3], msg3.wrench.force)
     VecToXYZ(force[3:], msg3.wrench.torque)
@@ -138,6 +140,7 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
 
   msg2= fingervision_msgs.msg.Filter1ObjInfo()
   msg2.header= msg.header
+  msg2.header.frame_id= fv  #NOTE: Overwriting with a new frame ID (this is useful for duplication).
   msg2.fv= fv
   msg2.mv_s= mv_s
   msg2.obj_s= obj_s
@@ -161,20 +164,21 @@ if __name__=='__main__':
     }
 
   rospy.init_node('fv_filter1')
-  fv= 'fv'
-  side_str= 'r'
-  fv= rospy.get_param('~fv', fv)
-  side_str= rospy.get_param('~side', side_str)
+  fv= rospy.get_param('~fv', 'fv')
+  fv_out= rospy.get_param('~fv_out', '')
+  side_str= rospy.get_param('~side', 'r')
   options['normal_f_mode']= rospy.get_param('~normal_f_mode', options['normal_f_mode'])
   options['reduction_mode']= rospy.get_param('~reduction_mode', options['reduction_mode'])
   options['filter_len']= rospy.get_param('~filter_len', options['filter_len'])
+  if fv_out=='':  fv_out=fv
   side= StrToLR(side_str)
   if side is None:  side= StrToID(side_str)
 
   print '''FV-Filter {node}
     FV: {fv}
+    FV_out: {fv_out}
     Side: {side}
-    Options: {options}'''.format(node=rospy.get_name(),fv=fv,side=side,options=options)
+    Options: {options}'''.format(node=rospy.get_name(),fv=fv,fv_out=fv_out,side=side,options=options)
 
   state_fobjinfo= TContainer(debug=True)
 
@@ -182,14 +186,14 @@ if __name__=='__main__':
   pub_fwrench= rospy.Publisher(rospy.get_namespace()+'fv_filter1_wrench',
                                fingervision_msgs.msg.Filter1Wrench, queue_size=10)
   #Average wrench:
-  pub_wrench= rospy.Publisher(rospy.get_namespace()+'{fv}/wrench'.format(fv=fv),
+  pub_wrench= rospy.Publisher(rospy.get_namespace()+'{fv_out}/wrench'.format(fv_out=fv_out),
                               geometry_msgs.msg.WrenchStamped, queue_size=10)
   #Filtered object info:
   pub_fobjinfo= rospy.Publisher(rospy.get_namespace()+'fv_filter1_objinfo',
                                 fingervision_msgs.msg.Filter1ObjInfo, queue_size=10)
 
   sub_bm= rospy.Subscriber(rospy.get_namespace()+'{fv}/blob_moves'.format(fv=fv),
-                           fingervision_msgs.msg.BlobMoves, lambda msg:BlobMoves(msg,fv,side,pub_fwrench,pub_wrench,options))
+                           fingervision_msgs.msg.BlobMoves, lambda msg:BlobMoves(msg,fv_out,side,pub_fwrench,pub_wrench,options))
   sub_pv= rospy.Subscriber(rospy.get_namespace()+'{fv}/prox_vision'.format(fv=fv),
-                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv,pub_fobjinfo,options,state_fobjinfo))
+                           fingervision_msgs.msg.ProxVision, lambda msg:ProxVision(msg,fv_out,pub_fobjinfo,options,state_fobjinfo))
   rospy.spin()

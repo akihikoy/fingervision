@@ -50,7 +50,7 @@ def DecodeDictB64(d_b64, with_compress=True):
 
 def SetCtrlValue(cam_dev, ctrl, value):
   #NOTE: '--' is neccessary for nevative values (not neccessary for positive ones).
-  stdout,stderr,ec= ExecCmd(['uvcdynctrl', '-d', cam_dev, '-s', ctrl, '--', str(value)])
+  stdout,stderr,ec= ExecCmd(['uvcdynctrl', '-d', os.path.realpath(cam_dev), '-s', ctrl, '--', str(value)])
 
 def SetCtrlValues(cam_dev, ctrl_values):
   for ctrl,value in ctrl_values.iteritems():
