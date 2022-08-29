@@ -1,0 +1,139 @@
+%YAML:1.0
+
+#Camera info of Asahi camera(CM).
+CameraInfo:
+  -
+    Name: fvp_1
+    #DevID: "http://localhost:8080/?action=stream&file=dummy.mjpg"
+    #DevID: "/dev/video4"
+    DevID: "/media/video_fv1"
+    #Width: 640
+    #Height: 480
+    FPS: 60
+    Width: 320
+    Height: 240
+    PixelFormat: MJPG
+    NRotate90: 2
+    Flip: 0
+    Rectification: 0
+    #Rectification: 1
+    #Alpha: 1.0
+    #K: !!opencv-matrix
+      #rows: 3
+      #cols: 3
+      #dt: d
+      #data: [ 2.7276124573617790e+02, 0., 3.2933938280614751e+02, 0.,
+            #2.7301706435392521e+02, 2.4502942171375494e+02, 0., 0., 1. ]
+    #D: !!opencv-matrix
+      #rows: 1
+      #cols: 5
+      #dt: d
+      #data: [ -2.7764926296767156e-01, 7.9998204984529891e-02,
+            #-8.3937489998474823e-04, 6.0999999999999943e-04,
+            #-7.4899999999988864e-03 ]
+    #R: !!opencv-matrix
+      #rows: 3
+      #cols: 3
+      #dt: d
+      #data: [ 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0 ]
+
+#Camera parameters of Asahi camera(PPV).
+#$ rosrun fingervision conf_cam_gui.py /dev/videoX
+#CameraParams:
+  #-
+    #Backlight Compensation: 0
+    #Brightness: -8
+    #Contrast: 64
+    #Exposure (Absolute): 306
+    #'Exposure, Auto': 1
+    #Gain: 0
+    #Gamma: 45
+    #Hue: 0
+    #'Iris, Absolute': 5
+    #Saturation: 100
+    #Sharpness: 20
+    #White Balance Temperature: 5900
+    #'White Balance Temperature, Auto': 0
+#Camera parameters of Asahi camera(CM).
+#$ rosrun fingervision conf_cam_gui.py /dev/videoX
+CameraParams:
+  -
+    Backlight Compensation: 0
+    Brightness: 0
+    Contrast: 2
+    Exposure (Absolute): 100
+    'Exposure, Auto': 1
+    Gain: 3
+    Gamma: 0
+    Hue: 0
+    Power Line Frequency: 2
+    Saturation: 130
+    Sharpness: 2
+    White Balance Temperature: 4000
+    'White Balance Temperature, Auto': 0
+
+BlobTracker2:
+  -
+    SBDParams_filterByColor: 0
+    SBDParams_blobColor: 0
+    SBDParams_minThreshold: 5.
+    SBDParams_maxThreshold: 200.
+    SBDParams_filterByArea: 1
+    SBDParams_minArea: 10.
+    SBDParams_maxArea: 632.
+    SBDParams_filterByCircularity: 1
+    SBDParams_minCircularity: 1.0000000149011612e-01
+    SBDParams_maxCircularity: 3.4028234663852886e+38
+    SBDParams_filterByConvexity: 1
+    SBDParams_minConvexity: 8.7000000476837158e-01
+    SBDParams_maxConvexity: 3.4028234663852886e+38
+    SBDParams_filterByInertia: 1
+    SBDParams_minInertiaRatio: 9.9999997764825821e-03
+    SBDParams_maxInertiaRatio: 3.4028234663852886e+38
+    ThresholdingImg: 0
+    ThreshH: 180
+    ThreshS: 255
+    ThreshV: 18
+    NDilate1: 0
+    NErode1: 0
+    SWidth: 54.
+    NonZeroMin: 0.
+    NonZeroMax: 3.3299999237060547e+00
+    VPMax: 3.
+    VSMax: 5.
+    NReset: 5
+    DistMaxCalib: 1.6
+    DSMaxCalib: 1.0
+    DSEmp: 1.
+    DPEmp: 10.
+    NCalibPoints: 10
+
+ObjDetTrack:
+  -
+    Width: 320
+    Height: 240
+    ThreshBlkH: 180
+    ThreshBlkS: 255
+    ThreshBlkV: 1
+    BS_History: 30.0
+    BS_VarThreshold: 10.0
+    BS_DetectShadows: true
+    NErode1: 0
+    BinsH: 50
+    BinsS: 10
+    BinsV: 10
+    Fbg: 1.0
+    Fgain: 2.5
+    NumModel: 5
+    NumFramesInHist: 200
+    BackProjScale: 5.0
+    NThreshold2: 150
+    NErode2: 2
+    NDilate2: 7
+    NCalibBGFrames: 3
+    ObjSW: 3
+    ObjSH: 3
+    MvSW: 3
+    MvSH: 3
+
+StereoInfo: {}
