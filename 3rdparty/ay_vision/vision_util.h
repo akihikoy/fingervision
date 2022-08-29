@@ -210,10 +210,10 @@ struct TCameraRectifier
 // and trackbars can be defined with std::vector<std::string> for std::string.
 //-------------------------------------------------------------------------------------------
 template<typename T>
-int cvRoundTmpl(const T &val)  {return cvRound(val);}
-template<> int cvRoundTmpl<unsigned short>(const unsigned short &val)  {return cvRound((int)val);}
-template<> int cvRoundTmpl<unsigned int>(const unsigned int &val)  {return cvRound((int)val);}
-template<> int cvRoundTmpl<unsigned long>(const unsigned long &val)  {return cvRound((int)val);}
+inline int cvRoundTmpl(const T &val)  {return cvRound(val);}
+template<> inline int cvRoundTmpl<unsigned short>(const unsigned short &val)  {return cvRound((int)val);}
+template<> inline int cvRoundTmpl<unsigned int>(const unsigned int &val)  {return cvRound((int)val);}
+template<> inline int cvRoundTmpl<unsigned long>(const unsigned long &val)  {return cvRound((int)val);}
 template<typename T>
 struct TExtendedTrackbarInfo;
 template<typename T>
@@ -294,38 +294,38 @@ struct TExtendedTrackbarUtil<std::string>
       return std::distance(ref.begin(), itr);
     }
 };
-std::list<TExtendedTrackbarInfo<float> > ExtendedTrackbarInfo_float;
-std::list<TExtendedTrackbarInfo<double> > ExtendedTrackbarInfo_double;
-std::list<TExtendedTrackbarInfo<short> > ExtendedTrackbarInfo_short;
-std::list<TExtendedTrackbarInfo<unsigned short> > ExtendedTrackbarInfo_unsigned_short;
-std::list<TExtendedTrackbarInfo<int> > ExtendedTrackbarInfo_int;
-std::list<TExtendedTrackbarInfo<unsigned int> > ExtendedTrackbarInfo_unsigned_int;
-std::list<TExtendedTrackbarInfo<long> > ExtendedTrackbarInfo_long;
-std::list<TExtendedTrackbarInfo<unsigned long> > ExtendedTrackbarInfo_unsigned_long;
-std::list<TExtendedTrackbarInfo<bool> > ExtendedTrackbarInfo_bool;
-std::list<TExtendedTrackbarInfo<std::string> > ExtendedTrackbarInfo_string;
+extern std::list<TExtendedTrackbarInfo<float> > ExtendedTrackbarInfo_float;
+extern std::list<TExtendedTrackbarInfo<double> > ExtendedTrackbarInfo_double;
+extern std::list<TExtendedTrackbarInfo<short> > ExtendedTrackbarInfo_short;
+extern std::list<TExtendedTrackbarInfo<unsigned short> > ExtendedTrackbarInfo_unsigned_short;
+extern std::list<TExtendedTrackbarInfo<int> > ExtendedTrackbarInfo_int;
+extern std::list<TExtendedTrackbarInfo<unsigned int> > ExtendedTrackbarInfo_unsigned_int;
+extern std::list<TExtendedTrackbarInfo<long> > ExtendedTrackbarInfo_long;
+extern std::list<TExtendedTrackbarInfo<unsigned long> > ExtendedTrackbarInfo_unsigned_long;
+extern std::list<TExtendedTrackbarInfo<bool> > ExtendedTrackbarInfo_bool;
+extern std::list<TExtendedTrackbarInfo<std::string> > ExtendedTrackbarInfo_string;
 template<typename T>
-std::list<TExtendedTrackbarInfo<T> >& ExtendedTrackbarInfo();
+inline std::list<TExtendedTrackbarInfo<T> >& ExtendedTrackbarInfo();
 template<>
-std::list<TExtendedTrackbarInfo<float> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_float;}
+inline std::list<TExtendedTrackbarInfo<float> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_float;}
 template<>
-std::list<TExtendedTrackbarInfo<double> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_double;}
+inline std::list<TExtendedTrackbarInfo<double> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_double;}
 template<>
-std::list<TExtendedTrackbarInfo<short> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_short;}
+inline std::list<TExtendedTrackbarInfo<short> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_short;}
 template<>
-std::list<TExtendedTrackbarInfo<unsigned short> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_short;}
+inline std::list<TExtendedTrackbarInfo<unsigned short> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_short;}
 template<>
-std::list<TExtendedTrackbarInfo<int> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_int;}
+inline std::list<TExtendedTrackbarInfo<int> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_int;}
 template<>
-std::list<TExtendedTrackbarInfo<unsigned int> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_int;}
+inline std::list<TExtendedTrackbarInfo<unsigned int> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_int;}
 template<>
-std::list<TExtendedTrackbarInfo<long> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_long;}
+inline std::list<TExtendedTrackbarInfo<long> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_long;}
 template<>
-std::list<TExtendedTrackbarInfo<unsigned long> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_long;}
+inline std::list<TExtendedTrackbarInfo<unsigned long> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_unsigned_long;}
 template<>
-std::list<TExtendedTrackbarInfo<bool> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_bool;}
+inline std::list<TExtendedTrackbarInfo<bool> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_bool;}
 template<>
-std::list<TExtendedTrackbarInfo<std::string> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_string;}
+inline std::list<TExtendedTrackbarInfo<std::string> >& ExtendedTrackbarInfo()  {return ExtendedTrackbarInfo_string;}
 template<typename T>
 void ExtendedTrackbarOnChange(int,void *pi)
 {

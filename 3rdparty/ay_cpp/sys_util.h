@@ -13,6 +13,8 @@
 #define sys_util_h
 //-------------------------------------------------------------------------------------------
 #include <fstream>
+#include <chrono>
+#include <thread>
 #ifdef __linux__
   #include <inttypes.h>  // int64_t
   #include <sys/time.h>  // gettimeofday
@@ -59,6 +61,44 @@ inline int64_t GetCurrentTimeL(void)
   #error OS detection failed
 #endif
 }
+//-------------------------------------------------------------------------------------------
+
+class TRateAdjuster
+{
+public:
+  typedef double Duration;
+  typedef double Time;
+  TRateAdjuster(const double &frequency)
+      : expected_next_start_(GetCurrentTime()),
+        actual_prev_start_(GetCurrentTime()),
+        expected_cycle_time_(1.0 / frequency),
+        actual_cycle_time_(0.0)
+    {}
+  void Sleep()
+    {
+      const Time &expected_curr_start(expected_next_start_);
+      Time expected_next_end= expected_curr_start + expected_cycle_time_;
+      Time actual_prev_end= GetCurrentTime();
+      if(actual_prev_end < expected_curr_start)  expected_next_end= actual_prev_end+expected_cycle_time_;
+      Duration sleep_time= expected_next_end - actual_prev_end;
+      actual_cycle_time_= actual_prev_end-actual_prev_start_;
+      actual_prev_start_= actual_prev_end;
+      expected_next_start_= expected_next_end;
+      if(sleep_time <= Duration(0.0))
+      {
+        if(actual_prev_end > expected_next_end+expected_cycle_time_)  expected_next_start_= actual_prev_end;
+        return;
+      }
+      std::this_thread::sleep_for(std::chrono::nanoseconds(int(sleep_time*1.0e9)));
+    }
+  void Reset()  {expected_next_start_= GetCurrentTime();}
+  Duration ActualCycleTime() const {return actual_cycle_time_;}
+  Duration ExpectedCycleTime() const {return expected_cycle_time_;}
+
+private:
+  Time expected_next_start_, actual_prev_start_;
+  Duration expected_cycle_time_, actual_cycle_time_;
+};
 //-------------------------------------------------------------------------------------------
 
 /*! \brief check the filename exists */

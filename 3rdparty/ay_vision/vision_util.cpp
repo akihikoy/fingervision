@@ -693,6 +693,24 @@ void TCameraRectifier::Rectify(cv::Mat &frame, const cv::Scalar& border)
 }
 //-------------------------------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------------------------------
+// Extended trackbar
+//-------------------------------------------------------------------------------------------
+
+std::list<TExtendedTrackbarInfo<float> > ExtendedTrackbarInfo_float;
+std::list<TExtendedTrackbarInfo<double> > ExtendedTrackbarInfo_double;
+std::list<TExtendedTrackbarInfo<short> > ExtendedTrackbarInfo_short;
+std::list<TExtendedTrackbarInfo<unsigned short> > ExtendedTrackbarInfo_unsigned_short;
+std::list<TExtendedTrackbarInfo<int> > ExtendedTrackbarInfo_int;
+std::list<TExtendedTrackbarInfo<unsigned int> > ExtendedTrackbarInfo_unsigned_int;
+std::list<TExtendedTrackbarInfo<long> > ExtendedTrackbarInfo_long;
+std::list<TExtendedTrackbarInfo<unsigned long> > ExtendedTrackbarInfo_unsigned_long;
+std::list<TExtendedTrackbarInfo<bool> > ExtendedTrackbarInfo_bool;
+std::list<TExtendedTrackbarInfo<std::string> > ExtendedTrackbarInfo_string;
+
+
+
 //-------------------------------------------------------------------------------------------
 }  // end of trick
 //-------------------------------------------------------------------------------------------

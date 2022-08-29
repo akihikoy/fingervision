@@ -115,6 +115,13 @@ struct TWindowInfo
 };
 std::map<std::string, TWindowInfo> WindowInfo;
 
+bool WindowsHidden(false);
+enum {
+  wvrNone=0,
+  wvrHide,
+  wvrShow
+} WindowVisibilityRequest(wvrNone);
+
 // Dim-levels.
 double DimLevels[]={0.0,0.3,0.7,1.0};
 int DimIdxBT(3),DimIdxPV(1);
@@ -250,7 +257,7 @@ bool HandleKeyEvent()
       std::cerr<<"Loaded calibration data of "<<BlobTracker[idx].Name<<" from "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
   }
-  else if(c=='C' && CurrentWin!=NULL)
+  else if(c=='C' && CurrentWin!=NULL && !WindowsHidden)
   {
     cv::destroyWindow(*CurrentWin);
     cv::namedWindow(*CurrentWin,1);
@@ -285,6 +292,22 @@ bool Resume(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 {
   std::cerr<<"Resumed..."<<std::endl;
   Running= true;
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+bool ShowWindows(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  std::cerr<<"Showing windows..."<<std::endl;
+  WindowVisibilityRequest= wvrShow;
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
+bool HideWindows(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  std::cerr<<"Hiding windows..."<<std::endl;
+  WindowVisibilityRequest= wvrHide;
   return true;
 }
 //-------------------------------------------------------------------------------------------
@@ -725,6 +748,7 @@ int main(int argc, char**argv)
   node.param("target_fps",TargetFPS,TargetFPS);
   node.param("capture_fps",CaptureFPS,CaptureFPS);
   node.param("camera_auto_reopen",camera_auto_reopen,camera_auto_reopen);
+  node.param("windows_hidden",WindowsHidden,WindowsHidden);
   node.param("publish_image",publish_image,publish_image);
   std::cerr<<"pkg_dir: "<<pkg_dir<<std::endl;
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
@@ -787,8 +811,11 @@ int main(int argc, char**argv)
     Stereo[j].LoadConfigurationsFromYAML(pkg_dir+"/"+info.StereoConfig);
     Stereo[j].Init();
     WindowInfo[info.Name]= TWindowInfo(-1, "Stereo", j);
-    cv::namedWindow(info.Name,1);
-    cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
+    if(!WindowsHidden)
+    {
+      cv::namedWindow(info.Name,1);
+      cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
+    }
     IMShowStuff[info.Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     ShowTrackbars[info.Name].Kind= "Stereo";
 
@@ -813,8 +840,11 @@ int main(int argc, char**argv)
     if(FileExists(BlobCalibPrefix+CamInfo[j].Name+".yaml"))
       BlobTracker[j].LoadCalib(BlobCalibPrefix+CamInfo[j].Name+".yaml");
     WindowInfo[BlobTracker[j].Name]= TWindowInfo(j, "BlobTracker", j);
-    cv::namedWindow(BlobTracker[j].Name,1);
-    cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
+    if(!WindowsHidden)
+    {
+      cv::namedWindow(BlobTracker[j].Name,1);
+      cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
+    }
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
@@ -826,8 +856,11 @@ int main(int argc, char**argv)
     ObjDetTracker[j].Params()= objdettrack_info[j];
     ObjDetTracker[j].Init();
     WindowInfo[ObjDetTracker[j].Name]= TWindowInfo(j, "ObjDetTracker", j);
-    cv::namedWindow(ObjDetTracker[j].Name,1);
-    cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
+    if(!WindowsHidden)
+    {
+      cv::namedWindow(ObjDetTracker[j].Name,1);
+      cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
+    }
     IMShowStuff[ObjDetTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     ShowTrackbars[ObjDetTracker[j].Name].Kind= "ObjDetTracker";
   }
@@ -864,6 +897,8 @@ int main(int argc, char**argv)
 
   ros::ServiceServer srv_pause= node.advertiseService("pause", &Pause);
   ros::ServiceServer srv_resume= node.advertiseService("resume", &Resume);
+  ros::ServiceServer srv_show_windows= node.advertiseService("show_windows", &ShowWindows);
+  ros::ServiceServer srv_hide_windows= node.advertiseService("hide_windows", &HideWindows);
   ros::ServiceServer srv_start_record= node.advertiseService("start_record", &StartRecord);
   ros::ServiceServer srv_stop_record= node.advertiseService("stop_record", &StopRecord);
   ros::ServiceServer srv_set_video_prefix= node.advertiseService("set_video_prefix", &SetVideoPrefix);
@@ -931,11 +966,33 @@ int main(int argc, char**argv)
       if(IsShutdown())  break;
 
       // Show windows
-      for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+      if(!WindowsHidden)
       {
-        boost::mutex::scoped_lock lock(*itr->second.Mutex);
-        if(itr->second.Frame.total()>0)
-          cv::imshow(itr->first, itr->second.Frame);
+        bool hide_req= (WindowVisibilityRequest==wvrHide);
+        for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+        {
+          boost::mutex::scoped_lock lock(*itr->second.Mutex);
+          if(itr->second.Frame.total()>0 && !hide_req)
+            cv::imshow(itr->first, itr->second.Frame);
+          if(hide_req)
+            cv::destroyWindow(itr->first);
+        }
+        if(hide_req)
+        {
+          WindowVisibilityRequest= wvrNone;
+          WindowsHidden= true;
+        }
+      }
+      if(WindowsHidden && WindowVisibilityRequest==wvrShow)
+      {
+        for(std::map<std::string, TWindowInfo>::const_iterator itr(WindowInfo.begin()),itr_end(WindowInfo.end()); itr!=itr_end; ++itr)
+        {
+          std::string &window_name(const_cast<std::string&>(itr->first));
+          cv::namedWindow(window_name,1);
+          cv::setMouseCallback(window_name, OnMouse, &window_name);
+        }
+        WindowVisibilityRequest= wvrNone;
+        WindowsHidden= false;
       }
 
       // Handle blob tracker calibration request
