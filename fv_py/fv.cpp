@@ -22,6 +22,39 @@ PYBIND11_PLUGIN(fv)
 {
   py::module m("fv", "FingerVision library for Python (test).");
 
+  py::class_<TBlobMove>(m, "TBlobMove")
+    .def_readwrite("Pox", &TBlobMove::Pox)
+    .def_readwrite("Poy", &TBlobMove::Poy)
+    .def_readwrite("So" , &TBlobMove::So )
+    .def_readwrite("DPx", &TBlobMove::DPx)
+    .def_readwrite("DPy", &TBlobMove::DPy)
+    .def_readwrite("DS" , &TBlobMove::DS )
+    .def("__repr__", [](const TBlobMove& d){return d.ToString();});
+
+  py::class_<TBlobMoves>(m, "TBlobMoves")
+    .def_readwrite("time_stamp"  , &TBlobMoves::time_stamp  )
+    .def_readwrite("frame_id"    , &TBlobMoves::frame_id    )
+    .def_readwrite("camera_index", &TBlobMoves::camera_index)
+    .def_readwrite("camera_name" , &TBlobMoves::camera_name )
+    .def_readwrite("width"       , &TBlobMoves::width       )
+    .def_readwrite("height"      , &TBlobMoves::height      )
+    .def_readwrite("data"        , &TBlobMoves::data        )
+    .def("__repr__", [](const TBlobMoves& d){return d.ToString();});
+
+  py::class_<TProxVision>(m, "TProxVision")
+    .def_readwrite("time_stamp"  , &TProxVision::time_stamp  )
+    .def_readwrite("frame_id"    , &TProxVision::frame_id    )
+    .def_readwrite("camera_index", &TProxVision::camera_index)
+    .def_readwrite("camera_name" , &TProxVision::camera_name )
+    .def_readwrite("width"       , &TProxVision::width       )
+    .def_readwrite("height"      , &TProxVision::height      )
+    .def_readwrite("ObjM_m"      , &TProxVision::ObjM_m      )
+    .def_readwrite("ObjM_mu"     , &TProxVision::ObjM_mu     )
+    .def_readwrite("ObjM_nu"     , &TProxVision::ObjM_nu     )
+    .def_readwrite("ObjS"        , &TProxVision::ObjS        )
+    .def_readwrite("MvS"         , &TProxVision::MvS         )
+    .def("__repr__", [](const TProxVision& d){return d.ToString();});;
+
   m.def("IsShutdown", &IsShutdown, "Check if the program is shutting down.");
   m.def("SetShutdown", &SetShutdown, "Set the shutdown flag.");
   m.def("HandleKeyEvent", &HandleKeyEvent, "Handle the OpenCV key event on the image windows.");
@@ -47,6 +80,11 @@ PYBIND11_PLUGIN(fv)
         "return: false if shutdown is requested.");
   m.def("DisplayImage", &DisplayImage, "Display an image (window) specified by name.");
   m.def("GetDisplayImageList", &GetDisplayImageList, "Return a list of image (window) names to be displayed.");
+  m.def("GetNumCameras", &GetNumCameras, "Return the number of cameras.");
+  m.def("GetBlobMoves", &GetBlobMoves, "Return the latest BlobMoves data.",
+        py::arg("i_cam"));
+  m.def("GetProxVision", &GetProxVision, "Return the latest ProxVision data.",
+        py::arg("i_cam"));
   m.def("StopThreads", &StopThreads, "Stop the image capture and the computer vision threads.");
   m.def("StartThreads", &StartThreads, "Start the image capture and the computer vision threads.",
         py::arg("pkg_dir")=".",

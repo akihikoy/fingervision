@@ -77,6 +77,9 @@ std::map<std::string, TShowTrackbars> ShowTrackbars;
 // std::vector<ros::Publisher> BlobPub;
 // std::vector<ros::Publisher> PXVPub;
 // std::vector<image_transport::Publisher> ImgPub;  // Image publisher [i_cam]
+std::vector<TBlobMoves> BlobMovesData;
+std::vector<TProxVision> ProxVisionData;
+std::map<std::string, boost::shared_ptr<boost::mutex> > DataCopyMutex;
 std::vector<cv::Mat> Frame;
 std::vector<int64_t> CapTime;
 std::vector<boost::shared_ptr<boost::mutex> > MutCamCapture;  // Mutex for capture
@@ -430,31 +433,34 @@ void ExecBlobTrack(int i_cam)
         frame.copyTo(IMShowStuff[tracker.Name].Frame);
       }
 
-      // Publish as BlobMoves
-//       {
-//         const std::vector<TPointMove2> &data(tracker.Data());
-//         fingervision_msgs::BlobMoves blob_moves;
-//         blob_moves.header.seq= seq;
-//         blob_moves.header.stamp= ros::Time::now();
-//         blob_moves.header.frame_id= info.Name;
-//         blob_moves.camera_index= i_cam;
-//         blob_moves.camera_name= info.Name;
-//         blob_moves.width= info.Width;
-//         blob_moves.height= info.Height;
-//         blob_moves.data.resize(data.size());
-//         int i(0);
-//         for(std::vector<TPointMove2>::const_iterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr,++i)
-//         {
-//           fingervision_msgs::BlobMove &m(blob_moves.data[i]);
-//           m.Pox= itr->Po.x;
-//           m.Poy= itr->Po.y;
-//           m.So = itr->So;
-//           m.DPx= itr->DP.x;
-//           m.DPy= itr->DP.y;
-//           m.DS = itr->DS;
-//         }
-//         BlobPub[i_cam].publish(blob_moves);
-//       }
+      // Copy to the data buffer.
+      {
+        const std::vector<TPointMove2> &data(tracker.Data());
+        TBlobMoves blob_moves;
+        blob_moves.time_stamp= t_cap*1.0e-6;
+        blob_moves.frame_id= info.Name;
+        blob_moves.camera_index= i_cam;
+        blob_moves.camera_name= info.Name;
+        blob_moves.width= info.Width;
+        blob_moves.height= info.Height;
+        blob_moves.data.resize(data.size());
+        int i(0);
+        for(std::vector<TPointMove2>::const_iterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr,++i)
+        {
+          TBlobMove &m(blob_moves.data[i]);
+          m.Pox= itr->Po.x;
+          m.Poy= itr->Po.y;
+          m.So = itr->So;
+          m.DPx= itr->DP.x;
+          m.DPy= itr->DP.y;
+          m.DS = itr->DS;
+        }
+
+        {
+          boost::mutex::scoped_lock lock(*DataCopyMutex[tracker.Name]);
+          BlobMovesData[i_cam]= blob_moves;
+        }
+      }
       // usleep(10*1000);
     }  // Running
     else
@@ -510,41 +516,43 @@ void ExecObjDetTrack(int i_cam)
         frame.copyTo(IMShowStuff[tracker.Name].Frame);
       }
 
-      // Publish as PXVPub
-//       {
-//         const cv::Mat &objs(tracker.ObjS()), &mvs(tracker.MvS());
-//         const cv::Moments &om(tracker.ObjMoments());
-//         fingervision_msgs::ProxVision prox_vision;
-//         prox_vision.header.seq= seq;
-//         prox_vision.header.stamp= ros::Time::now();
-//         prox_vision.header.frame_id= info.Name;
-//         prox_vision.camera_index= i_cam;
-//         prox_vision.camera_name= info.Name;
-//         prox_vision.width= info.Width;
-//         prox_vision.height= info.Height;
-//
-//         double m[]= {om.m00, om.m10, om.m01, om.m20, om.m11, om.m02, om.m30, om.m21, om.m12, om.m03};
-//         std::vector<float> vm(m,m+10);
-//         prox_vision.ObjM_m= vm;
-//
-//         double mu[]= {om.mu20, om.mu11, om.mu02, om.mu30, om.mu21, om.mu12, om.mu03};
-//         std::vector<float> vmu(mu,mu+7);
-//         prox_vision.ObjM_mu= vmu;
-//
-//         double nu[]= {om.nu20, om.nu11, om.nu02, om.nu30, om.nu21, om.nu12, om.nu03};
-//         std::vector<float> vnu(nu,nu+7);
-//         prox_vision.ObjM_nu= vnu;
-//
-//         prox_vision.ObjS.resize(objs.rows*objs.cols);
-//         for(int r(0),rend(objs.rows),i(0);r<rend;++r) for(int c(0),cend(objs.cols);c<cend;++c,++i)
-//           prox_vision.ObjS[i]= objs.at<float>(r,c);
-//
-//         prox_vision.MvS.resize(mvs.rows*mvs.cols);
-//         for(int r(0),rend(mvs.rows),i(0);r<rend;++r) for(int c(0),cend(mvs.cols);c<cend;++c,++i)
-//           prox_vision.MvS[i]= mvs.at<float>(r,c);
-//
-//         PXVPub[i_cam].publish(prox_vision);
-//       }
+      // Copy to the data buffer
+      {
+        const cv::Mat &objs(tracker.ObjS()), &mvs(tracker.MvS());
+        const cv::Moments &om(tracker.ObjMoments());
+        TProxVision prox_vision;
+        prox_vision.time_stamp= t_cap*1.0e-6;
+        prox_vision.frame_id= info.Name;
+        prox_vision.camera_index= i_cam;
+        prox_vision.camera_name= info.Name;
+        prox_vision.width= info.Width;
+        prox_vision.height= info.Height;
+
+        double m[]= {om.m00, om.m10, om.m01, om.m20, om.m11, om.m02, om.m30, om.m21, om.m12, om.m03};
+        std::vector<double> vm(m,m+10);
+        prox_vision.ObjM_m= vm;
+
+        double mu[]= {om.mu20, om.mu11, om.mu02, om.mu30, om.mu21, om.mu12, om.mu03};
+        std::vector<double> vmu(mu,mu+7);
+        prox_vision.ObjM_mu= vmu;
+
+        double nu[]= {om.nu20, om.nu11, om.nu02, om.nu30, om.nu21, om.nu12, om.nu03};
+        std::vector<double> vnu(nu,nu+7);
+        prox_vision.ObjM_nu= vnu;
+
+        prox_vision.ObjS.resize(objs.rows*objs.cols);
+        for(int r(0),rend(objs.rows),i(0);r<rend;++r) for(int c(0),cend(objs.cols);c<cend;++c,++i)
+          prox_vision.ObjS[i]= objs.at<float>(r,c);
+
+        prox_vision.MvS.resize(mvs.rows*mvs.cols);
+        for(int r(0),rend(mvs.rows),i(0);r<rend;++r) for(int c(0),cend(mvs.cols);c<cend;++c,++i)
+          prox_vision.MvS[i]= mvs.at<float>(r,c);
+
+        {
+          boost::mutex::scoped_lock lock(*DataCopyMutex[tracker.Name]);
+          ProxVisionData[i_cam]= prox_vision;
+        }
+      }
       // usleep(10*1000);
     }  // Running
     else
@@ -694,6 +702,33 @@ std::list<std::string> GetDisplayImageList()
 }
 //-------------------------------------------------------------------------------------------
 
+// Return the number of cameras.
+int GetNumCameras()
+{
+  return CamInfo.size();
+}
+//-------------------------------------------------------------------------------------------
+
+// Return the latest BlobMoves data.
+TBlobMoves GetBlobMoves(int i_cam)
+{
+  TBlobTracker2 &tracker(BlobTracker[i_cam]);
+  boost::mutex::scoped_lock lock(*DataCopyMutex[tracker.Name]);
+  TBlobMoves res= BlobMovesData[i_cam];  // Copy the data.
+  return res;
+}
+//-------------------------------------------------------------------------------------------
+
+// Return the latest ProxVision data.
+TProxVision GetProxVision(int i_cam)
+{
+  TObjDetTrackBSP &tracker(ObjDetTracker[i_cam]);
+  boost::mutex::scoped_lock lock(*DataCopyMutex[tracker.Name]);
+  TProxVision res= ProxVisionData[i_cam];  // Copy the data.
+  return res;
+}
+//-------------------------------------------------------------------------------------------
+
 inline std::string CheckYAMLExistence(const std::string &filename)
 {
   std::cerr<<"Loading from YAML: "<<filename<<std::endl;
@@ -794,6 +829,7 @@ void StartThreads(
       cv::namedWindow(BlobTracker[j].Name,1);
       cv::setMouseCallback(BlobTracker[j].Name, OnMouse, &BlobTracker[j].Name);
     }
+    DataCopyMutex[BlobTracker[j].Name]= boost::shared_ptr<boost::mutex>(new boost::mutex);
     IMShowStuff[BlobTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
@@ -810,16 +846,19 @@ void StartThreads(
       cv::namedWindow(ObjDetTracker[j].Name,1);
       cv::setMouseCallback(ObjDetTracker[j].Name, OnMouse, &ObjDetTracker[j].Name);
     }
+    DataCopyMutex[ObjDetTracker[j].Name]= boost::shared_ptr<boost::mutex>(new boost::mutex);
     IMShowStuff[ObjDetTracker[j].Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
     ShowTrackbars[ObjDetTracker[j].Name].Kind= "ObjDetTracker";
   }
 
   SetVideoPrefix(vout_base);
 
+  BlobMovesData.resize(BlobTracker.size());
 //   BlobPub.resize(BlobTracker.size());
 //   for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
 //     BlobPub[j]= node.advertise<fingervision_msgs::BlobMoves>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/blob_moves", 1);
 
+  ProxVisionData.resize(ObjDetTracker.size());
 //   PXVPub.resize(ObjDetTracker.size());
 //   for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
 //     PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/prox_vision", 1);
