@@ -221,6 +221,27 @@ bool HandleKeyEvent()
   {
     CalibrationRequest= true;
   }
+  else if(c=='p' || c=='P')
+  {
+    if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
+    {
+      int idx(WindowInfo[*CurrentWin].Index);
+      std::vector<TBlobTracker2Params> p;
+      p.push_back(BlobTracker[idx].Params());
+      std::string file_name((c=='p') ? "/dev/stdout" : "/tmp/blobtr_params.yaml");
+      WriteToYAML(p,file_name.c_str());
+      std::cerr<<"Parameters of the tracker are saved into "<<file_name<<std::endl;
+    }
+    else if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      int idx(WindowInfo[*CurrentWin].Index);
+      std::vector<TObjDetTrackBSPParams> p;
+      p.push_back(ObjDetTracker[idx].Params());
+      std::string file_name((c=='p') ? "/dev/stdout" : "/tmp/objtr_params.yaml");
+      WriteToYAML(p,file_name.c_str());
+      std::cerr<<"Parameters of the tracker are saved into "<<file_name<<std::endl;
+    }
+  }
   else if(c=='r')
   {
     if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
