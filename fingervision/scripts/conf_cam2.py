@@ -74,11 +74,11 @@ if __name__=='__main__':
   cam_dev= sys.argv[1] if len(sys.argv)>1 else '/dev/video0'
   values= sys.argv[2]
 
-  if values[:5]=='yaml:':
+  if values.startswith('yaml:'):
     d= yaml.load(values[5:])
-  elif values[:4]=='b64:':
+  elif values.startswith('b64:'):
     d= DecodeDictB64(values[4:])
-  elif values[:5]=='file:':
+  elif values.startswith('file:'):
     keys_filename= values[5:].split(':')
     filename= keys_filename[-1]
     keys= [int(key) if re.match(r'\+?[0-9]+',key) else key for key in keys_filename[:-1]]
