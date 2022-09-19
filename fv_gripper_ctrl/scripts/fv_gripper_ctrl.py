@@ -41,12 +41,12 @@ class TCoreToolMini(TROSUtil):
 def CreateGripper(gripper_type, gripper_node='gripper_driver', is_sim=False):
   gripper= None
   param= None
-  if gripper_type=='RHP12RNGripper':
+  if gripper_type in ('RHP12RNGripper','RHP12RNAGripper'):
     if not is_sim:
       mod= __import__('ay_py.ros.rbt_rhp12rn',globals(),None,('TRHP12RNGripper',))
       gripper= mod.TRHP12RNGripper(node_name=gripper_node)
     else:
-      gripper= TSimGripper2F1((gripper_type,'ThGripper'),pos_range=[0.0,0.109])
+      gripper= TSimGripper2F1(('RHP12RNGripper','ThGripper'),pos_range=[0.0,0.109])
     param={
       'lx': [0.0,0.0,0.218, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -261,9 +261,9 @@ def CtrlLoop(ct):
     kbhit.Deactivate()
     ct.DelSub('joy')
     if ct.gripper.Is('DxlGripper'):
-      if active_holding[arm]:
+      if active_holding[0]:
         ct.gripper.StopHolding()
-        active_holding[arm]= False
+        active_holding[0]= False
     print 'Finished'
 
 def VizGripper(ct):

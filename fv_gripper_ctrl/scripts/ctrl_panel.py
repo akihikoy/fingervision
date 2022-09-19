@@ -36,7 +36,7 @@ if __name__=='__main__':
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
-  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNGripper'))
+  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNAGripper'))
   joy_dev= get_arg('-joy_dev=',get_arg('--joy_dev=','js0'))
   dxl_dev= get_arg('-dxl_dev=',get_arg('--dxl_dev=','USB0'))
   fullscreen= True if '-fullscreen' in sys.argv or '--fullscreen' in sys.argv else False
