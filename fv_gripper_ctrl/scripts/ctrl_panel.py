@@ -50,6 +50,9 @@ if __name__=='__main__':
     'DxlUSB': dxl_dev,
     'FV_L_DEV': '/media/video_fv1',
     'FV_R_DEV': '/media/video_fv2',
+    'FV_BASE_DIR': '{}/data'.format(os.environ['HOME']),
+    'FV_L_CONFIG': 'config/fvp300x_l.yaml'.format(os.environ['HOME']),
+    'FV_R_CONFIG': 'config/fvp300x_r.yaml'.format(os.environ['HOME']),
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'IS_SIM': is_sim,
     }
@@ -60,10 +63,10 @@ if __name__=='__main__':
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
     'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB}','bg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
-    'fvp': ['roslaunch ay_fv_extra fvp_4.launch','bg'],
+    'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1={FV_L_CONFIG} config2={FV_R_CONFIG}','bg'],
     'fvp_file': ['roslaunch ay_fv_extra fvp_file1.launch','bg'],
-    'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_4_l.yaml"','fg'],
-    'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_4_r.yaml"','fg'],
+    'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} "file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}"','fg'],
+    'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} "file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}"','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
     }
