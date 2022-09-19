@@ -108,6 +108,8 @@ def CreateGripper(gripper_type, gripper_node='gripper_driver', is_sim=False):
         'center': [0.0,0.0,0.132, 0.0,0.0,0.0,1.0],
         }
       }
+  if gripper is not None:
+    gripper.Init()
   return gripper, param
 
 def JoyCallback(state, steps, wsteps, gsteps, data):
@@ -277,11 +279,12 @@ def VizGripper(ct):
   mid= viz.AddCube(Transform(xw,bb_center), bb_dim, rgb=viz.ICol(3), alpha=0.5, mid=mid)
   #Visualize finger pads:
   gpos= ct.gripper.Position()
-  lw_xgl= Transform(lw_xe,[0,+0.5*gpos,0, 0,0,0,1])
-  lw_xgr= Transform(lw_xe,[0,-0.5*gpos,0, 0,0,0,1])
-  mid= viz.AddCube(Transform(xw,lw_xgl), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
-  mid= viz.AddCube(Transform(xw,lw_xgr), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
-  mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
+  if gpos is not None:
+    lw_xgl= Transform(lw_xe,[0,+0.5*gpos,0, 0,0,0,1])
+    lw_xgr= Transform(lw_xe,[0,-0.5*gpos,0, 0,0,0,1])
+    mid= viz.AddCube(Transform(xw,lw_xgl), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
+    mid= viz.AddCube(Transform(xw,lw_xgr), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
+    mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
   viz.Publish()
 
 if __name__ == '__main__':
