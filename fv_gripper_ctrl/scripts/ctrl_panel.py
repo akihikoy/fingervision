@@ -60,10 +60,10 @@ if __name__=='__main__':
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
     'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB}','bg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
-    'fvp': ['roslaunch ay_fv_extra fvp_3.launch','bg'],
+    'fvp': ['roslaunch ay_fv_extra fvp_4.launch','bg'],
     'fvp_file': ['roslaunch ay_fv_extra fvp_file1.launch','bg'],
-    'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_3_l.yaml"','fg'],
-    'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_3_r.yaml"','fg'],
+    'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_4_l.yaml"','fg'],
+    'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} "file:CameraParams:0:`rospack find ay_fv_extra`/config/fvp_4_r.yaml"','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
     }
@@ -392,7 +392,6 @@ if __name__=='__main__':
   rospy.wait_for_service('/rosout/get_loggers', timeout=5.0)
   run_cmd('fix_usb')
   pm.StartVirtualJoyStick()
-  if not is_sim:  pm.StartUpdateStatusThread()
   panel.close_callback= lambda event: (
       pm.TerminateAllBGProcesses(),  #including roscore
       #stop_cmd('roscore'),
