@@ -74,37 +74,41 @@ CameraParams:
 
 BlobTracker2:
   -
-    SBDParams_filterByColor: 0
-    SBDParams_blobColor: 0
-    SBDParams_minThreshold: 5.
-    SBDParams_maxThreshold: 200.
-    SBDParams_filterByArea: 1
-    SBDParams_minArea: 10.
-    SBDParams_maxArea: 632.
-    SBDParams_filterByCircularity: 1
-    SBDParams_minCircularity: 1.0000000149011612e-01
-    SBDParams_maxCircularity: 3.4028234663852886e+38
-    SBDParams_filterByConvexity: 1
-    SBDParams_minConvexity: 8.7000000476837158e-01
-    SBDParams_maxConvexity: 3.4028234663852886e+38
-    SBDParams_filterByInertia: 1
-    SBDParams_minInertiaRatio: 9.9999997764825821e-03
-    SBDParams_maxInertiaRatio: 3.4028234663852886e+38
+    SBDParams:
+      thresholdStep: 10.
+      minThreshold: 5.
+      maxThreshold: 200.
+      minRepeatability: 2
+      minDistBetweenBlobs: 10.
+      filterByColor: 1
+      blobColor: 0
+      filterByArea: 1
+      minArea: 46.
+      maxArea: 300.
+      filterByCircularity: 1
+      minCircularity: 0.1
+      maxCircularity: 3.4028234663852886e+38
+      filterByInertia: 1
+      minInertiaRatio: 0.01
+      maxInertiaRatio: 3.4028234663852886e+38
+      filterByConvexity: 1
+      minConvexity: 0.87
+      maxConvexity: 3.4028234663852886e+38
     ThresholdingImg: 0
     ThreshH: 180
     ThreshS: 255
-    ThreshV: 18
-    NDilate1: 0
-    NErode1: 0
-    SWidth: 54.
+    ThreshV: 40
+    NDilate1: 2
+    NErode1: 2
+    SWidth: 30.
     NonZeroMin: 0.
-    NonZeroMax: 3.3299999237060547e+00
-    VPMax: 3.
-    VSMax: 5.
-    NReset: 5
-    DistMaxCalib: 1.6
-    DSMaxCalib: 1.0
-    DSEmp: 1.
+    NonZeroMax: 1.5
+    VPMax: 1.5
+    VSMax: 1.
+    NReset: 3
+    DistMaxCalib: 0.8
+    DSMaxCalib: 0.5
+    DSEmp: 4.
     DPEmp: 10.
     NCalibPoints: 10
 

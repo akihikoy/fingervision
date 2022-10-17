@@ -158,6 +158,8 @@ std::list<std::string> TakeSnapshot(const std::string &prefix, const std::string
 void StopDetectObj();
 void StartDetectObj();
 void ClearObj();
+// Set the calibration flag with the specified name of a window.
+void SetCalibrationRequest(const std::string &name);
 // Display images with imshow and run the key event handler.
 // return: false if shutdown is requested.
 bool DisplayImages();

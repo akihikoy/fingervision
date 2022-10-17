@@ -658,6 +658,19 @@ void ExecImgCapture(std::vector<cv::VideoCapture> &cap, bool camera_auto_reopen)
 }
 //-------------------------------------------------------------------------------------------
 
+// Set the calibration flag with the specified name of a window.
+void SetCalibrationRequest(const std::string &name)
+{
+  for(std::map<std::string, TIMShowStuff>::const_iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+  {
+    std::string &window_name(const_cast<std::string&>(itr->first));
+    if(window_name==name)
+      CurrentWin= &window_name;
+  }
+  CalibrationRequest= true;
+}
+//-------------------------------------------------------------------------------------------
+
 // Display images with imshow and run the key event handler.
 // return: false if shutdown is requested.
 bool DisplayImages()

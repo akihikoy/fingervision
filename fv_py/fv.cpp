@@ -76,6 +76,7 @@ PYBIND11_PLUGIN(fv)
   m.def("StopDetectObj", &StopDetectObj, "Stop detecting the objects on ObjDetTracker.");
   m.def("StartDetectObj", &StartDetectObj, "Start detecting the objects on ObjDetTracker.");
   m.def("ClearObj", &ClearObj, "Clear the object model of ObjDetTracker.");
+  m.def("SetCalibrationRequest", &SetCalibrationRequest, "Set the calibration flag with the specified name of a window.");
   m.def("DisplayImages", &DisplayImages, "Display images with imshow and run the key event handler."
         "return: false if shutdown is requested.");
   m.def("DisplayImage", &DisplayImage, "Display an image (window) specified by name.");

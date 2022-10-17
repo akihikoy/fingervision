@@ -12,6 +12,8 @@
 #     Press h to switch show/hide the windows.
 #     Press b to switch start/stop displaying the BlobMoves data.
 #     Press p to switch start/stop displaying the ProxVision data.
+#     Press c to do calibration with the first window.
+#     Press C to do calibration with the second window.
 #     Press q to quit.
 import fv
 import sys
@@ -42,6 +44,10 @@ if __name__=='__main__':
         disp_blob_moves= not disp_blob_moves
       elif c=='p':
         disp_prox_vision= not disp_prox_vision
+      elif c in ('c','C'):
+        name= fv.GetDisplayImageList()[{'c':0,'C':1}[c]]
+        print 'Calibrating {}...'.format(name)
+        fv.SetCalibrationRequest(name)
       if not windows_hidden:
         for name in fv.GetDisplayImageList():
           fv.DisplayImage(name)
