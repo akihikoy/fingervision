@@ -4,6 +4,24 @@
 #\author  Akihiko Yamaguchi, info@akihikoy.net
 #\version 0.1
 #\date    Sep.18, 2022
+'''
+Setup:
+  Link to FV cameras (e.g. /dev/video0, /dev/video1) to:
+    /media/video_fv1
+    /media/video_fv2
+  Make directory: ~/data/data_gen/
+  Put FV config files fvp300x_l.yaml, fvp300x_r.yaml in: ~/data/config/
+  where:
+    fvp300x_l.yaml:DevID: /media/video_fv1
+    fvp300x_r.yaml:DevID: /media/video_fv2
+  e.g.
+    $ sudo ln -s /dev/video0 /media/video_fv1
+    $ sudo ln -s /dev/video2 /media/video_fv2
+    $ mkdir -p ~/data/data_gen/
+    $ mkdir -p ~/data/config/ && cd ~/data/config/
+    $ ln -s `rospack find ay_fv_extra`/config/fvp_4_l.yaml fvp300x_l.yaml
+    $ ln -s `rospack find ay_fv_extra`/config/fvp_4_r.yaml fvp300x_r.yaml
+'''
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import os,sys
 import rospy
@@ -36,7 +54,7 @@ if __name__=='__main__':
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
-  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNAGripper'))
+  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNGripper'))
   joy_dev= get_arg('-joy_dev=',get_arg('--joy_dev=','js0'))
   dxl_dev= get_arg('-dxl_dev=',get_arg('--dxl_dev=','USB0'))
   fullscreen= True if '-fullscreen' in sys.argv or '--fullscreen' in sys.argv else False
@@ -51,8 +69,8 @@ if __name__=='__main__':
     'FV_L_DEV': '/media/video_fv1',
     'FV_R_DEV': '/media/video_fv2',
     'FV_BASE_DIR': '{}/data'.format(os.environ['HOME']),
-    'FV_L_CONFIG': 'config/fvp300x_l.yaml'.format(os.environ['HOME']),
-    'FV_R_CONFIG': 'config/fvp300x_r.yaml'.format(os.environ['HOME']),
+    'FV_L_CONFIG': 'config/fvp300x_l.yaml',
+    'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'IS_SIM': is_sim,
     }
