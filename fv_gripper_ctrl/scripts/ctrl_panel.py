@@ -85,6 +85,10 @@ if __name__=='__main__':
     'fvp_file': ['roslaunch ay_fv_extra fvp_file1.launch','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
+    'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
+    'start_record_r': ['rosservice call /fingervision/fvp_1_r/start_record','fg'],
+    'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
+    'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
     }
@@ -216,6 +220,19 @@ if __name__=='__main__':
                       #obj.setEnabled(status in (pm.NO_CORE_PROGRAM,pm.ROBOT_EMERGENCY_STOP)) ),
         #'size_policy': ('expanding', 'fixed'),
         #'onclick': lambda w,obj: run_cmd('shutdown_pc'), }),
+    'btn_fv_record': (
+      'buttonchk',{
+        'text':('Record FV','Stop Record'),
+        #'enabled':False,
+        'size_policy': ('expanding', 'fixed'),
+        'onclick':(lambda w,obj:(
+                      run_cmd('start_record_l'),
+                      run_cmd('start_record_r'),
+                     ),
+                   lambda w,obj:(
+                      run_cmd('stop_record_l'),
+                      run_cmd('stop_record_r'),
+                     ) )}),
     }
   layout_init= (
     'grid',None,(
@@ -378,6 +395,7 @@ if __name__=='__main__':
           #('Joy',layout_joy),
           ('Main',('boxv',None,(
             layout_init,
+            'btn_fv_record',
             layout_joy,
             'btn_exit',
             ))),
