@@ -19,8 +19,8 @@ Setup:
     $ sudo ln -s /dev/video2 /media/video_fv2
     $ mkdir -p ~/data/data_gen/
     $ mkdir -p ~/data/config/ && cd ~/data/config/
-    $ ln -s `rospack find ay_fv_extra`/config/fvp_4_l.yaml fvp300x_l.yaml
-    $ ln -s `rospack find ay_fv_extra`/config/fvp_4_r.yaml fvp300x_r.yaml
+    $ ln -s `rospack find ay_fv_extra`/config/fvp_5_l.yaml fvp300x_l.yaml
+    $ ln -s `rospack find ay_fv_extra`/config/fvp_5_r.yaml fvp300x_r.yaml
 '''
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import os,sys
