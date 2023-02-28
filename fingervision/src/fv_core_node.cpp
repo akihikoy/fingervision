@@ -340,12 +340,12 @@ bool StopRecord(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 
 void SetVideoPrefix(const std::string &file_prefix)
 {
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
   {
     VideoOut[BlobTracker[j].Name].SetfilePrefix(file_prefix+BlobTracker[j].Name);
     VideoOut[BlobTracker[j].Name+"-orig"].SetfilePrefix(file_prefix+BlobTracker[j].Name+"-orig");
   }
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
   {
     VideoOut[ObjDetTracker[j].Name].SetfilePrefix(file_prefix+ObjDetTracker[j].Name);
     VideoOut[ObjDetTracker[j].Name+"-orig"].SetfilePrefix(file_prefix+ObjDetTracker[j].Name+"-orig");
@@ -732,8 +732,8 @@ int main(int argc, char**argv)
   }
   std::cerr<<"Opened camera(s)"<<std::endl;
 
-  BlobTracker.resize(CamInfo.size());
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  BlobTracker.resize(blobtrack_info.size());
+  for(int j(0),j_end(blobtrack_info.size());j<j_end;++j)
   {
     BlobTracker[j].Name= CamInfo[j].Name+"-blob";
     BlobTracker[j].Params()= blobtrack_info[j];
@@ -750,8 +750,8 @@ int main(int argc, char**argv)
     ShowTrackbars[BlobTracker[j].Name].Kind= "BlobTracker";
   }
 
-  ObjDetTracker.resize(CamInfo.size());
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  ObjDetTracker.resize(objdettrack_info.size());
+  for(int j(0),j_end(objdettrack_info.size());j<j_end;++j)
   {
     ObjDetTracker[j].Name= CamInfo[j].Name+"-pxv";
     ObjDetTracker[j].Params()= objdettrack_info[j];
@@ -815,8 +815,8 @@ int main(int argc, char**argv)
   // Calibrate ObjDetTracker
   if(ObjDetTracker.size()>0)
   {
-    std::vector<std::vector<cv::Mat> > frames(CamInfo.size());
-    for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+    std::vector<std::vector<cv::Mat> > frames(ObjDetTracker.size());
+    for(int i_cam(0), i_cam_end(ObjDetTracker.size()); i_cam<i_cam_end; ++i_cam)
     {
       frames[i_cam]= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[i_cam].Params().NCalibBGFrames);
       for(int i_frame(0),i_frame_end(frames[i_cam].size()); i_frame<i_frame_end; ++i_frame)
@@ -827,11 +827,11 @@ int main(int argc, char**argv)
   }
 
   std::vector<boost::shared_ptr<boost::thread> > th_blobtrack;
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
     th_blobtrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecBlobTrack,j))));
 
   std::vector<boost::shared_ptr<boost::thread> > th_objdettrack;
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
     th_objdettrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecObjDetTrack,j))));
 
   std::vector<boost::shared_ptr<boost::thread> > th_imgpub;

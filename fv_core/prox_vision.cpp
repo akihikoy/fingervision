@@ -129,6 +129,11 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
   params.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["ObjDetTrack"];
+  if(data.empty())
+  {
+    fs.release();
+    return;
+  }
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TObjDetTrackBSPParams cf;

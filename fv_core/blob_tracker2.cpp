@@ -286,6 +286,11 @@ void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::stri
   blob_params.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["BlobTracker2"];
+  if(data.empty())
+  {
+    fs.release();
+    return;
+  }
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TBlobTracker2Params cf;

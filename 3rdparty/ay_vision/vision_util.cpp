@@ -494,6 +494,11 @@ void ReadFromYAML(std::vector<cv::KeyPoint> &keypoints, const std::string &file_
   keypoints.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["KeyPoints"];
+  if(data.empty())
+  {
+    fs.release();
+    return;
+  }
   // data>>keypoints;
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
@@ -614,6 +619,11 @@ void ReadFromYAML(std::vector<TCameraInfo> &cam_info, const std::string &file_na
   cam_info.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["CameraInfo"];
+  if(data.empty())
+  {
+    fs.release();
+    return;
+  }
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TCameraInfo cf;
@@ -672,6 +682,11 @@ void ReadFromYAML(std::vector<TStereoInfo> &stereo_info, const std::string &file
   stereo_info.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["StereoInfo"];
+  if(data.empty())
+  {
+    fs.release();
+    return;
+  }
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TStereoInfo cf;
