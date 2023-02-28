@@ -71,9 +71,7 @@ std::string BlobCalibPrefix("blob_");
 std::vector<TCameraInfo> CamInfo;
 std::vector<TBlobTracker2> BlobTracker;  // Marker tracker
 std::vector<TObjDetTrackBSP> ObjDetTracker;  // Proximity vision
-std::vector<TCameraRectifier> SingleCamRectifier;
-std::vector<boost::function<void(cv::Mat&)> > CamRectifier;  // Functions to rectify camera images.
-void DummyRectify(cv::Mat&) {}  // Do nothing function
+std::vector<TCameraRectifier> CamRectifier;
 
 std::map<std::string, TEasyVideoOut> VideoOut;
 struct TShowTrackbars
@@ -146,7 +144,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
   if(event!=0)
   {
     CurrentWin= reinterpret_cast<std::string*>(data);
-    std::cerr<<"CurrentWin: "<<*CurrentWin<<std::endl;
+    std::cerr<<"CurrentWin: "<<*CurrentWin<<" (clicked at "<<x<<", "<<y<<")"<<std::endl;
   }
 
   if(event == cv::EVENT_RBUTTONDOWN && flags == 0)
@@ -164,6 +162,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
         boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
         Frame[i_cam].copyTo(frame);
       }
+      Preprocess(frame, CamInfo[i_cam], &CamRectifier[i_cam]);
       ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
     }
   }
@@ -385,6 +384,7 @@ bool TakeSnapshot(fingervision_msgs::TakeSnapshot::Request &req, fingervision_ms
       Frame[i_cam].copyTo(frame);
       t_cap= CapTime[i_cam];
     }
+    Preprocess(frame, CamInfo[i_cam], &CamRectifier[i_cam]);
     std::stringstream ss;
     ss<<t_cap;
     timestamp= ss.str();
@@ -457,7 +457,7 @@ void ExecBlobTrack(int i_cam)
       }
       VideoOut[tracker.Name+"-orig"].Step(frame);  // Record original video
 
-      CamRectifier[i_cam](frame);
+      Preprocess(frame, info, &CamRectifier[i_cam]);
       tracker.Step(frame);
       frame*= DimLevels[DimIdxBT];
       tracker.Draw(frame);
@@ -537,7 +537,7 @@ void ExecObjDetTrack(int i_cam)
       }
       VideoOut[tracker.Name+"-orig"].Step(frame);  // Record original video
 
-      CamRectifier[i_cam](frame);
+      Preprocess(frame, info, &CamRectifier[i_cam]);
       tracker.Step(frame);
       frame*= DimLevels[DimIdxPV];
       tracker.Draw(frame);
@@ -619,7 +619,7 @@ void ExecImgPublisher(int i_cam)
         t_cap= CapTime[i_cam];
       }
 
-      CamRectifier[i_cam](frame);
+      Preprocess(frame, info, &CamRectifier[i_cam]);
 
       // Publish image
       {
@@ -638,24 +638,19 @@ void ExecImgPublisher(int i_cam)
 }
 //-------------------------------------------------------------------------------------------
 
-cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool rectify, bool auto_reopen=true)
+cv::Mat Capture(cv::VideoCapture &cap, int i_cam, bool auto_reopen=true)
 {
+  TCameraInfo &info(CamInfo[i_cam]);
   cv::Mat frame;
   {
     boost::mutex::scoped_lock lock(*MutCamCapture[i_cam]);
     while(!cap.read(frame))
     {
       if(!auto_reopen || IsShutdown()
-        || !CapWaitReopen(CamInfo[i_cam],cap,/*ms_wait=*/1000,/*max_count=*/0,/*check_to_stop=*/IsShutdown))
+        || !CapWaitReopen(info,cap,/*ms_wait=*/1000,/*max_count=*/0,/*check_to_stop=*/IsShutdown))
         return cv::Mat();
     }
   }
-  // TODO:Define a PreProc function in ay_vision and replace the following code.
-  if(CamInfo[i_cam].CapWidth!=CamInfo[i_cam].Width || CamInfo[i_cam].CapHeight!=CamInfo[i_cam].Height)
-    cv::resize(frame,frame,cv::Size(CamInfo[i_cam].Width,CamInfo[i_cam].Height));
-  if(CamInfo[i_cam].HFlip)  cv::flip(frame, frame, /*horizontal*/1);
-  Rotate90N(frame,frame,CamInfo[i_cam].NRotate90);
-  if(rectify)  CamRectifier[i_cam](frame);
   return frame;
 }
 //-------------------------------------------------------------------------------------------
@@ -665,7 +660,7 @@ std::vector<cv::Mat> CaptureSeq(cv::VideoCapture &cap, int i_cam, int num)
 {
   std::vector<cv::Mat> frames;
   for(int i(0); i<num; ++i)
-    frames.push_back(Capture(cap, i_cam, /*rectify=*/true));
+    frames.push_back(Capture(cap, i_cam));
   return frames;
 }
 //-------------------------------------------------------------------------------------------
@@ -718,7 +713,6 @@ int main(int argc, char**argv)
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
 
   std::vector<cv::VideoCapture> cap(CamInfo.size());
-  SingleCamRectifier.resize(CamInfo.size());
   CamRectifier.resize(CamInfo.size());
   Frame.resize(CamInfo.size());
   CapTime.resize(CamInfo.size());
@@ -732,14 +726,8 @@ int main(int argc, char**argv)
     if(info.Rectification)
     {
       // Setup rectification
-      // NOTE: The rectification of StereoInfo overwrites this rectification.
       cv::Size size_in(info.Width,info.Height), size_out(info.Width,info.Height);
-      SingleCamRectifier[i_cam].Setup(info.K, info.D, info.R, size_in, info.Alpha, size_out);
-      CamRectifier[i_cam]= boost::bind(&TCameraRectifier::Rectify, SingleCamRectifier[i_cam], _1, /*border=*/cv::Scalar(0,0,0));
-    }
-    else
-    {
-      CamRectifier[i_cam]= &DummyRectify;
+      CamRectifier[i_cam].Setup(info.K, info.D, info.R, size_in, info.Alpha, size_out);
     }
   }
   std::cerr<<"Opened camera(s)"<<std::endl;
@@ -829,7 +817,11 @@ int main(int argc, char**argv)
   {
     std::vector<std::vector<cv::Mat> > frames(CamInfo.size());
     for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+    {
       frames[i_cam]= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[i_cam].Params().NCalibBGFrames);
+      for(int i_frame(0),i_frame_end(frames[i_cam].size()); i_frame<i_frame_end; ++i_frame)
+        Preprocess(frames[i_cam][i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
+    }
     for(int j(0),j_end(ObjDetTracker.size()); j<j_end; ++j)
       ObjDetTracker[j].CalibBG(frames[j]);
   }
@@ -855,7 +847,7 @@ int main(int argc, char**argv)
       // Capture from cameras:
       for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
       {
-        cv::Mat frame= Capture(cap[i_cam], i_cam, /*rectify=*/false, camera_auto_reopen);
+        cv::Mat frame= Capture(cap[i_cam], i_cam, camera_auto_reopen);
         if(frame.empty())  Shutdown=true;
         if(FrameSkip<=0 || f%(FrameSkip+1)==0)
         {
@@ -902,6 +894,8 @@ int main(int argc, char**argv)
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
         std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, BlobTracker[idx].Params().NCalibPoints);
+        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
+          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
         BlobTracker[idx].Calibrate(frames);
         Running= true;
       }
@@ -910,6 +904,8 @@ int main(int argc, char**argv)
         Running= false;
         int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
         std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[idx].Params().NCalibBGFrames);
+        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
+          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
         ObjDetTracker[idx].CalibBG(frames);
         Running= true;
       }

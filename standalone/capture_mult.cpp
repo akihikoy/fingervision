@@ -32,7 +32,7 @@ using namespace std;
 using namespace trick;
 //-------------------------------------------------------------------------------------------
 
-cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL)
+cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info)
 {
   cv::Mat frame;
   while(!cap.read(frame))
@@ -40,12 +40,6 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
     if(CapWaitReopen(info,cap)) continue;
     else  return cv::Mat();
   }
-  if(info.CapWidth!=info.Width || info.CapHeight!=info.Height)
-    cv::resize(frame,frame,cv::Size(info.Width,info.Height));
-  if(info.HFlip)  cv::flip(frame, frame, /*horizontal*/1);
-  Rotate90N(frame,frame,info.NRotate90);
-  if(info.Rectification && pcam_rectifier)
-    pcam_rectifier->Rectify(frame, /*border=*/cv::Scalar(0,0,0));
   return frame;
 }
 //-------------------------------------------------------------------------------------------
@@ -96,7 +90,10 @@ int main(int argc, char**argv)
   for(;;)
   {
     for(int i_cam(0),i_cam_end(cam_info.size()); i_cam<i_cam_end; ++i_cam)
-      frame[i_cam]= Capture(cap[i_cam], cam_info[i_cam], &cam_rectifier[i_cam]);
+    {
+      frame[i_cam]= Capture(cap[i_cam], cam_info[i_cam]);
+      Preprocess(frame[i_cam], cam_info[i_cam], &cam_rectifier[i_cam]);
+    }
     for(int i_cam(0),i_cam_end(cam_info.size()); i_cam<i_cam_end; ++i_cam)
     {
       vout[i_cam].Step(frame[i_cam]);

@@ -553,6 +553,21 @@ bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait, int ma
 }
 //-------------------------------------------------------------------------------------------
 
+// Apply an image pre-processing to an image according to the camera info.
+void Preprocess(cv::Mat &frame, const TCameraInfo &info, TCameraRectifier *pcam_rectifier)
+{
+  if(info.Rectification && pcam_rectifier)
+    pcam_rectifier->Rectify(frame, /*border=*/cv::Scalar(0,0,0));
+  if(info.CapWidth!=info.Width || info.CapHeight!=info.Height)
+    cv::resize(frame,frame,cv::Size(info.Width,info.Height));
+  if(info.CropRect.x>=0 && info.CropRect.y>=0 && info.CropRect.width>=0 && info.CropRect.height>=0)
+    frame= frame(cv::Rect(info.CropRect));
+  if(info.HFlip)  cv::flip(frame, frame, /*horizontal*/1);
+  if(info.NRotate90!=0)  Rotate90N(frame,frame,info.NRotate90);
+}
+//-------------------------------------------------------------------------------------------
+
+
 void Print(const std::vector<TCameraInfo> &cam_info)
 {
   int i(0);
@@ -565,10 +580,11 @@ void Print(const std::vector<TCameraInfo> &cam_info)
     PROC_VAR(Height      );
     PROC_VAR(FPS         );
     PROC_VAR(PixelFormat );
-    PROC_VAR(HFlip       );
-    PROC_VAR(NRotate90   );
     PROC_VAR(CapWidth    );
     PROC_VAR(CapHeight   );
+    PROC_VAR(CropRect    );
+    PROC_VAR(HFlip       );
+    PROC_VAR(NRotate90   );
     PROC_VAR(Name        );
     PROC_VAR(Rectification);
     PROC_VAR(Alpha        );
@@ -785,10 +801,11 @@ void write(cv::FileStorage &fs, const cv::String&, const trick::TCameraInfo &x)
   PROC_VAR(Height      );
   PROC_VAR(FPS         );
   PROC_VAR(PixelFormat );
-  PROC_VAR(HFlip       );
-  PROC_VAR(NRotate90   );
   PROC_VAR(CapWidth    );
   PROC_VAR(CapHeight   );
+  PROC_VAR(CropRect    );
+  PROC_VAR(HFlip       );
+  PROC_VAR(NRotate90   );
   PROC_VAR(Name        );
   PROC_VAR(Rectification);
   PROC_VAR(Alpha        );
@@ -807,10 +824,11 @@ void read(const cv::FileNode &data, trick::TCameraInfo &x, const trick::TCameraI
   PROC_VAR(Height      );
   PROC_VAR(FPS         );
   PROC_VAR(PixelFormat );
-  PROC_VAR(HFlip       );
-  PROC_VAR(NRotate90   );
   PROC_VAR(CapWidth    );
   PROC_VAR(CapHeight   );
+  PROC_VAR(CropRect    );
+  PROC_VAR(HFlip       );
+  PROC_VAR(NRotate90   );
   PROC_VAR(Name        );
   PROC_VAR(Rectification);
   PROC_VAR(Alpha        );

@@ -21,6 +21,70 @@ namespace trick
 {
 //-------------------------------------------------------------------------------------------
 
+// Access functions to an element of a cv::Vec, cv::Point, or cv::Point3_ with the same interface.
+template<typename value_type, int N>
+inline value_type& VecElem(cv::Vec<value_type,N> &v, int idx)  {return v(idx);}
+template<typename value_type, int N>
+inline const value_type& VecElem(const cv::Vec<value_type,N> &v, int idx)  {return v(idx);}
+template<typename value_type>
+inline value_type& VecElem(cv::Point_<value_type> &v, int idx)
+{
+  switch(idx)
+  {
+    case 0:  return v.x;
+    case 1:  return v.y;
+  }
+  throw;
+}
+template<typename value_type>
+inline const value_type& VecElem(const cv::Point_<value_type> &v, int idx)
+{
+  switch(idx)
+  {
+    case 0:  return v.x;
+    case 1:  return v.y;
+  }
+  throw;
+}
+template<typename value_type>
+inline value_type& VecElem(cv::Point3_<value_type> &v, int idx)
+{
+  switch(idx)
+  {
+    case 0:  return v.x;
+    case 1:  return v.y;
+    case 2:  return v.z;
+  }
+  throw;
+}
+template<typename value_type>
+inline const value_type& VecElem(const cv::Point3_<value_type> &v, int idx)
+{
+  switch(idx)
+  {
+    case 0:  return v.x;
+    case 1:  return v.y;
+    case 2:  return v.z;
+  }
+  throw;
+}
+//-------------------------------------------------------------------------------------------
+
+inline std::string GetPixelVal(const cv::Mat &m, int x, int y)
+{
+  std::stringstream ss;
+  if(m.type()==CV_8UC1)        ss<<(int)m.at<unsigned char>(y,x);
+  else if(m.type()==CV_8SC1)   ss<<(int)m.at<char>(y,x);
+  else if(m.type()==CV_8UC3)   ss<<m.at<cv::Vec3b>(y,x);
+  else if(m.type()==CV_16UC1)  ss<<m.at<unsigned short>(y,x);
+  else if(m.type()==CV_16SC1)  ss<<m.at<short>(y,x);
+  else if(m.type()==CV_32FC1)  ss<<m.at<float>(y,x);
+  else if(m.type()==CV_32FC3)  ss<<m.at<cv::Vec3f>(y,x);
+  else  ss<<"unknown type";
+  return ss.str();
+}
+//-------------------------------------------------------------------------------------------
+
 inline float Dist(const cv::Point2f &p, const cv::Point2f &q)
 {
   cv::Point2f d= p-q;
@@ -89,6 +153,95 @@ inline cv::Mat ColorMask(cv::Mat mask, const cv::Scalar &col)
 }
 //-------------------------------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------------------------------
+// 3D camera geometry utility.
+//-------------------------------------------------------------------------------------------
+
+// Get a projection matrix for resized image.
+inline void GetProjMatForResizedImg(const cv::Mat &proj_mat, const double &resize_ratio, cv::Mat &proj_mat_s)
+{
+  proj_mat_s= resize_ratio*proj_mat;
+  proj_mat_s.at<double>(2,2)= 1.0;
+}
+//-------------------------------------------------------------------------------------------
+
+/*
+Project 3D point to an image plane.
+We assume a project matrix:
+        [[Fx  0  Cx]
+    P =  [ 0  Fy Cy]
+         [ 0  0   1]]
+Camera is at [0,0,0] and the image plane is z=1.
+  A 3D point [xc,yc,zc]^T is projected onto an image plane [xp,yp] by:
+    [u,v,w]^T= P * [xc,yc,zc]^T
+    xp= u/w
+    yp= v/w '''
+*/
+template<typename t_vec3d, typename t_vec2d>
+inline void ProjectPointToImage(
+    const t_vec3d &pt3d,
+    const cv::Mat &proj_mat,
+    t_vec2d &pt2d /*zmin=0.001*/)
+{
+  // if(VecElem(pt3d,2)<zmin)  return None;
+  const double &Fx= proj_mat.at<double>(0,0);
+  const double &Fy= proj_mat.at<double>(1,1);
+  const double &Cx= proj_mat.at<double>(0,2);
+  const double &Cy= proj_mat.at<double>(1,2);
+  VecElem(pt2d,0)= (Fx*VecElem(pt3d,0)+Cx*VecElem(pt3d,2))/VecElem(pt3d,2);
+  VecElem(pt2d,1)= (Fy*VecElem(pt3d,1)+Cy*VecElem(pt3d,2))/VecElem(pt3d,2);
+}
+//-------------------------------------------------------------------------------------------
+
+// ProjectPointToImage for multiple input points pts3d (3D in camera frame).
+template<typename t_vec3d, typename t_vec2d>
+void ProjectPointToImageList(
+    const std::vector<t_vec3d> &pts3d,
+    const cv::Mat &proj_mat,
+    std::vector<t_vec2d> &pts2d /*zmin=0.001*/)
+{
+  // if(any(pts3d[:,2]<zmin))  return None
+  pts2d.resize(pts3d.size());
+  typename std::vector<t_vec2d>::iterator itr_pt2d(pts2d.begin());
+  for(typename std::vector<t_vec3d>::const_iterator itr_pt3d(pts3d.begin()),itr_pt3d_end(pts3d.end());
+      itr_pt3d!=itr_pt3d_end; ++itr_pt3d,++itr_pt2d)
+    ProjectPointToImage(*itr_pt3d, proj_mat, *itr_pt2d /*zmin*/);
+}
+//-------------------------------------------------------------------------------------------
+
+inline bool IsValidDepth(int d, int d_max=10000)
+{
+  if(d>0 && d<=d_max)  return true;
+  return false;
+}
+//-------------------------------------------------------------------------------------------
+
+inline bool IsInvalidDepth(int d, int d_max=10000)
+{
+  if(d<=0 || d>d_max)  return true;
+  return false;
+}
+//-------------------------------------------------------------------------------------------
+
+// Transform a point on an image to a 3D point.
+template<typename t_img_depth>
+inline cv::Vec3f ImgPointTo3D(int u, int v, const t_img_depth &depth, const cv::Mat &proj_mat)
+{
+  const double &Fx= proj_mat.at<double>(0,0);
+  const double &Fy= proj_mat.at<double>(1,1);
+  const double &Cx= proj_mat.at<double>(0,2);
+  const double &Cy= proj_mat.at<double>(1,2);
+  const double d= depth * 0.001;
+  return cv::Vec3f((u-Cx)/Fx*d, (v-Cy)/Fy*d, d);
+}
+//-------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------
+
+
+
 bool OpenVideoOut(cv::VideoWriter &vout, const char *file_name, int fps, const cv::Size &size);
 //-------------------------------------------------------------------------------------------
 
@@ -148,6 +301,39 @@ private:
 };
 //-------------------------------------------------------------------------------------------
 
+// Since read and write for std::vector<T> is problematic in OpenCV 3.x, we define an alternative.
+template<typename T>
+void vec_read(const cv::FileNode& node, T &x, const T &x_default=T())
+{
+  cv::read(node,x,x_default);
+}
+template<typename T>
+void vec_read(const cv::FileNode& node, std::vector<T> &x, const std::vector<T> &x_default=std::vector<T>())
+{
+  x.clear();
+  for(cv::FileNodeIterator itr(node.begin()),itr_end(node.end()); itr!=itr_end; ++itr)
+  {
+    T y;
+    vec_read(*itr,y);
+    x.push_back(y);
+  }
+}
+template<typename T>
+void vec_write(cv::FileStorage &fs, const cv::String&, const T &x)
+{
+  cv::write(fs,"",x);
+}
+template<typename T>
+void vec_write(cv::FileStorage &fs, const cv::String&, const std::vector<T> &x)
+{
+  fs<<"[";
+  for(typename std::vector<T >::const_iterator itr(x.begin()),end(x.end());itr!=end;++itr)
+  {
+    vec_write(fs,"",*itr);
+  }
+  fs<<"]";
+}
+//-------------------------------------------------------------------------------------------
 // NOTE: kp_write and kp_read are different from write and read in OpenCV 3.4+ for KeyPoint.
 void kp_write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
 void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
@@ -161,9 +347,10 @@ struct TCameraInfo
   int Width, Height;  // Image size
   int FPS;  // Video frame rate
   std::string PixelFormat;  // Video codec (e.g. MJPG, YUYV)
+  int CapWidth, CapHeight;  // Capture size (if zero, Width/Height is used; if not zero, captured image is resized to (Width,Height))
+  cv::Rect CropRect;  // Crop the image after resizing to Width,Height. Disabled if one of them is negative.
   int HFlip;  // Whether flip image (horizontally), applied before NRotate90
   int NRotate90;  // Number of 90-deg rotations
-  int CapWidth, CapHeight;  // Capture size (if zero, Width/Height is used; if not zero, captured image is resized to (Width,Height))
   std::string Name;
   int Rectification;  // Whether rectify image or not
   double Alpha;     // Scaling factor
@@ -171,13 +358,17 @@ struct TCameraInfo
   TCameraInfo()
       : DevID("0"),
         Width(0), Height(0), FPS(0),
-        HFlip(0), NRotate90(0),
         CapWidth(0), CapHeight(0),
+        CropRect(-1,-1,-1,-1),
+        HFlip(0), NRotate90(0),
         Rectification(0), Alpha(1.0) {}
 };
 //-------------------------------------------------------------------------------------------
 bool CapOpen(TCameraInfo &info, cv::VideoCapture &cap);
 bool CapWaitReopen(TCameraInfo &info, cv::VideoCapture &cap, int ms_wait=1000, int max_count=0, bool(*check_to_stop)(void)=NULL);
+struct TCameraRectifier;
+// Apply an image pre-processing to an image according to the camera info.
+void Preprocess(cv::Mat &frame, const TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL);
 void Print(const std::vector<TCameraInfo> &cam_info);
 void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name);
 void ReadFromYAML(std::vector<TCameraInfo> &cam_info, const std::string &file_name);

@@ -46,7 +46,7 @@ using namespace std;
 using namespace trick;
 //-------------------------------------------------------------------------------------------
 
-cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL)
+cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info)
 {
   cv::Mat frame;
   while(!cap.read(frame))
@@ -54,12 +54,6 @@ cv::Mat Capture(cv::VideoCapture &cap, TCameraInfo &info, TCameraRectifier *pcam
     if(CapWaitReopen(info,cap)) continue;
     else  return cv::Mat();
   }
-  if(info.CapWidth!=info.Width || info.CapHeight!=info.Height)
-    cv::resize(frame,frame,cv::Size(info.Width,info.Height));
-  if(info.HFlip)  cv::flip(frame, frame, /*horizontal*/1);
-  Rotate90N(frame,frame,info.NRotate90);
-  if(info.Rectification && pcam_rectifier)
-    pcam_rectifier->Rectify(frame, /*border=*/cv::Scalar(0,0,0));
   return frame;
 }
 //-------------------------------------------------------------------------------------------
@@ -154,8 +148,9 @@ int main(int argc, char**argv)
       init_request= false;
     }
 
-    frame= Capture(cap, cam_info[0], &cam_rectifier);
+    frame= Capture(cap, cam_info[0]);
     vout_orig.Step(frame);
+    Preprocess(frame, cam_info[0], &cam_rectifier);
 
     tracker.Step(frame);
     frame*= dim_levels[dim_idx];
@@ -203,7 +198,10 @@ int main(int argc, char**argv)
     {
       std::vector<cv::Mat> frames;
       for(int i(0); i<tracker.Params().NCalibPoints; ++i)
-        frames.push_back(Capture(cap, cam_info[0], &cam_rectifier));
+      {
+        frames.push_back(Capture(cap, cam_info[0]));
+        Preprocess(frames.back(), cam_info[0], &cam_rectifier);
+      }
       tracker.Calibrate(frames);
       calib_request= false;
     }
