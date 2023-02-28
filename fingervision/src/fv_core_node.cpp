@@ -15,10 +15,6 @@
 #include "ay_vision/vision_util.h"
 #include "ay_cpp/geom_util.h"
 #include "ay_cpp/sys_util.h"
-#ifdef WITH_STEREO
-  #include "ay_vision/usb_stereo.h"
-  #include "ay_3dvision/pcl_util.h"
-#endif
 //-------------------------------------------------------------------------------------------
 #include "fingervision_msgs/BlobMoves.h"
 #include "fingervision_msgs/ProxVision.h"
@@ -126,12 +122,6 @@ enum {
 double DimLevels[]={0.0,0.3,0.7,1.0};
 int DimIdxBT(3),DimIdxPV(1);
 
-#ifdef WITH_STEREO
-std::vector<TStereoInfo> StereoInfo;
-std::vector<TStereo> Stereo;  // Standard stereo
-std::vector<TStereo> StereoB;  // Stereo for blob
-std::vector<ros::Publisher> CloudPub;
-#endif
 }
 //-------------------------------------------------------------------------------------------
 using namespace std;
@@ -351,12 +341,6 @@ bool StopRecord(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 
 void SetVideoPrefix(const std::string &file_prefix)
 {
-  #ifdef WITH_STEREO
-  for(int j(0),j_end(Stereo.size());j<j_end;++j)
-  {
-    VideoOut[info.Name].SetfilePrefix(file_prefix+info.Name);
-  }
-  #endif
   for(int j(0),j_end(CamInfo.size());j<j_end;++j)
   {
     VideoOut[BlobTracker[j].Name].SetfilePrefix(file_prefix+BlobTracker[j].Name);
@@ -440,57 +424,6 @@ bool ClearObj(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
     ObjDetTracker[j].ClearObject();
   return true;
 }
-//-------------------------------------------------------------------------------------------
-
-#ifdef WITH_STEREO
-// Get point cloud by stereo
-void ExecStereo(int i_stereo)
-{
-  TStereo &stereo(Stereo[i_stereo]);
-  TStereoInfo &info(StereoInfo[i_stereo]);
-  cv::Mat frame[2];
-  cv::Mat disparity;
-  ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
-  while(!Shutdown)
-  {
-    if(Running)
-    {
-      if(TargetFPS>0.0)  rate.sleep();
-      {
-        boost::mutex::scoped_lock lock1(*MutFrameCopy[info.CamL]);
-        boost::mutex::scoped_lock lock2(*MutFrameCopy[info.CamR]);
-        Frame[info.CamL].copyTo(frame[0]);
-        Frame[info.CamR].copyTo(frame[1]);
-      }
-      stereo.Proc(frame[0],frame[1]);
-      cv::normalize(stereo.Disparity(), disparity, 0, 255, CV_MINMAX, CV_8U);
-
-      // 1:show, 0:hide; order=color1,color2,stereo1,stereo2,disparity,flow1,flow2
-      // if(ImgWin[2]=='1')  cv::imshow("stereo_frame_l", stereo.FrameL());
-      // if(ImgWin[3]=='1')  cv::imshow("stereo_frame_r", stereo.FrameR());
-      // if(ImgWin[4]=='1')  cv::imshow("stereo_disparity", disparity);
-      {
-        // cv::imshow(info.Name, disparity);
-        boost::mutex::scoped_lock lock(*IMShowStuff[info.Name].Mutex);
-        disparity.copyTo(IMShowStuff[info.Name].Frame);
-      }
-
-      // Publish as point cloud.
-      stereo.ReprojectTo3D();
-      sensor_msgs::PointCloud2 cloud_msg;
-      ConvertPointCloudToROSMsg<pcl::PointXYZRGB>(cloud_msg,
-          ConvertXYZImageToPointCloud(stereo.XYZ(),stereo.RGB()),
-          /*frame_id=*/CamInfo[info.CamL].Name);
-      CloudPub[i_stereo].publish(cloud_msg);
-      // usleep(10*1000);
-    }  // Running
-    else
-    {
-      usleep(200*1000);
-    }
-  }
-}
-#endif // WITH_STEREO
 //-------------------------------------------------------------------------------------------
 
 void ExecBlobTrack(int i_cam)
@@ -784,13 +717,6 @@ int main(int argc, char**argv)
   ReadFromYAML(objdettrack_info, CheckYAMLExistence(pkg_dir+"/"+objdettrack_config));
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
 
-  #ifdef WITH_STEREO
-  std::string stereo_config("config/cam1.yaml");
-  node.param("stereo_config",stereo_config,stereo_config);
-  std::cerr<<"stereo_config: "<<stereo_config<<std::endl;
-  ReadFromYAML(StereoInfo, CheckYAMLExistence(pkg_dir+"/"+stereo_config));
-  #endif
-
   std::vector<cv::VideoCapture> cap(CamInfo.size());
   SingleCamRectifier.resize(CamInfo.size());
   CamRectifier.resize(CamInfo.size());
@@ -817,40 +743,6 @@ int main(int argc, char**argv)
     }
   }
   std::cerr<<"Opened camera(s)"<<std::endl;
-
-  #ifdef WITH_STEREO
-  Stereo.resize(StereoInfo.size());
-  StereoB.resize(StereoInfo.size());
-  for(int j(0),j_end(Stereo.size());j<j_end;++j)
-  {
-    const TStereoInfo &info(StereoInfo[j]);
-    Stereo[j].LoadCameraParametersFromYAML(pkg_dir+"/"+info.StereoParam);
-    Stereo[j].SetImageSize(
-        cv::Size(CamInfo[info.CamL].Width,CamInfo[info.CamL].Height),
-        cv::Size(info.Width,info.Height) );
-    Stereo[j].SetRecommendedStereoParams();
-    Stereo[j].LoadConfigurationsFromYAML(pkg_dir+"/"+info.StereoConfig);
-    Stereo[j].Init();
-    WindowInfo[info.Name]= TWindowInfo(-1, "Stereo", j);
-    if(!WindowsHidden)
-    {
-      cv::namedWindow(info.Name,1);
-      cv::setMouseCallback(info.Name, OnMouse, const_cast<std::string*>(&info.Name));
-    }
-    IMShowStuff[info.Name].Mutex= boost::shared_ptr<boost::mutex>(new boost::mutex);
-    ShowTrackbars[info.Name].Kind= "Stereo";
-
-    StereoB[j].LoadCameraParametersFromYAML(pkg_dir+"/"+info.StereoParam);
-    StereoB[j].SetImageSize(
-        cv::Size(CamInfo[info.CamL].Width,CamInfo[info.CamL].Height),
-        cv::Size(CamInfo[info.CamL].Width,CamInfo[info.CamL].Height) );
-    StereoB[j].SetRecommendedStereoParams();
-    StereoB[j].LoadConfigurationsFromYAML(pkg_dir+"/"+info.StereoConfig);
-    StereoB[j].Init();
-    CamRectifier[info.CamL]= boost::bind(&TStereo::RectifyL, StereoB[j], _1, /*gray_scale=*/false);
-    CamRectifier[info.CamR]= boost::bind(&TStereo::RectifyR, StereoB[j], _1, /*gray_scale=*/false);
-  }
-  #endif
 
   BlobTracker.resize(CamInfo.size());
   for(int j(0),j_end(CamInfo.size());j<j_end;++j)
@@ -887,12 +779,6 @@ int main(int argc, char**argv)
   }
 
   SetVideoPrefix(vout_base);
-
-  #ifdef WITH_STEREO
-  CloudPub.resize(Stereo.size());
-  for(int j(0),j_end(Stereo.size());j<j_end;++j)
-    CloudPub[j]= node.advertise<sensor_msgs::PointCloud2>(ros::this_node::getNamespace()+"/"+StereoInfo[j].Name+"/point_cloud", 1);
-  #endif
 
   BlobPub.resize(BlobTracker.size());
   for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
@@ -960,12 +846,6 @@ int main(int argc, char**argv)
   if(publish_image)
     for(int j(0),j_end(CamInfo.size());j<j_end;++j)
       th_imgpub.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecImgPublisher,j))));
-
-  #ifdef WITH_STEREO
-  std::vector<boost::shared_ptr<boost::thread> > th_stereo;
-  for(int j(0),j_end(StereoInfo.size());j<j_end;++j)
-    th_stereo.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecStereo,j))));
-  #endif
 
   ros::Rate rate(CaptureFPS>0.0?CaptureFPS:1);
   for(int f(0);!IsShutdown();++f)
@@ -1063,10 +943,6 @@ int main(int argc, char**argv)
   if(publish_image)
     for(int j(0),j_end(th_imgpub.size());j<j_end;++j)
       th_imgpub[j]->join();
-  #ifdef WITH_STEREO
-  for(int j(0),j_end(th_stereo.size());j<j_end;++j)
-    th_stereo[j]->join();
-  #endif
 
   usleep(500*1000);
 
