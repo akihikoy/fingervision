@@ -68,6 +68,8 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
   NumModel= 5         ;  // Number of object models to be maintained.
   NumFramesInHist= 200;  // Number of frames to make an object histogram.
 
+  NoNewModel= false;  // Even when ModeDetect==True, object models are not added if their number is NumModel.
+
   BackProjScale= 5.0;  // Scale parameter of calcBackProject
 
   // Object tracking parameters
@@ -90,7 +92,6 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
   {
     fs<<"{";
     #define PROC_VAR(x)  fs<<#x<<itr->x;
-  // Resize image for speed up
     PROC_VAR(Width              );
     PROC_VAR(Height             );
     PROC_VAR(ThreshBlkH         );
@@ -107,6 +108,7 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
     PROC_VAR(NumFramesInHist    );
+    PROC_VAR(NoNewModel         );
     PROC_VAR(BackProjScale      );
     PROC_VAR(NThreshold2        );
     PROC_VAR(NErode2            );
@@ -154,6 +156,7 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
     PROC_VAR(NumFramesInHist    );
+    PROC_VAR(NoNewModel         );
     PROC_VAR(BackProjScale      );
     PROC_VAR(NThreshold2        );
     PROC_VAR(NErode2            );
@@ -215,25 +218,35 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
     cv::calcHist(&frame_hsv, 1, channels, mask_bser_, hist_tmp, n_channels, hist_size, ranges, true, false);
 
     // Add/delete model
-    int interval= params_.NumFramesInHist / params_.NumModel;
-    if(hist_obj_.size()==0 || i_frame_%interval==0)
+    if(params_.NoNewModel && int(hist_obj_.size())==params_.NumModel)
     {
-      cv::Mat hist(n_channels, hist_size, hist_tmp.type());
-      hist.setTo(0);
-      hist_obj_.push_front(hist);
-      if(int(hist_obj_.size()) > params_.NumModel)  hist_obj_.pop_back();
+      // No more new models are added to hist_obj_
+    }
+    else
+    {
+      int interval= params_.NumFramesInHist / params_.NumModel;
+      if(hist_obj_.size()==0 || i_frame_%interval==0)
+      {
+        cv::Mat hist(n_channels, hist_size, hist_tmp.type());
+        hist.setTo(0);
+        hist_obj_.push_front(hist);
+        if(int(hist_obj_.size()) > params_.NumModel)  hist_obj_.pop_back();
+      }
     }
     // Update model
-    for(std::list<cv::Mat>::iterator ho_itr(hist_obj_.begin()),ho_itr_end(hist_obj_.end());
-        ho_itr!=ho_itr_end; ++ho_itr)
+    if(params_.Fgain>0.0)
     {
-      cv::Mat &hist(*ho_itr);
-      // Add current histogram to the model, and
-      // Normalize the histogram
-      for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
+      for(std::list<cv::Mat>::iterator ho_itr(hist_obj_.begin()),ho_itr_end(hist_obj_.end());
+          ho_itr!=ho_itr_end; ++ho_itr)
       {
-        hist.at<float>(h,s,v)+= params_.Fgain*std::max(0.0f,hist_tmp.at<float>(h,s,v)-params_.Fbg*hist_bg_.at<float>(h,s,v));
-        if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
+        cv::Mat &hist(*ho_itr);
+        // Add current histogram to the model, and
+        // Normalize the histogram
+        for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
+        {
+          hist.at<float>(h,s,v)+= params_.Fgain*std::max(0.0f,hist_tmp.at<float>(h,s,v)-params_.Fbg*hist_bg_.at<float>(h,s,v));
+          if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
+        }
       }
     }
   }
@@ -424,6 +437,45 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
 }
 //-------------------------------------------------------------------------------------------
 
+void TObjDetTrackBSP::SaveBGObjModels(const std::string &file_name) const
+{
+  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  fs<<"BackgroundModel"<<hist_bg_;
+
+  fs<<"ObjectModel"<<"[";
+  for(std::list<cv::Mat>::const_iterator itr(hist_obj_.begin()),itr_end(hist_obj_.end()); itr!=itr_end; ++itr)
+  {
+    fs<<(*itr);
+  }
+  fs<<"]";
+  fs.release();
+}
+//-------------------------------------------------------------------------------------------
+
+void TObjDetTrackBSP::LoadBGObjModels(const std::string &file_name)
+{
+  hist_bg_.release();
+  hist_obj_.clear();
+  cv::FileStorage fs(file_name, cv::FileStorage::READ);
+  cv::FileNode data;
+  data= fs["BackgroundModel"];
+  if(!data.empty())  data>>hist_bg_;
+
+  data= fs["ObjectModel"];
+  if(!data.empty())
+  {
+    for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
+    {
+      cv::Mat obj;
+      (*itr)>>obj;
+      hist_obj_.push_back(obj);
+    }
+  }
+  fs.release();
+}
+//-------------------------------------------------------------------------------------------
+
+
 
 //-------------------------------------------------------------------------------------------
 // Utility
@@ -434,13 +486,36 @@ void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &para
   const std::string &win(window_name);
   if(trackbar_mode==1)
   {
-    CreateTrackbar<float>("History:", win, &params.BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkH:", win, &params.ThreshBlkH, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkS:", win, &params.ThreshBlkS, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkV:", win, &params.ThreshBlkV, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("BS_History:", win, &params.BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("BS_VarThreshold:", win, &params.BS_VarThreshold, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<bool>("BS_DetectShadows:", win, &params.BS_DetectShadows, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==2)
+  {
+    CreateTrackbar<int>("NErode1:",   win, &params.NErode1,     0, 10, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("BinsH:",   win, &params.BinsH,     0, 100, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("BinsS:",   win, &params.BinsS,     0, 100, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("BinsV:",   win, &params.BinsV,     0, 100, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fbg:",     win, &params.Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fgain:",   win, &params.Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("N-Erode(1):",   win, &params.NErode1,     0, 10, 1, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("N-Erode(2):",   win, &params.NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("N-Dilate(2):",  win, &params.NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("Threshold(2):", win, &params.NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NumModel:",   win, &params.NumModel, 0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NumFramesInHist:", win, &params.NumFramesInHist, 0, 1000, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<bool>("NoNewModel:", win, &params.NoNewModel, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==3)
+  {
+    CreateTrackbar<double>("BackProjScale:", win, &params.BackProjScale, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NErode2:",   win, &params.NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NDilate2:",  win, &params.NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NThreshold2:", win, &params.NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("NCalibBGFrames:", win, &params.NCalibBGFrames, 0, 50, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ObjSW:", win, &params.ObjSW, 0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ObjSH:", win, &params.ObjSH, 0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("MvSW:", win, &params.MvSW, 0, 20, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("MvSH:", win, &params.MvSH, 0, 20, 1, &TrackbarPrintOnTrack);
   }
   else
   {

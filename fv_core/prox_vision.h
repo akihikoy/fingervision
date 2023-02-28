@@ -54,6 +54,8 @@ struct TObjDetTrackBSPParams
   int NumModel;         // Number of object models to be maintained.
   int NumFramesInHist;  // Number of frames to make an object histogram.
 
+  bool NoNewModel;  // Even when ModeDetect==True, object models are not added if their number is NumModel.
+
   // Back-projection parameters
   double BackProjScale;  // Scale parameter of calcBackProject
 
@@ -103,6 +105,9 @@ public:
   bool ModeDetect() const {return mode_detect_;}
 
   void ClearObject()  {hist_obj_.clear();}
+
+  void SaveBGObjModels(const std::string &file_name) const;
+  void LoadBGObjModels(const std::string &file_name);
 
   TObjDetTrackBSPParams& Params()  {return params_;}
   const TObjDetTrackBSPParams& Params() const {return params_;}

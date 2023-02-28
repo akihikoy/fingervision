@@ -68,6 +68,7 @@ double TargetFPS(0);  // 0: no FPS control
 double CaptureFPS(0);  // 0: no FPS control
 
 std::string BlobCalibPrefix("blob_");
+std::string ObjDetModelPrefix("objdet_");
 std::vector<TCameraInfo> CamInfo;
 std::vector<TBlobTracker2> BlobTracker;  // Marker tracker
 std::vector<TObjDetTrackBSP> ObjDetTracker;  // Proximity vision
@@ -210,6 +211,10 @@ bool HandleKeyEvent()
   {
     CalibrationRequest= true;
   }
+  else if(c=='i')
+  {
+    TrackerInitRequest= true;
+  }
   else if(c=='p' || c=='P')
   {
     if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
@@ -257,6 +262,12 @@ bool HandleKeyEvent()
       BlobTracker[idx].SaveCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
       std::cerr<<"Saved calibration data of "<<BlobTracker[idx].Name<<" to "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
+    else if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+      ObjDetTracker[idx].SaveBGObjModels(ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml");
+      std::cerr<<"Saved BG+Object models of "<<ObjDetTracker[idx].Name<<" to "<<ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
+    }
   }
   else if(c=='l')
   {
@@ -265,6 +276,12 @@ bool HandleKeyEvent()
       int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
       BlobTracker[idx].LoadCalib(BlobCalibPrefix+CamInfo[i_cam].Name+".yaml");
       std::cerr<<"Loaded calibration data of "<<BlobTracker[idx].Name<<" from "<<BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
+    }
+    else if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
+    {
+      int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
+      ObjDetTracker[idx].LoadBGObjModels(ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml");
+      std::cerr<<"Loaded BG+Object models of "<<ObjDetTracker[idx].Name<<" from "<<ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml"<<std::endl;
     }
   }
   else if(c=='C' && CurrentWin!=NULL && !WindowsHidden)
@@ -684,14 +701,16 @@ int main(int argc, char**argv)
   std::string blobtrack_config("config/cam1.yaml");
   std::string objdettrack_config("config/cam1.yaml");
   std::string blob_calib_prefix("blob_");
+  std::string objdet_model_prefix("objdet_");
   std::string vout_base("/tmp/vout-");
-  bool camera_auto_reopen(true), publish_image(false);
+  bool camera_auto_reopen(true), publish_image(false), initial_obj_detect(true);
 
   node.param("pkg_dir",pkg_dir,pkg_dir);
   node.param("cam_config",cam_config,cam_config);
   node.param("blobtrack_config",blobtrack_config,blobtrack_config);
   node.param("objdettrack_config",objdettrack_config,objdettrack_config);
   node.param("blob_calib_prefix",blob_calib_prefix,blob_calib_prefix);
+  node.param("objdet_model_prefix",objdet_model_prefix,objdet_model_prefix);
   node.param("vout_base",vout_base,vout_base);
   node.param("frame_skip",FrameSkip,FrameSkip);
   node.param("target_fps",TargetFPS,TargetFPS);
@@ -699,11 +718,13 @@ int main(int argc, char**argv)
   node.param("camera_auto_reopen",camera_auto_reopen,camera_auto_reopen);
   node.param("windows_hidden",WindowsHidden,WindowsHidden);
   node.param("publish_image",publish_image,publish_image);
+  node.param("initial_obj_detect",initial_obj_detect,initial_obj_detect);
   std::cerr<<"pkg_dir: "<<pkg_dir<<std::endl;
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
   std::cerr<<"blobtrack_config: "<<blobtrack_config<<std::endl;
   std::cerr<<"objdettrack_config: "<<objdettrack_config<<std::endl;
   std::cerr<<"blob_calib_prefix: "<<blob_calib_prefix<<std::endl;
+  std::cerr<<"objdet_model_prefix: "<<objdet_model_prefix<<std::endl;
 
   std::vector<TBlobTracker2Params> blobtrack_info;
   std::vector<TObjDetTrackBSPParams> objdettrack_info;
@@ -711,6 +732,7 @@ int main(int argc, char**argv)
   ReadFromYAML(blobtrack_info, CheckYAMLExistence(pkg_dir+"/"+blobtrack_config));
   ReadFromYAML(objdettrack_info, CheckYAMLExistence(pkg_dir+"/"+objdettrack_config));
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
+  ObjDetModelPrefix= pkg_dir+"/"+objdet_model_prefix;
 
   std::vector<cv::VideoCapture> cap(CamInfo.size());
   CamRectifier.resize(CamInfo.size());
@@ -751,11 +773,19 @@ int main(int argc, char**argv)
   }
 
   ObjDetTracker.resize(objdettrack_info.size());
+  bool objdet_model_loaded(false);
   for(int j(0),j_end(objdettrack_info.size());j<j_end;++j)
   {
     ObjDetTracker[j].Name= CamInfo[j].Name+"-pxv";
     ObjDetTracker[j].Params()= objdettrack_info[j];
     ObjDetTracker[j].Init();
+    if(initial_obj_detect)  ObjDetTracker[j].StartDetect();
+    else                    ObjDetTracker[j].StopDetect();
+    if(FileExists(ObjDetModelPrefix+CamInfo[j].Name+".yaml"))
+    {
+      ObjDetTracker[j].LoadBGObjModels(ObjDetModelPrefix+CamInfo[j].Name+".yaml");
+      objdet_model_loaded= true;
+    }
     WindowInfo[ObjDetTracker[j].Name]= TWindowInfo(j, "ObjDetTracker", j);
     if(!WindowsHidden)
     {
@@ -813,7 +843,7 @@ int main(int argc, char**argv)
   }
 
   // Calibrate ObjDetTracker
-  if(ObjDetTracker.size()>0)
+  if(ObjDetTracker.size()>0 && !objdet_model_loaded)
   {
     std::vector<std::vector<cv::Mat> > frames(ObjDetTracker.size());
     for(int i_cam(0), i_cam_end(ObjDetTracker.size()); i_cam<i_cam_end; ++i_cam)
