@@ -168,8 +168,8 @@ def JoyCallback(state, steps, wsteps, gsteps, data):
     state[3]= True
 
 def CtrlLoop(ct):
-  if not any((ct.gripper.Is('RobotiqNB'),ct.gripper.Is('DxlGripper'),ct.gripper.Is('RHP12RNGripper'),ct.gripper.Is('EZGripper'),ct.gripper.Is('DxlpO2Gripper'),ct.gripper.Is('DxlO3Gripper'))):
-    CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, and DxlO3Gripper.')
+  if not any((ct.gripper.Is('RobotiqNB'),ct.gripper.Is('DxlGripper'),ct.gripper.Is('RHP12RNGripper'),ct.gripper.Is('EZGripper'),ct.gripper.Is('DxlpO2Gripper'),ct.gripper.Is('DxlO3Gripper'),ct.gripper.Is('DxlpY1Gripper'))):
+    CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, DxlO3Gripper, and DxlpY1Gripper.')
     return
 
   if ct.gripper.Is('DxlGripper'):
