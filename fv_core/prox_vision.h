@@ -65,6 +65,8 @@ struct TObjDetTrackBSPParams
   int NDilate2;
 
   int NCalibBGFrames;  // Number of frames to make a background histogram.
+  int NUpDiff;  // Upper color diff of floodFill in AddToModel.
+  int NLoDiff;  // Lower color diff of floodFill in AddToModel.
 
   // Simplifying detected object and movement for easy use
   int ObjSW, ObjSH;  // Size of shrunken object data
