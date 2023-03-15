@@ -164,6 +164,7 @@ void OnMouse(int event, int x, int y, int flags, void *data)
         Frame[i_cam].copyTo(frame);
       }
       Preprocess(frame, CamInfo[i_cam], &CamRectifier[i_cam]);
+      std::cerr<<"ObjDetTracker#"<<idx<<".AddToModel: Cam#"<<i_cam<<" "<<frame.size()<<" clicked("<<x<<","<<y<<") bgr="<<frame.at<cv::Vec3b>(y,x)<<std::endl;
       ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
     }
   }

@@ -188,8 +188,8 @@ void TObjDetTrackBSP::Init()
 void TObjDetTrackBSP::Step(const cv::Mat &frame)
 {
   float h_range[]= {0, 180};
-  float s_range[]= {0, 255};
-  float v_range[]= {0, 255};
+  float s_range[]= {0, 256};
+  float v_range[]= {0, 256};
   const float* ranges[]= {h_range, s_range, v_range};
   int channels[]= {0, 1, 2}, n_channels= 3;
 
@@ -398,11 +398,13 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
   int flags= connectivity + (new_mask_val << 8 ) + cv::FLOODFILL_FIXED_RANGE + cv::FLOODFILL_MASK_ONLY;
   cv::floodFill(frame, mask, p, new_val, 0, cv::Scalar(lo,lo,lo), cv::Scalar(up,up,up), flags);
   mask= mask(cv::Range(1, mask.rows-1), cv::Range(1, mask.cols-1));
+  // std::cerr<<"AddToModel: mask: non-zero-points: "<<cv::countNonZero(mask)<<std::endl;
+  // cv::imshow("debug/mask",mask);
 
   // Get histogram
   float h_range[]= {0, 180};
-  float s_range[]= {0, 255};
-  float v_range[]= {0, 255};
+  float s_range[]= {0, 256};
+  float v_range[]= {0, 256};
   const float* ranges[]= {h_range, s_range, v_range};
   int channels[]= {0, 1, 2}, n_channels= 3;
   int hist_size[]= {params_.BinsH, params_.BinsS, params_.BinsV};
@@ -420,6 +422,8 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
   }
   cv::cvtColor(frame_s, frame_hsv, cv::COLOR_BGR2HSV);
   cv::calcHist(&frame_hsv, 1, channels, mask_s, hist_tmp, n_channels, hist_size, ranges, true, false);
+  // cv::imshow("debug/frame_hsv",frame_hsv);
+  // std::cerr<<"hist_tmp: "<<hist_tmp.size()<<std::endl;
 
   // Update model
   for(std::list<cv::Mat>::iterator ho_itr(hist_obj_.begin()),ho_itr_end(hist_obj_.end());
@@ -434,6 +438,7 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
       if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
     }
   }
+  // std::cerr<<"hist_obj_.back(): "<<hist_obj_.back().size()<<std::endl;
 }
 //-------------------------------------------------------------------------------------------
 
