@@ -208,6 +208,7 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
   cv::Mat frame_hsv, mask_nonblack;
   cv::cvtColor(frame_s, frame_hsv, cv::COLOR_BGR2HSV);
   cv::inRange(frame_hsv, cv::Scalar(0, 0, 0), cv::Scalar(params_.ThreshBlkH, params_.ThreshBlkS, params_.ThreshBlkV), mask_nonblack);
+  std::cerr<<"debug/mask_nonblack/nonzero:"<<cv::countNonZero(mask_nonblack)<<std::endl;
   mask_nonblack= 255-mask_nonblack;
 
   bkg_sbtr_->apply(frame_s, mask_bs_, 1./float(params_.BS_History));
@@ -497,9 +498,9 @@ void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &para
   const std::string &win(window_name);
   if(trackbar_mode==1)
   {
-    CreateTrackbar<int>("ThreshBlkH:", win, &params.ThreshBlkH, 0, 255, 1, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("ThreshBlkS:", win, &params.ThreshBlkS, 0, 255, 1, &TrackbarPrintOnTrack);
-    CreateTrackbar<int>("ThreshBlkV:", win, &params.ThreshBlkV, 0, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkH:", win, &params.ThreshBlkH, -1, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkS:", win, &params.ThreshBlkS, -1, 255, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<int>("ThreshBlkV:", win, &params.ThreshBlkV, -1, 255, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("BS_History:", win, &params.BS_History, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("BS_VarThreshold:", win, &params.BS_VarThreshold, 0.0, 100.0, 0.1, &TrackbarPrintOnTrack);
     CreateTrackbar<bool>("BS_DetectShadows:", win, &params.BS_DetectShadows, &TrackbarPrintOnTrack);
