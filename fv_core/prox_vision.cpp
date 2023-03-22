@@ -60,6 +60,9 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
   BinsH= 50 ;
   BinsS= 10 ;
   BinsV= 10 ;
+  // Histogram upper and lower values.
+  HistogramMax= 255.0;
+  HistogramMin= 0.0;
 
   // Object detection parameters
   Fbg= 1.0  ;  // Degree to remove background model (histogram). Larger value removes more.
@@ -79,6 +82,8 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
   NCalibBGFrames= 3;  // Number of frames to make a background histogram.
   NUpDiff= 20;  // Upper color diff of floodFill in AddToModel.
   NLoDiff= 20;  // Lower color diff of floodFill in AddToModel.
+  Fgain_Add= 1.0;  // Learning rate of AddToModel.
+  Fgain_Remove= 0.5;  // Learning rate of RemoveFromModel.
 
   // Simplifying detected object and movement for easy use
   ObjSW= 3;  ObjSH= 3;  // Size of shrunken object data
@@ -106,6 +111,8 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
     PROC_VAR(BinsH              );
     PROC_VAR(BinsS              );
     PROC_VAR(BinsV              );
+    PROC_VAR(HistogramMax       );
+    PROC_VAR(HistogramMin       );
     PROC_VAR(Fbg                );
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
@@ -118,6 +125,8 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
     PROC_VAR(NCalibBGFrames     );
     PROC_VAR(NUpDiff            );
     PROC_VAR(NLoDiff            );
+    PROC_VAR(Fgain_Add          );
+    PROC_VAR(Fgain_Remove       );
     PROC_VAR(ObjSW              );
     PROC_VAR(ObjSH              );
     PROC_VAR(MvSW               );
@@ -156,6 +165,8 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
     PROC_VAR(BinsH              );
     PROC_VAR(BinsS              );
     PROC_VAR(BinsV              );
+    PROC_VAR(HistogramMax       );
+    PROC_VAR(HistogramMin       );
     PROC_VAR(Fbg                );
     PROC_VAR(Fgain              );
     PROC_VAR(NumModel           );
@@ -168,6 +179,8 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
     PROC_VAR(NCalibBGFrames     );
     PROC_VAR(NUpDiff            );
     PROC_VAR(NLoDiff            );
+    PROC_VAR(Fgain_Add          );
+    PROC_VAR(Fgain_Remove       );
     PROC_VAR(ObjSW              );
     PROC_VAR(ObjSH              );
     PROC_VAR(MvSW               );
@@ -208,7 +221,7 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
   cv::Mat frame_hsv, mask_nonblack;
   cv::cvtColor(frame_s, frame_hsv, cv::COLOR_BGR2HSV);
   cv::inRange(frame_hsv, cv::Scalar(0, 0, 0), cv::Scalar(params_.ThreshBlkH, params_.ThreshBlkS, params_.ThreshBlkV), mask_nonblack);
-  std::cerr<<"debug/mask_nonblack/nonzero:"<<cv::countNonZero(mask_nonblack)<<std::endl;
+  // std::cerr<<"debug/mask_nonblack/nonzero:"<<cv::countNonZero(mask_nonblack)<<std::endl;
   mask_nonblack= 255-mask_nonblack;
 
   bkg_sbtr_->apply(frame_s, mask_bs_, 1./float(params_.BS_History));
@@ -251,8 +264,9 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
         // Normalize the histogram
         for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
         {
-          hist.at<float>(h,s,v)+= params_.Fgain*std::max(0.0f,hist_tmp.at<float>(h,s,v)-params_.Fbg*hist_bg_.at<float>(h,s,v));
-          if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
+          hist.at<float>(h,s,v)+= params_.Fgain*(hist_tmp.at<float>(h,s,v)-params_.Fbg*hist_bg_.at<float>(h,s,v));
+          if(hist.at<float>(h,s,v)>params_.HistogramMax)  hist.at<float>(h,s,v)= params_.HistogramMax;
+          if(hist.at<float>(h,s,v)<params_.HistogramMin)  hist.at<float>(h,s,v)= params_.HistogramMin;
         }
       }
     }
@@ -388,9 +402,10 @@ void TObjDetTrackBSP::CalibBG(const std::vector<cv::Mat> &frames)
 }
 //-------------------------------------------------------------------------------------------
 
-// Add area around a point p to the object models.
+// Add the histogram of the area around a point p to the object models.
 // The background model is NOT subtracted.
-void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
+// The added histogram is multiplied by gain.
+void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p, const float &gain)
 {
   if(hist_obj_.size()==0)  return;
 
@@ -441,8 +456,9 @@ void TObjDetTrackBSP::AddToModel(const cv::Mat &frame, const cv::Point &p)
     // Normalize the histogram
     for(int h(0);h<params_.BinsH;++h) for(int s(0);s<params_.BinsS;++s) for(int v(0);v<params_.BinsV;++v)
     {
-      hist.at<float>(h,s,v)+= hist_tmp.at<float>(h,s,v);
-      if(hist.at<float>(h,s,v)>255)  hist.at<float>(h,s,v)= 255;
+      hist.at<float>(h,s,v)+= gain*hist_tmp.at<float>(h,s,v);
+      if(hist.at<float>(h,s,v)>params_.HistogramMax)  hist.at<float>(h,s,v)= params_.HistogramMax;
+      if(hist.at<float>(h,s,v)<params_.HistogramMin)  hist.at<float>(h,s,v)= params_.HistogramMin;
     }
   }
   // std::cerr<<"hist_obj_.back(): "<<hist_obj_.back().size()<<std::endl;
@@ -511,6 +527,7 @@ void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &para
     CreateTrackbar<int>("BinsH:",   win, &params.BinsH,     1, 100, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("BinsS:",   win, &params.BinsS,     1, 100, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("BinsV:",   win, &params.BinsV,     1, 100, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("HistogramMax:", win, &params.HistogramMax, 0.0, 1000.0, 1.0, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fbg:",     win, &params.Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fgain:",   win, &params.Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NumModel:",   win, &params.NumModel, 1, 20, 1, &TrackbarPrintOnTrack);
@@ -526,6 +543,8 @@ void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &para
     CreateTrackbar<int>("NCalibBGFrames:", win, &params.NCalibBGFrames, 1, 50, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NUpDiff:", win, &params.NUpDiff, 0, 50, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NLoDiff:", win, &params.NLoDiff, 0, 50, 1, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("Fgain_Add:", win, &params.Fgain_Add, 0, 10.0, 0.01, &TrackbarPrintOnTrack);
+    CreateTrackbar<float>("Fgain_Remove:", win, &params.Fgain_Remove, 0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("ObjSW:", win, &params.ObjSW, 0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("ObjSH:", win, &params.ObjSH, 0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("MvSW:", win, &params.MvSW, 0, 20, 1, &TrackbarPrintOnTrack);

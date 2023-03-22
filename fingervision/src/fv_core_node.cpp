@@ -153,8 +153,10 @@ void OnMouse(int event, int x, int y, int flags, void *data)
     Running=!Running;
     std::cerr<<(Running?"Resume":"Pause (Hit space/R-click to resume)")<<std::endl;
   }
-  if(event == cv::EVENT_LBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
+  if((event == cv::EVENT_LBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))
+    || (event == cv::EVENT_RBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY)) )
   {
+    bool to_add= (event == cv::EVENT_LBUTTONDOWN);
     if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="ObjDetTracker")
     {
       int i_cam(WindowInfo[*CurrentWin].CamIdx), idx(WindowInfo[*CurrentWin].Index);
@@ -164,8 +166,11 @@ void OnMouse(int event, int x, int y, int flags, void *data)
         Frame[i_cam].copyTo(frame);
       }
       Preprocess(frame, CamInfo[i_cam], &CamRectifier[i_cam]);
-      std::cerr<<"ObjDetTracker#"<<idx<<".AddToModel: Cam#"<<i_cam<<" "<<frame.size()<<" clicked("<<x<<","<<y<<") bgr="<<frame.at<cv::Vec3b>(y,x)<<std::endl;
-      ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
+      std::cerr<<"ObjDetTracker#"<<idx<<".";
+      std::cerr<<(to_add ? "AddToModel" : "RemoveFromModel");
+      std::cerr<<": Cam#"<<i_cam<<" "<<frame.size()<<" clicked("<<x<<","<<y<<") bgr="<<frame.at<cv::Vec3b>(y,x)<<std::endl;
+      if(to_add)  ObjDetTracker[idx].AddToModel(frame, cv::Point(x,y));
+      else        ObjDetTracker[idx].RemoveFromModel(frame, cv::Point(x,y));
     }
   }
   if(event == cv::EVENT_RBUTTONDOWN && (flags & cv::EVENT_FLAG_SHIFTKEY))

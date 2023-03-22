@@ -46,6 +46,9 @@ struct TObjDetTrackBSPParams
   int BinsH;
   int BinsS;
   int BinsV;
+  // Histogram upper and lower values.
+  float HistogramMax;
+  float HistogramMin;
 
   // Object detection parameters
   float Fbg;    // Degree to remove background model (histogram). Larger value removes more.
@@ -67,6 +70,8 @@ struct TObjDetTrackBSPParams
   int NCalibBGFrames;  // Number of frames to make a background histogram.
   int NUpDiff;  // Upper color diff of floodFill in AddToModel.
   int NLoDiff;  // Lower color diff of floodFill in AddToModel.
+  float Fgain_Add;  // Learning rate of AddToModel.
+  float Fgain_Remove;  // Learning rate of RemoveFromModel.
 
   // Simplifying detected object and movement for easy use
   int ObjSW, ObjSH;  // Size of shrunken object data
@@ -98,9 +103,20 @@ public:
   void Draw(cv::Mat &frame);
   void CalibBG(const std::vector<cv::Mat> &frames);
 
-  // Add area around a point p to the object models.
+  // Add the histogram of the area around a point p to the object models.
   // The background model is NOT subtracted.
-  void AddToModel(const cv::Mat &frame, const cv::Point &p);
+  // The added histogram is multiplied by gain.
+  void AddToModel(const cv::Mat &frame, const cv::Point &p, const float &gain);
+
+  // Add the histogram of the area around a point p to the object models.
+  // The background model is NOT subtracted.
+  // The added histogram is multiplied by Params().Fgain_Add.
+  void AddToModel(const cv::Mat &frame, const cv::Point &p)  {AddToModel(frame, p, params_.Fgain_Add);}
+
+  // Remove the histogram of the area around a point p from the object models.
+  // The background model is NOT taken into account.
+  // The removed histogram is multiplied by Params().Fgain_Remove.
+  void RemoveFromModel(const cv::Mat &frame, const cv::Point &p)  {AddToModel(frame, p, -params_.Fgain_Remove);}
 
   void StartDetect()  {mode_detect_= true;}
   void StopDetect()   {mode_detect_= false;}
