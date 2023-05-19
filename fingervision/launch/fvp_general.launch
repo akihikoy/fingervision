@@ -8,6 +8,7 @@
   <arg name="publish_image" default="true" />
   <arg name="frame_skip" default="0" />
   <arg name="target_fps" default="0" />
+  <arg name="windows_hidden" default="false" />
 
   <arg name="normal_f_mode" default="xy_norm" />
   <arg name="filter_len" default="5" />
@@ -23,6 +24,7 @@
     <param name="publish_image" value="$(arg publish_image)" />
     <param name="frame_skip" value="$(arg frame_skip)" />
     <param name="target_fps" value="$(arg target_fps)" />
+    <param name="windows_hidden" value="$(arg windows_hidden)" />
   </node>
   <node type="fv_core_node" pkg="fingervision" name="$(arg fv2)" ns="fingervision" output="screen">
     <param name="pkg_dir" value="$(arg pkg_dir)" />
@@ -35,6 +37,7 @@
     <param name="publish_image" value="$(arg publish_image)" />
     <param name="frame_skip" value="$(arg frame_skip)" />
     <param name="target_fps" value="$(arg target_fps)" />
+    <param name="windows_hidden" value="$(arg windows_hidden)" />
   </node>
   <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1_l" ns="fingervision" output="screen">
     <param name="fv" value="$(arg fv1)" />
