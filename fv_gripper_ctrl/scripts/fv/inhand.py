@@ -8,10 +8,9 @@ import sensor_msgs.msg
 import ctrl_params
 
 '''
-In-hand manipulation.
+In-hand manipulation (pivoting).
 '''
-
-def ManipLoop(th_info, fvg):
+def Loop(fvg):
   ctrl_params.Set(fvg)
   fv_data= fvg.fv.data
 
@@ -20,7 +19,7 @@ def ManipLoop(th_info, fvg):
 
   theta0= get_theta()
   target_angle= DegToRad(20.0)
-  thread_cond= lambda: th_info.IsRunning() and not rospy.is_shutdown()
+  thread_cond= lambda: fvg.script_is_active and not rospy.is_shutdown()
   while thread_cond():
     if abs(theta0-get_theta())>target_angle:
       print 'Done! target=', RadToDeg(target_angle)
@@ -52,18 +51,3 @@ def ManipLoop(th_info, fvg):
       g_pos= fvg.gripper.Position()
 
     print RadToDeg(theta0-get_theta()), RadToDeg(get_theta())
-
-def On(fvg):
-  if 'vs_inhand' in fvg.thread_manager.thread_list:
-    print 'vs_inhand is already on'
-
-  if not fvg.fv.IsActive():
-    raise Exception('fv is not configured. Use fv.Setup beforehand.')
-
-  CPrint(1,'Turn on:','vs_inhand')
-  fvg.thread_manager.Add(name='vs_inhand', target=lambda th_info: ManipLoop(th_info,fvg))
-
-def Off(fvg):
-  CPrint(2,'Turn off:','vs_inhand')
-  fvg.thread_manager.Stop(name='vs_inhand')
-

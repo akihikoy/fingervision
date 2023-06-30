@@ -11,8 +11,7 @@ import ctrl_params
 Slip-based holding.
 Closing gripper if slip is detected.
 '''
-
-def HoldLoop(th_info, fvg):
+def Loop(fvg):
   ctrl_params.Set(fvg)
   fv_data= fvg.fv.data
   #slip_detect1= lambda: (sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>fvg.fv_ctrl_param.hold_sensitivity_slip)
@@ -28,7 +27,7 @@ def HoldLoop(th_info, fvg):
     #fvg.gripper.StartHolding()
 
   g_pos= fvg.gripper.Position()
-  while th_info.IsRunning() and not rospy.is_shutdown():
+  while fvg.script_is_active and not rospy.is_shutdown():
     if any(slip_detect2()):
       print 'slip',slip_detect2(),rospy.Time.now().to_sec()
       g_pos-= fvg.fv_ctrl_param.min_gstep
@@ -43,20 +42,3 @@ def HoldLoop(th_info, fvg):
 
   #if fvg.gripper.Is('DxlGripper'):
     #fvg.gripper.StopHolding()
-
-#Turn on a holding thread.
-def On(fvg):
-  if 'vs_hold' in fvg.thread_manager.thread_list:
-    print 'vs_hold is already on'
-
-  if not fvg.fv.IsActive():
-    raise Exception('fv is not configured. Use fv.Setup beforehand.')
-
-  CPrint(1,'Turn on:','vs_hold')
-  fvg.thread_manager.Add(name='vs_hold', target=lambda th_info: HoldLoop(th_info,fvg))
-
-#Stop a holding thread.
-def Off(fvg):
-  CPrint(2,'Turn off:','vs_hold')
-  fvg.thread_manager.Stop(name='vs_hold')
-

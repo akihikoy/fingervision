@@ -74,7 +74,7 @@ class TForceChangeDetector(object):
     return self.is_detected
 
 
-def GraspLoop(th_info, fvg):
+def Loop(fvg):
   ctrl_params.Set(fvg)
 
   force_detector= TForceChangeDetector(fvg.fv.data, th=fvg.fv_ctrl_param.grasp_th, filter_len=fvg.fv_ctrl_param.grasp_filter_len, dstate_th=fvg.fv_ctrl_param.grasp_dstate_th)
@@ -89,7 +89,7 @@ def GraspLoop(th_info, fvg):
 
   try:
     g_pos= fvg.gripper.Position()
-    while th_info.IsRunning() and not rospy.is_shutdown():
+    while fvg.script_is_active and not rospy.is_shutdown():
       if g_pos<0.001 or force_detector.IsDetected():
         print 'Done'
         break
@@ -108,20 +108,3 @@ def GraspLoop(th_info, fvg):
   finally:
     if fvg.gripper.Is('DxlGripper'):
       fvg.gripper.StopHolding()
-
-#Turn on a grasping thread.
-def On(fvg):
-  if 'vs_grasp' in fvg.thread_manager.thread_list:
-    print 'vs_grasp is already on'
-
-  if not fvg.fv.IsActive():
-    raise Exception('fv is not configured. Use fv.Setup beforehand.')
-
-  CPrint(1,'Turn on:','vs_grasp')
-  fvg.thread_manager.Add(name='vs_grasp', target=lambda th_info: GraspLoop(th_info,fvg))
-
-#Stop a grasping thread.
-def Off(fvg):
-  CPrint(2,'Turn off:','vs_grasp')
-  fvg.thread_manager.Stop(name='vs_grasp')
-

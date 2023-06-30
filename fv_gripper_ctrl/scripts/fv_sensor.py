@@ -54,14 +54,14 @@ class TFVSensor(TROSUtil):
 
   def __del__(self):
     self.Cleanup()
-    super(TFVSensor,self).__del__()
+    if TFVSensor is not None:  super(TFVSensor,self).__del__()
     print 'TFVSensor: done',self
 
   def Cleanup(self):
     self.Stop()
     for k in self.callback.keys():
       self.callback[k]= None  #We do not delete
-    super(TFVSensor,self).Cleanup()
+    if TFVSensor is not None:  super(TFVSensor,self).Cleanup()
 
   '''
   Setup the utility.
@@ -89,9 +89,7 @@ class TFVSensor(TROSUtil):
     fv_names: {fv_names}
     node_names: {node_names}'''.format(fv_names=fv_names,node_names=node_names)
 
-    if 'fv_wrench' not in self.callback:  self.callback.fv_wrench= TContainer()
     self.callback.fv_wrench= [None,None]  #Callbacks in Filter1WrenchCallback
-    if 'fv_objinfo' not in self.callback:  self.callback.fv_objinfo= TContainer()
     self.callback.fv_objinfo= [None,None]  #Callbacks in Filter1ObjInfoCallback
     l= self.data
     l.fv= 'fv'

@@ -6,11 +6,6 @@ from ay_py.ros import *
 import tf
 import sensor_msgs.msg
 import fv_sensor
-import fv.grasp
-import fv.hold
-import fv.inhand
-import fv.open
-import fv.openif
 import fingervision_msgs.msg
 import fingervision_msgs.srv
 
@@ -155,21 +150,22 @@ class TFVGripper(TROSUtil):
     self.fv= fv_sensor.TFVSensor()  #FV sensor utility.
     self.frame_id= 'base_link'
     self.fv_ctrl_param= TContainer()
-    self.thread_manager= TThreadManager()
+    self.script_is_active= False
+    self.script_thread= None
     self.viz= None
 
   def __del__(self):
     self.Cleanup()
-    super(TFVGripper,self).__del__()
+    if TFVGripper is not None:  super(TFVGripper,self).__del__()
     print 'TFVGripper: done',self
 
   def Cleanup(self):
-    self.thread_manager.StopAll()
+    self.StopScript()
     if self.gripper is not None:
       self.gripper.Cleanup()
       del self.gripper
       self.gripper= None
-    super(TFVGripper,self).Cleanup()
+    if TFVGripper is not None:  super(TFVGripper,self).Cleanup()
 
   def Setup(self, fv_names, fv_nodes, is_sim=False):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
@@ -195,6 +191,55 @@ class TFVGripper(TROSUtil):
       mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
     viz.Publish()
 
+  def LoadScript(self, script_name):
+    try:
+      mod= __import__(script_name,globals(),None,(script_name,))
+      f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
+      if f_run is None and f_loop is None:
+        print 'In script {}, both Run and Loop are not defined'.format(script_name)
+        return None,None
+      if f_run is not None and f_loop is not None:
+        print 'In script {}, both Run and Loop are defined'.format(script_name)
+        return None,None
+      return f_run,f_loop
+    except ImportError:
+      print 'No script named: {}'.format(script_name)
+    return None,None
+
+  def RunScript(self, script_name):
+    self.StopScript()
+    f_run,f_loop= self.LoadScript(script_name)
+    if f_run is not None:
+      self.script_is_active= True
+      CPrint(2,'{} is called'.format(script_name))
+      f_run(self)
+      self.script_is_active= False
+    elif f_loop is not None:
+      self.script_is_active= True
+      self.script_thread= threading.Thread(name=script_name,
+                                           target=lambda:self.ScriptLoopExecutor(f_loop))
+      CPrint(2,'{} is started'.format(script_name))
+      self.script_thread.start()
+
+  def ScriptLoopExecutor(self, f_loop):
+    th= self.script_thread
+    f_loop(self)
+    CPrint(2,'{} is stopped'.format(th.name if th is not None else '???'))
+    self.script_is_active= False
+    self.script_thread= None
+
+  def StopScript(self):
+    th= self.script_thread
+    self.script_is_active= False
+    if th is not None:  th.join()
+    self.script_thread= None
+
+  def IsScriptActive(self):
+    return self.script_is_active
+
+  def ActiveScript(self):
+    return None if self.script_thread is None else self.script_thread.name
+
   def CtrlLoop(self):
     if not any((self.gripper.Is('RobotiqNB'),self.gripper.Is('DxlGripper'),self.gripper.Is('RHP12RNGripper'),self.gripper.Is('EZGripper'),self.gripper.Is('DxlpO2Gripper'),self.gripper.Is('DxlO3Gripper'),self.gripper.Is('DxlpY1Gripper'))):
       CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, DxlO3Gripper, and DxlpY1Gripper.')
@@ -215,80 +260,79 @@ class TFVGripper(TROSUtil):
 
     self.AddSub('joy', 'joy', sensor_msgs.msg.Joy, lambda msg: JoyCallback(state, steps, wsteps, gsteps, msg))
 
-    kbhit= TKBHit()
     try:
-      while state[0]=='run' and not rospy.is_shutdown():
-        if kbhit.IsActive():
-          key= kbhit.KBHit()
-          if key=='q':
-            break;
-          elif key is not None:
-            state[1]= 'key_'+str(key)
-        else:
-          break
-
-        if state[1]=='key_i' or state[1]=='cmd_Y':
-          if 'vs_inhand' not in self.thread_manager.thread_list:
-            fv.inhand.On(self)
+      with TKBHit() as kbhit:
+        while state[0]=='run' and not rospy.is_shutdown():
+          if kbhit.IsActive():
+            key= kbhit.KBHit()
+            if key=='q':
+              break;
+            elif key is not None:
+              state[1]= 'key_'+str(key)
           else:
-            fv.inhand.Off(self)
-          state[1]= 'no_cmd'
-        elif state[1]=='cmd_left':
-          fv.open.Run(self)
-          state[1]= 'no_cmd'
-        elif state[1]=='cmd_right':
-          if state[3]:
-            fv.grasp.On(self)
-          else:
-            fv.grasp.Off(self)
-          state[1]= 'no_cmd'
-        elif state[1]=='cmd_up':
-          if state[3]:
-            fv.hold.On(self)
-          else:
-            fv.hold.Off(self)
-          state[1]= 'no_cmd'
-        elif state[1]=='cmd_down':
-          if state[3]:
-            fv.openif.On(self)
-          else:
-            fv.openif.Off(self)
-          state[1]= 'no_cmd'
+            break
 
-        elif state[1]=='key_[':
-          gsteps[0]= 0.005
-          state[1]= 'grip'
-        elif state[1]=='key_]':
-          gsteps[0]= -0.005
-          state[1]= 'grip'
-        elif state[1]=='key_{':
-          gsteps[0]= 0.01
-          state[1]= 'grip'
-        elif state[1]=='key_}':
-          gsteps[0]= -0.01
-          state[1]= 'grip'
+          if state[1]=='key_i' or state[1]=='cmd_Y':
+            if self.ActiveScript()=='fv.inhand':
+              self.StopScript()
+            else:
+              self.RunScript('fv.inhand')
+            state[1]= 'no_cmd'
+          elif state[1]=='cmd_left':
+            self.RunScript('fv.open')
+            state[1]= 'no_cmd'
+          elif state[1]=='cmd_right':
+            if state[3]:
+              self.RunScript('fv.grasp')
+            else:
+              self.StopScript()
+            state[1]= 'no_cmd'
+          elif state[1]=='cmd_up':
+            if state[3]:
+              self.RunScript('fv.hold')
+            else:
+              self.StopScript()
+            state[1]= 'no_cmd'
+          elif state[1]=='cmd_down':
+            if state[3]:
+              self.RunScript('fv.openif')
+            else:
+              self.StopScript()
+            state[1]= 'no_cmd'
 
-        if state[1]=='grip':
-          if self.gripper.Is('DxlGripper'):
-            if not active_holding[0]:
-              self.gripper.StartHolding()
-              active_holding[0]= True
-          gstate= self.gripper.Position() + 0.005*gsteps[0]
-          if gstate<gstate_range[0]:  gstate= gstate_range[0]
-          if gstate>gstate_range[1]:  gstate= gstate_range[1]
-          self.gripper.Move(gstate,max_effort=100.0,speed=100.0)
+          elif state[1]=='key_[':
+            gsteps[0]= 0.005
+            state[1]= 'grip'
+          elif state[1]=='key_]':
+            gsteps[0]= -0.005
+            state[1]= 'grip'
+          elif state[1]=='key_{':
+            gsteps[0]= 0.01
+            state[1]= 'grip'
+          elif state[1]=='key_}':
+            gsteps[0]= -0.01
+            state[1]= 'grip'
 
-        if not state[1]=='grip':
-          if self.gripper.Is('DxlGripper'):
-            if active_holding[0]:
-              self.gripper.StopHolding()
-              active_holding[0]= False
+          if state[1]=='grip':
+            if self.gripper.Is('DxlGripper'):
+              if not active_holding[0]:
+                self.gripper.StartHolding()
+                active_holding[0]= True
+            gstate= self.gripper.Position() + 0.005*gsteps[0]
+            if gstate<gstate_range[0]:  gstate= gstate_range[0]
+            if gstate>gstate_range[1]:  gstate= gstate_range[1]
+            self.gripper.Move(gstate,max_effort=100.0,speed=100.0)
 
-        self.VizGripper()
-        rospy.sleep(0.005)
+          if not state[1]=='grip':
+            if self.gripper.Is('DxlGripper'):
+              if active_holding[0]:
+                self.gripper.StopHolding()
+                active_holding[0]= False
+
+          self.VizGripper()
+          rospy.sleep(0.005)
 
     finally:
-      kbhit.Deactivate()
       self.DelSub('joy')
       if self.gripper.Is('DxlGripper'):
         if active_holding[0]:

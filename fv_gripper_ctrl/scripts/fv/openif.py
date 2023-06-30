@@ -3,20 +3,12 @@ import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *
 from ay_py.ros import *
-import tf
-import sensor_msgs.msg
 import ctrl_params
-import grasp
-import hold
-import inhand
-import open
-import openif
 
 '''
 Opening gripper if an external force is applied.
 '''
-
-def OpeningLoop(th_info, fvg):
+def Loop(fvg):
   ctrl_params.Set(fvg)
   fv_data= fvg.fv.data
 
@@ -31,7 +23,7 @@ def OpeningLoop(th_info, fvg):
                           np.max(fv_data.d_obj_orientation_filtered)>fvg.fv_ctrl_param.openif_sensitivity_oo,
                           np.max(fv_data.d_obj_area_filtered)>fvg.fv_ctrl_param.openif_sensitivity_oa))
 
-  while th_info.IsRunning() and not rospy.is_shutdown():
+  while fvg.script_is_active and not rospy.is_shutdown():
     if n_change(0)+n_change(1)>fvg.fv_ctrl_param.openif_nforce_threshold:
       print 'Force is applied,',n_change(0)+n_change(1)
       fvg.gripper.Move(pos=fvg.gripper.Position()+fvg.fv_ctrl_param.openif_dw_grip, max_effort=fvg.fv_ctrl_param.effort)
@@ -44,23 +36,3 @@ def OpeningLoop(th_info, fvg):
       rospy.sleep(0.005)
 
   fvg.fv.CallSrv('start_detect_obj')
-
-#Turn on an opening thread.
-def On(fvg):
-  if 'vs_openif' in fvg.thread_manager.thread_list:
-    print 'vs_openif is already on'
-
-  if not fvg.fv.IsActive():
-    raise Exception('fv is not configured. Use fv.Setup beforehand.')
-
-  grasp.Off(fvg)
-  hold.Off(fvg)
-
-  CPrint(1,'Turn on:','vs_openif')
-  fvg.thread_manager.Add(name='vs_openif', target=lambda th_info: OpeningLoop(th_info,fvg))
-
-#Stop an opening thread.
-def Off(fvg):
-  CPrint(2,'Turn off:','vs_openif')
-  fvg.thread_manager.Stop(name='vs_openif')
-
