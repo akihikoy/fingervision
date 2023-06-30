@@ -5,40 +5,17 @@ from ay_py.core import *
 from ay_py.ros import *
 import tf
 import sensor_msgs.msg
-import fv.fv
+import fv_sensor
 import fv.grasp
 import fv.hold
 import fv.inhand
 import fv.open
 import fv.openif
+import fingervision_msgs.msg
+import fingervision_msgs.srv
 
 
-class TCoreToolMini(TROSUtil):
-  def __init__(self):
-    super(TCoreToolMini,self).__init__()
-    self.gripper= None
-    self.cnt= TContainer()
-    self.viz= TContainer()
-    self.thread_manager= TThreadManager()
-    self.callback= TContainer()
-    self.br= tf.TransformBroadcaster()
-
-  def __del__(self):
-    self.Cleanup()
-    super(TCoreToolMini,self).__del__()
-    print 'TCoreToolMini: done',self
-
-  def Cleanup(self):
-    self.thread_manager.StopAll()
-    if self.gripper is not None:
-      self.gripper.Cleanup()
-      del self.gripper
-      self.gripper= None
-    for k in self.callback.keys():
-      self.callback[k]= None  #We do not delete
-    super(TCoreToolMini,self).Cleanup()
-
-def CreateGripper(gripper_type, gripper_node='gripper_driver', is_sim=False):
+def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=False):
   gripper= None
   param= None
   if gripper_type in ('RHP12RNGripper','RHP12RNAGripper'):
@@ -112,6 +89,7 @@ def CreateGripper(gripper_type, gripper_node='gripper_driver', is_sim=False):
     gripper.Init()
   return gripper, param
 
+
 def JoyCallback(state, steps, wsteps, gsteps, data):
   gsteps[0]= 0.0
   steps[:]= [0.0]*3
@@ -167,125 +145,157 @@ def JoyCallback(state, steps, wsteps, gsteps, data):
   else:
     state[3]= True
 
-def CtrlLoop(ct):
-  if not any((ct.gripper.Is('RobotiqNB'),ct.gripper.Is('DxlGripper'),ct.gripper.Is('RHP12RNGripper'),ct.gripper.Is('EZGripper'),ct.gripper.Is('DxlpO2Gripper'),ct.gripper.Is('DxlO3Gripper'),ct.gripper.Is('DxlpY1Gripper'))):
-    CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, DxlO3Gripper, and DxlpY1Gripper.')
-    return
 
-  if ct.gripper.Is('DxlGripper'):
-    active_holding= [False]
+class TFVGripper(TROSUtil):
+  def __init__(self):
+    super(TFVGripper,self).__init__()
+    self.config_path= [os.path.join(os.environ['HOME'],subdir) for subdir in ['config/','data/config/',]]
+    self.gripper= None  #Gripper driver.
+    self.g_param= None  #Gripper parameter dict.
+    self.fv= fv_sensor.TFVSensor()  #FV sensor utility.
+    self.frame_id= 'base_link'
+    self.fv_ctrl_param= TContainer()
+    self.thread_manager= TThreadManager()
+    self.viz= None
 
-  steps= [0.0, 0.0, 0.0]
-  wsteps= [0.0, 0.0, 0.0]
-  gsteps= [0.0]
-  state= ['run', 'no_cmd', None, False]  #run/quit, no_cmd/CMD, ARM, ACTIVE_BTN
+  def __del__(self):
+    self.Cleanup()
+    super(TFVGripper,self).__del__()
+    print 'TFVGripper: done',self
 
-  gstate_range= ct.gripper.PosRange()
-  gstate= ct.gripper.Position() if ct.gripper.IsInitialized else 0.0
-  if ct.gripper.IsInitialized:
-    ct.gripper.Move(gstate)
+  def Cleanup(self):
+    self.thread_manager.StopAll()
+    if self.gripper is not None:
+      self.gripper.Cleanup()
+      del self.gripper
+      self.gripper= None
+    super(TFVGripper,self).Cleanup()
 
-  ct.AddSub('joy', 'joy', sensor_msgs.msg.Joy, lambda msg: JoyCallback(state, steps, wsteps, gsteps, msg))
+  def Setup(self, fv_names, fv_nodes, is_sim=False):
+    self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
+    self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
+    self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='visualizer_viz', frame=self.frame_id)
 
-  kbhit= TKBHit()
-  try:
-    while state[0]=='run' and not rospy.is_shutdown():
-      if kbhit.IsActive():
-        key= kbhit.KBHit()
-        if key=='q':
-          break;
-        elif key is not None:
-          state[1]= 'key_'+str(key)
-      else:
-        break
+  def VizGripper(self):
+    xw= [0,0,0, 0,0,0,1]
+    viz= self.viz
+    mid= 0
+    mid= viz.AddCoord(xw, scale=[0.03,0.002], alpha=1.0, mid=mid)
+    lw_xe= self.g_param['lx']
+    bb_dim= self.g_param['bound_box']['dim']
+    bb_center= self.g_param['bound_box']['center']
+    mid= viz.AddCube(Transform(xw,bb_center), bb_dim, rgb=viz.ICol(3), alpha=0.5, mid=mid)
+    #Visualize finger pads:
+    gpos= self.gripper.Position()
+    if gpos is not None:
+      lw_xgl= Transform(lw_xe,[0,+0.5*gpos,0, 0,0,0,1])
+      lw_xgr= Transform(lw_xe,[0,-0.5*gpos,0, 0,0,0,1])
+      mid= viz.AddCube(Transform(xw,lw_xgl), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
+      mid= viz.AddCube(Transform(xw,lw_xgr), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
+      mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
+    viz.Publish()
 
-      if state[1]=='key_i' or state[1]=='cmd_Y':
-        if 'vs_inhand' not in ct.thread_manager.thread_list:
-          fv.inhand.On(ct)
+  def CtrlLoop(self):
+    if not any((self.gripper.Is('RobotiqNB'),self.gripper.Is('DxlGripper'),self.gripper.Is('RHP12RNGripper'),self.gripper.Is('EZGripper'),self.gripper.Is('DxlpO2Gripper'),self.gripper.Is('DxlO3Gripper'),self.gripper.Is('DxlpY1Gripper'))):
+      CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, DxlO3Gripper, and DxlpY1Gripper.')
+      return
+
+    if self.gripper.Is('DxlGripper'):
+      active_holding= [False]
+
+    steps= [0.0, 0.0, 0.0]
+    wsteps= [0.0, 0.0, 0.0]
+    gsteps= [0.0]
+    state= ['run', 'no_cmd', None, False]  #run/quit, no_cmd/CMD, ARM, ACTIVE_BTN
+
+    gstate_range= self.gripper.PosRange()
+    gstate= self.gripper.Position() if self.gripper.IsInitialized else 0.0
+    if self.gripper.IsInitialized:
+      self.gripper.Move(gstate)
+
+    self.AddSub('joy', 'joy', sensor_msgs.msg.Joy, lambda msg: JoyCallback(state, steps, wsteps, gsteps, msg))
+
+    kbhit= TKBHit()
+    try:
+      while state[0]=='run' and not rospy.is_shutdown():
+        if kbhit.IsActive():
+          key= kbhit.KBHit()
+          if key=='q':
+            break;
+          elif key is not None:
+            state[1]= 'key_'+str(key)
         else:
-          fv.inhand.Off(ct)
-        state[1]= 'no_cmd'
-      elif state[1]=='cmd_left':
-        fv.open.Run(ct)
-        state[1]= 'no_cmd'
-      elif state[1]=='cmd_right':
-        if state[3]:
-          fv.grasp.On(ct)
-        else:
-          fv.grasp.Off(ct)
-        state[1]= 'no_cmd'
-      elif state[1]=='cmd_up':
-        if state[3]:
-          fv.hold.On(ct)
-        else:
-          fv.hold.Off(ct)
-        state[1]= 'no_cmd'
-      elif state[1]=='cmd_down':
-        if state[3]:
-          fv.openif.On(ct)
-        else:
-          fv.openif.Off(ct)
-        state[1]= 'no_cmd'
+          break
 
-      elif state[1]=='key_[':
-        gsteps[0]= 0.005
-        state[1]= 'grip'
-      elif state[1]=='key_]':
-        gsteps[0]= -0.005
-        state[1]= 'grip'
-      elif state[1]=='key_{':
-        gsteps[0]= 0.01
-        state[1]= 'grip'
-      elif state[1]=='key_}':
-        gsteps[0]= -0.01
-        state[1]= 'grip'
+        if state[1]=='key_i' or state[1]=='cmd_Y':
+          if 'vs_inhand' not in self.thread_manager.thread_list:
+            fv.inhand.On(self)
+          else:
+            fv.inhand.Off(self)
+          state[1]= 'no_cmd'
+        elif state[1]=='cmd_left':
+          fv.open.Run(self)
+          state[1]= 'no_cmd'
+        elif state[1]=='cmd_right':
+          if state[3]:
+            fv.grasp.On(self)
+          else:
+            fv.grasp.Off(self)
+          state[1]= 'no_cmd'
+        elif state[1]=='cmd_up':
+          if state[3]:
+            fv.hold.On(self)
+          else:
+            fv.hold.Off(self)
+          state[1]= 'no_cmd'
+        elif state[1]=='cmd_down':
+          if state[3]:
+            fv.openif.On(self)
+          else:
+            fv.openif.Off(self)
+          state[1]= 'no_cmd'
 
-      if state[1]=='grip':
-        if ct.gripper.Is('DxlGripper'):
-          if not active_holding[0]:
-            ct.gripper.StartHolding()
-            active_holding[0]= True
-        gstate= ct.gripper.Position() + 0.005*gsteps[0]
-        if gstate<gstate_range[0]:  gstate= gstate_range[0]
-        if gstate>gstate_range[1]:  gstate= gstate_range[1]
-        ct.gripper.Move(gstate,max_effort=100.0,speed=100.0)
+        elif state[1]=='key_[':
+          gsteps[0]= 0.005
+          state[1]= 'grip'
+        elif state[1]=='key_]':
+          gsteps[0]= -0.005
+          state[1]= 'grip'
+        elif state[1]=='key_{':
+          gsteps[0]= 0.01
+          state[1]= 'grip'
+        elif state[1]=='key_}':
+          gsteps[0]= -0.01
+          state[1]= 'grip'
 
-      if not state[1]=='grip':
-        if ct.gripper.Is('DxlGripper'):
-          if active_holding[0]:
-            ct.gripper.StopHolding()
-            active_holding[0]= False
+        if state[1]=='grip':
+          if self.gripper.Is('DxlGripper'):
+            if not active_holding[0]:
+              self.gripper.StartHolding()
+              active_holding[0]= True
+          gstate= self.gripper.Position() + 0.005*gsteps[0]
+          if gstate<gstate_range[0]:  gstate= gstate_range[0]
+          if gstate>gstate_range[1]:  gstate= gstate_range[1]
+          self.gripper.Move(gstate,max_effort=100.0,speed=100.0)
 
-      VizGripper(ct)
-      rospy.sleep(0.005)
+        if not state[1]=='grip':
+          if self.gripper.Is('DxlGripper'):
+            if active_holding[0]:
+              self.gripper.StopHolding()
+              active_holding[0]= False
 
-  finally:
-    kbhit.Deactivate()
-    ct.DelSub('joy')
-    if ct.gripper.Is('DxlGripper'):
-      if active_holding[0]:
-        ct.gripper.StopHolding()
-        active_holding[0]= False
-    print 'Finished'
+        self.VizGripper()
+        rospy.sleep(0.005)
 
-def VizGripper(ct):
-  xw= [0,0,0, 0,0,0,1]
-  viz= ct.viz.gripper
-  mid= 0
-  mid= viz.AddCoord(xw, scale=[0.03,0.002], alpha=1.0, mid=mid)
-  lw_xe= ct.cnt.g_param['lx']
-  bb_dim= ct.cnt.g_param['bound_box']['dim']
-  bb_center= ct.cnt.g_param['bound_box']['center']
-  mid= viz.AddCube(Transform(xw,bb_center), bb_dim, rgb=viz.ICol(3), alpha=0.5, mid=mid)
-  #Visualize finger pads:
-  gpos= ct.gripper.Position()
-  if gpos is not None:
-    lw_xgl= Transform(lw_xe,[0,+0.5*gpos,0, 0,0,0,1])
-    lw_xgr= Transform(lw_xe,[0,-0.5*gpos,0, 0,0,0,1])
-    mid= viz.AddCube(Transform(xw,lw_xgl), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
-    mid= viz.AddCube(Transform(xw,lw_xgr), [0.015,0.003,0.03], rgb=viz.ICol(1), alpha=0.8, mid=mid)
-    mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
-  viz.Publish()
+    finally:
+      kbhit.Deactivate()
+      self.DelSub('joy')
+      if self.gripper.Is('DxlGripper'):
+        if active_holding[0]:
+          self.gripper.StopHolding()
+          active_holding[0]= False
+      print 'Finished'
+
 
 if __name__ == '__main__':
   rospy.init_node('fv_gripper_ctrl')
@@ -296,12 +306,9 @@ if __name__ == '__main__':
   fv_names= rospy.get_param('~fv_names', {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'})
   fv_nodes= rospy.get_param('~fv_nodes', None)
 
-  ct= TCoreToolMini()
-  ct.cnt.frame_id= 'base_link'
-  ct.gripper,ct.cnt.g_param= CreateGripper(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
-  fv.fv.Setup(ct, fv_names=fv_names, node_names=fv_nodes)
-  ct.viz.gripper= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='visualizer_viz', frame=ct.cnt.frame_id)
+  fvg= TFVGripper()
+  fvg.Setup(fv_names, fv_nodes, is_sim=is_sim)
 
-  CtrlLoop(ct)
-  ct.Cleanup()
+  fvg.CtrlLoop()
+  fvg.Cleanup()
 

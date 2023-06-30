@@ -5,7 +5,6 @@ from ay_py.core import *
 from ay_py.ros import *
 import tf
 import sensor_msgs.msg
-import fv
 import ctrl_params
 
 '''
@@ -75,55 +74,54 @@ class TForceChangeDetector(object):
     return self.is_detected
 
 
-def GraspLoop(th_info, ct):
-  ctrl_params.Set(ct)
-  fv_data= ct.cnt.fv
+def GraspLoop(th_info, fvg):
+  ctrl_params.Set(fvg)
 
-  force_detector= TForceChangeDetector(fv_data, th=ct.cnt.fv_ctrl.grasp_th, filter_len=ct.cnt.fv_ctrl.grasp_filter_len, dstate_th=ct.cnt.fv_ctrl.grasp_dstate_th)
+  force_detector= TForceChangeDetector(fvg.fv.data, th=fvg.fv_ctrl_param.grasp_th, filter_len=fvg.fv_ctrl_param.grasp_filter_len, dstate_th=fvg.fv_ctrl_param.grasp_dstate_th)
   force_detector.Init()
 
   #continue_cond= lambda: n_change()<5
 
-  fv.CallSrv(ct, 'stop_detect_obj')
+  fvg.fv.CallSrv('stop_detect_obj')
 
-  if ct.gripper.Is('DxlGripper'):
-    ct.gripper.StartHolding()
+  if fvg.gripper.Is('DxlGripper'):
+    fvg.gripper.StartHolding()
 
   try:
-    g_pos= ct.gripper.Position()
+    g_pos= fvg.gripper.Position()
     while th_info.IsRunning() and not rospy.is_shutdown():
       if g_pos<0.001 or force_detector.IsDetected():
         print 'Done'
         break
 
       if force_detector.IsInitialized():
-        g_pos-= ct.cnt.fv_ctrl.min_gstep
-        ct.gripper.Move(pos=g_pos, max_effort=ct.cnt.fv_ctrl.effort, speed=1.0, blocking=False)
+        g_pos-= fvg.fv_ctrl_param.min_gstep
+        fvg.gripper.Move(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
         for i in range(100):
-          if abs(ct.gripper.Position()-g_pos)<0.5*ct.cnt.fv_ctrl.min_gstep:  break
+          if abs(fvg.gripper.Position()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
           rospy.sleep(0.0001)
         #rospy.sleep(0.1)
-        g_pos= ct.gripper.Position()
+        g_pos= fvg.gripper.Position()
 
       force_detector.Update()
 
   finally:
-    if ct.gripper.Is('DxlGripper'):
-      ct.gripper.StopHolding()
+    if fvg.gripper.Is('DxlGripper'):
+      fvg.gripper.StopHolding()
 
 #Turn on a grasping thread.
-def On(ct):
-  if 'vs_grasp' in ct.thread_manager.thread_list:
+def On(fvg):
+  if 'vs_grasp' in fvg.thread_manager.thread_list:
     print 'vs_grasp is already on'
 
-  if not fv.IsActive(ct):
+  if not fvg.fv.IsActive():
     raise Exception('fv is not configured. Use fv.Setup beforehand.')
 
   CPrint(1,'Turn on:','vs_grasp')
-  ct.thread_manager.Add(name='vs_grasp', target=lambda th_info: GraspLoop(th_info,ct))
+  fvg.thread_manager.Add(name='vs_grasp', target=lambda th_info: GraspLoop(th_info,fvg))
 
 #Stop a grasping thread.
-def Off(ct):
+def Off(fvg):
   CPrint(2,'Turn off:','vs_grasp')
-  ct.thread_manager.Stop(name='vs_grasp')
+  fvg.thread_manager.Stop(name='vs_grasp')
 
