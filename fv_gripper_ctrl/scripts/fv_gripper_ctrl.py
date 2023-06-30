@@ -289,9 +289,10 @@ class TFVGripper(TROSUtil):
     rate_adjuster= rospy.Rate(ctrl_freq)
 
     g_range= self.gripper.PosRange()
-    if self.gripper.IsInitialized():
-      self.SetGripperTarget(self.GripperPosition())
-      self.GripperMoveTo()
+    while not self.gripper.IsInitialized() and not rospy.is_shutdown():
+      rospy.sleep(0.05)
+    self.SetGripperTarget(self.GripperPosition())
+    self.GripperMoveTo()
 
     self.AddSub('joy', 'joy', sensor_msgs.msg.Joy, lambda msg: JoyCallback(state, steps, wsteps, gsteps, msg))
 
