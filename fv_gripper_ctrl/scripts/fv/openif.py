@@ -23,14 +23,17 @@ def Loop(fvg):
                           np.max(fv_data.d_obj_orientation_filtered)>fvg.fv_ctrl_param.openif_sensitivity_oo,
                           np.max(fv_data.d_obj_area_filtered)>fvg.fv_ctrl_param.openif_sensitivity_oa))
 
+  g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():
     if n_change(0)+n_change(1)>fvg.fv_ctrl_param.openif_nforce_threshold:
       print 'Force is applied,',n_change(0)+n_change(1)
-      fvg.gripper.Move(pos=fvg.gripper.Position()+fvg.fv_ctrl_param.openif_dw_grip, max_effort=fvg.fv_ctrl_param.effort)
+      g_pos= fvg.GripperPosition()+fvg.fv_ctrl_param.openif_dw_grip
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort)
       break
     elif any(slip_detect2()):
       print 'Slip is detected',slip_detect2()
-      fvg.gripper.Move(pos=fvg.gripper.Position()+fvg.fv_ctrl_param.openif_dw_grip, max_effort=fvg.fv_ctrl_param.effort)
+      g_pos= fvg.GripperPosition()+fvg.fv_ctrl_param.openif_dw_grip
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort)
       break
     else:
       rospy.sleep(0.005)

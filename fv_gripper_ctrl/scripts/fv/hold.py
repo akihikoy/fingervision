@@ -26,16 +26,16 @@ def Loop(fvg):
   #if fvg.gripper.Is('DxlGripper'):
     #fvg.gripper.StartHolding()
 
-  g_pos= fvg.gripper.Position()
+  g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():
     if any(slip_detect2()):
       print 'slip',slip_detect2(),rospy.Time.now().to_sec()
       g_pos-= fvg.fv_ctrl_param.min_gstep
-      fvg.gripper.Move(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
       for i in range(100):  #100
-        if abs(fvg.gripper.Position()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
+        if abs(fvg.GripperPosition()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
         rospy.sleep(0.0001)
-      g_pos= fvg.gripper.Position()
+      g_pos= fvg.GripperPosition()
     else:
       rospy.sleep(0.001)
     rospy.sleep(0.04)  #0.02

@@ -6,6 +6,8 @@ from ay_py.ros import *
 import tf
 import sensor_msgs.msg
 import fv_sensor
+import std_msgs.msg
+import std_srvs.srv
 import fingervision_msgs.msg
 import fingervision_msgs.srv
 
@@ -154,6 +156,9 @@ class TFVGripper(TROSUtil):
     self.script_thread= None
     self.viz= None
 
+    self.state_locker= threading.RLock()
+    self.g_target= None
+
   def __del__(self):
     self.Cleanup()
     if TFVGripper is not None:  super(TFVGripper,self).__del__()
@@ -170,7 +175,19 @@ class TFVGripper(TROSUtil):
   def Setup(self, fv_names, fv_nodes, is_sim=False):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
-    self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='visualizer_viz', frame=self.frame_id)
+    self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
+
+    self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64)
+    self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64)
+    self.AddPub('active_script','~active_script',std_msgs.msg.String)
+    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedFloat64List)
+
+    self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data))
+    self.AddSrv('run_script', '~run_script', fingervision_msgs.srv.SetString,
+                lambda req:(self.RunScript(req.data),
+                            fingervision_msgs.srv.SetStringResponse())[-1])
+    self.AddSrv('stop_script', '~stop_script', std_srvs.srv.Empty,
+                lambda req:(self.StopScript(), std_srvs.srv.EmptyResponse())[-1])
 
   def VizGripper(self):
     xw= [0,0,0, 0,0,0,1]
@@ -240,11 +257,26 @@ class TFVGripper(TROSUtil):
   def ActiveScript(self):
     return None if self.script_thread is None else self.script_thread.name
 
-  def CtrlLoop(self):
-    if not any((self.gripper.Is('RobotiqNB'),self.gripper.Is('DxlGripper'),self.gripper.Is('RHP12RNGripper'),self.gripper.Is('EZGripper'),self.gripper.Is('DxlpO2Gripper'),self.gripper.Is('DxlO3Gripper'),self.gripper.Is('DxlpY1Gripper'))):
-      CPrint(4,'This program works only with RobotiqNB, DxlGripper, RHP12RNGripper, EZGripper, DxlpO2Gripper, DxlO3Gripper, and DxlpY1Gripper.')
-      return
+  def GripperPosition(self):
+    return self.gripper.Position()
 
+  def GripperMoveTo(self, pos=None, max_effort=100.0, speed=100.0, blocking=False):
+    if pos is None:
+      pos= self.GripperTarget()
+    else:
+      self.SetGripperTarget(pos)
+    if pos is not None:
+      self.gripper.Move(pos, max_effort=max_effort, speed=speed, blocking=blocking)
+
+  def GripperTarget(self):
+    with self.state_locker:
+      return self.g_target
+
+  def SetGripperTarget(self, g_target):
+    with self.state_locker:
+      self.g_target= g_target
+
+  def CtrlLoop(self):
     if self.gripper.Is('DxlGripper'):
       active_holding= [False]
 
@@ -253,10 +285,13 @@ class TFVGripper(TROSUtil):
     gsteps= [0.0]
     state= ['run', 'no_cmd', None, False]  #run/quit, no_cmd/CMD, ARM, ACTIVE_BTN
 
-    gstate_range= self.gripper.PosRange()
-    gstate= self.gripper.Position() if self.gripper.IsInitialized else 0.0
-    if self.gripper.IsInitialized:
-      self.gripper.Move(gstate)
+    ctrl_freq= 200.0  #TODO:Put in the param list.
+    rate_adjuster= rospy.Rate(ctrl_freq)
+
+    g_range= self.gripper.PosRange()
+    if self.gripper.IsInitialized():
+      self.SetGripperTarget(self.GripperPosition())
+      self.GripperMoveTo()
 
     self.AddSub('joy', 'joy', sensor_msgs.msg.Joy, lambda msg: JoyCallback(state, steps, wsteps, gsteps, msg))
 
@@ -318,10 +353,13 @@ class TFVGripper(TROSUtil):
               if not active_holding[0]:
                 self.gripper.StartHolding()
                 active_holding[0]= True
-            gstate= self.gripper.Position() + 0.005*gsteps[0]
-            if gstate<gstate_range[0]:  gstate= gstate_range[0]
-            if gstate>gstate_range[1]:  gstate= gstate_range[1]
-            self.gripper.Move(gstate,max_effort=100.0,speed=100.0)
+            g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
+            if g_target<g_range[0]:  g_target= g_range[0]
+            if g_target>g_range[1]:  g_target= g_range[1]
+            self.SetGripperTarget(g_target)
+
+          if not self.script_is_active:
+            self.GripperMoveTo()
 
           if not state[1]=='grip':
             if self.gripper.Is('DxlGripper'):
@@ -329,8 +367,14 @@ class TFVGripper(TROSUtil):
                 self.gripper.StopHolding()
                 active_holding[0]= False
 
+          self.pub.gripper_pos.publish(std_msgs.msg.Float64(self.GripperPosition()))
+          self.pub.target_pos.publish(std_msgs.msg.Float64(self.GripperTarget()))
+          self.pub.active_script.publish(std_msgs.msg.String(self.ActiveScript()))
+          self.pub.fvsignals.publish(fingervision_msgs.msg.NamedFloat64List())
+          #TODO:Implement fvsignals
+
           self.VizGripper()
-          rospy.sleep(0.005)
+          rate_adjuster.sleep()
 
     finally:
       self.DelSub('joy')
