@@ -5,13 +5,11 @@ from ay_py.core import *
 from ay_py.ros import *
 import tf
 import sensor_msgs.msg
-import ctrl_params
 
 '''
 In-hand manipulation (pivoting).
 '''
 def Loop(fvg):
-  ctrl_params.Set(fvg)
   fv_data= fvg.fv.data
 
   side= 0 if fv_data.obj_area[0]>fv_data.obj_area[1] else 1

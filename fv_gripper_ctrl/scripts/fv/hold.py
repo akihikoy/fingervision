@@ -3,22 +3,29 @@ import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *
 from ay_py.ros import *
-import tf
-import sensor_msgs.msg
-import ctrl_params
+slip= SmartImportReload('fv.slip')
+d_center_norm= SmartImportReload('fv.d_center_norm')
+d_orientation= SmartImportReload('fv.d_orientation')
+d_area= SmartImportReload('fv.d_area')
+
+def SetDefaultParams(fvg):
+  #Parameters used in fv.hold:
+  fvg.fv_ctrl_param.hold_sensitivity_slip= 0.08  #Sensitivity of slip detection (smaller is more sensitive).
+  fvg.fv_ctrl_param.hold_sensitivity_oc= 0.2  #Sensitivity of object-center-movement detection (smaller is more sensitive).
+  fvg.fv_ctrl_param.hold_sensitivity_oo= 0.5  #Sensitivity of object-orientation-movement detection (smaller is more sensitive).
+  fvg.fv_ctrl_param.hold_sensitivity_oa= 0.4  #Sensitivity of object-area-change detection (smaller is more sensitive).
 
 '''
 Slip-based holding.
 Closing gripper if slip is detected.
 '''
 def Loop(fvg):
-  ctrl_params.Set(fvg)
   fv_data= fvg.fv.data
   #slip_detect1= lambda: (sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>fvg.fv_ctrl_param.hold_sensitivity_slip)
-  slip_detect2= lambda: ((sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>fvg.fv_ctrl_param.hold_sensitivity_slip,
-                          np.max(fv_data.d_obj_center_filtered)>fvg.fv_ctrl_param.hold_sensitivity_oc,
-                          np.max(fv_data.d_obj_orientation_filtered)>fvg.fv_ctrl_param.hold_sensitivity_oo,
-                          np.max(fv_data.d_obj_area_filtered)>fvg.fv_ctrl_param.hold_sensitivity_oa))
+  slip_detect2= lambda: ((slip.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_slip,
+                          d_center_norm.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oc,
+                          d_orientation.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oo,
+                          d_area.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oa))
 
   #Stop object detection
   fvg.fv.CallSrv('stop_detect_obj')

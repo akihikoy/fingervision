@@ -5,7 +5,12 @@ from ay_py.core import *
 from ay_py.ros import *
 import tf
 import sensor_msgs.msg
-import ctrl_params
+
+def SetDefaultParams(fvg):
+  #Parameters used in fv.grasp:
+  fvg.fv_ctrl_param.grasp_th= 3  #Threshold to stop.
+  fvg.fv_ctrl_param.grasp_filter_len= 4  #Temporal filter length.
+  fvg.fv_ctrl_param.grasp_dstate_th= 3  #Threshold of discrete state.
 
 '''
 Force-based grasping.
@@ -75,8 +80,6 @@ class TForceChangeDetector(object):
 
 
 def Loop(fvg):
-  ctrl_params.Set(fvg)
-
   force_detector= TForceChangeDetector(fvg.fv.data, th=fvg.fv_ctrl_param.grasp_th, filter_len=fvg.fv_ctrl_param.grasp_filter_len, dstate_th=fvg.fv_ctrl_param.grasp_dstate_th)
   force_detector.Init()
 
