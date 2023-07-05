@@ -35,6 +35,11 @@ def DecodeNamedVariableMsg(msg):
     data= np.array(data).reshape(msg.sizes)
     return msg.name, data
 
+def DecodeNamedVariableListMsg(msg):
+  rawdata= msg.data if isinstance(msg,fingervision_msgs.msg.NamedVariableList) else msg
+  data= [DecodeNamedVariableMsg(d) for d in rawdata]
+  return {name:value for (name,value) in data}
+
 def EncodeNamedVariableMsg(name, var):
   msg= fingervision_msgs.msg.NamedVariable()
   msg.name= name
