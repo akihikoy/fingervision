@@ -319,7 +319,7 @@ class TFVGripper(TROSUtil):
 
   def CopySensorValuesToMsg(self):
     msg= fingervision_msgs.msg.NamedVariableList()
-    msg.data= [EncodeNamedVariableMsg(sensor_name, d['value'])
+    msg.data= [EncodeNamedVariableMsg(sensor_name, d['value'] if 'value' in d else None)
                for sensor_name,d in self.sensors.iteritems()]
     return msg
 
