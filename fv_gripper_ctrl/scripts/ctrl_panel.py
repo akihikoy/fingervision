@@ -91,6 +91,7 @@ if __name__=='__main__':
     'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
+    'modbus_server': ['echo "Run from terminal: sudo /sbin/fvgripper_modbus_srv.sh 502"','fg'],
     }
   if is_sim:
     cmds['fvp']= cmds['fvp_file']
@@ -340,6 +341,16 @@ if __name__=='__main__':
                    lambda w,obj:(
                       stop_cmd('rviz'),
                      ) )}),
+    'btn_modbus_server': (
+      'buttonchk',{
+        'text':('Modbus Server','Stop Modbus Srv'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('modbus_server'),
+                     ),
+                   lambda w,obj:(
+                      run_cmd('modbus_server'),
+                     ) )}),
     'label_processes': (
       'label',{
         'text': 'Processes: ',
@@ -378,6 +389,7 @@ if __name__=='__main__':
   layout_debug= (
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
+      ('boxv',None, ('btn_modbus_server',)),
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),
