@@ -490,10 +490,13 @@ class TFVGripper(TROSUtil):
               if not active_holding[0]:
                 self.gripper.StartHolding()
                 active_holding[0]= True
-            g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
-            if g_target<g_range[0]:  g_target= g_range[0]
-            if g_target>g_range[1]:  g_target= g_range[1]
-            self.SetGripperTarget(g_target)
+            if abs(gsteps[0])>1.0e-5:
+              g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
+              if g_target<g_range[0]:  g_target= g_range[0]
+              if g_target>g_range[1]:  g_target= g_range[1]
+              self.SetGripperTarget(g_target)
+            else:
+              state[1]= 'no_cmd'
 
           if not self.script_is_active:
             self.GripperMoveTo()

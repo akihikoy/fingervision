@@ -91,7 +91,8 @@ if __name__=='__main__':
     'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
-    'modbus_server': ['echo "Run from terminal: sudo /sbin/fvgripper_modbus_srv.sh 502"','fg'],
+    'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
+    'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
     }
   if is_sim:
     cmds['fvp']= cmds['fvp_file']
@@ -346,10 +347,11 @@ if __name__=='__main__':
         'text':('Modbus Server','Stop Modbus Srv'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
+                      run_cmd('modbus_port_fwd'),
                       run_cmd('modbus_server'),
                      ),
                    lambda w,obj:(
-                      run_cmd('modbus_server'),
+                      stop_cmd('modbus_server'),
                      ) )}),
     'label_processes': (
       'label',{
