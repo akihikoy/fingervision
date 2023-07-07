@@ -31,17 +31,46 @@ from ay_py.tool.py_panel import TSimplePanel, InitPanelApp, RunPanelApp, AskYesN
 sys.path.append(os.path.join(rospkg.RosPack().get_path('ay_util'),'scripts'))
 from proc_manager import TSubProcManager
 from joy_fv import TJoyEmulator
+from topic_monitor import TTopicMonitor
+import std_msgs.msg
 
-class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator):
-  def __init__(self, node_name='ctrl_panel'):
+class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMonitor):
+  ontopicshzupdated= QtCore.pyqtSignal()
+
+  def __init__(self, node_name='ctrl_panel', topics_to_monitor=None):
     QtCore.QObject.__init__(self)
     TSubProcManager.__init__(self)
     TJoyEmulator.__init__(self)
     self.node_name= node_name
 
+    TTopicMonitor.__init__(self, topics_to_monitor)
+    self.thread_topics_hz_callback= lambda: self.ontopicshzupdated.emit()
+
   def InitNode(self):
     rospy.init_node(self.node_name)
     rospy.sleep(0.1)
+
+  def Setup(self):
+    rospy.wait_for_service('/rosout/get_loggers', timeout=5.0)
+
+    pm.StartTopicMonitorThread()
+    pm.StartVirtualJoyStick()
+
+    self.sub= {}
+    for (topic,msg_type) in (
+        ('gripper_pos',std_msgs.msg.Float64),
+        ('target_pos',std_msgs.msg.Float64),
+        ('active_script',std_msgs.msg.String), ):
+      setattr(self, topic, None)
+      self.sub[topic]= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.TopicCallback(topic,msg))
+
+  def Cleanup(self):
+    pm.StopTopicMonitorThread()
+    for key,sub in self.sub.iteritems():
+      sub.unregister()
+
+  def TopicCallback(self, topic, msg):
+    setattr(self, topic, msg.data)
 
 
 def UpdateProcList(pm,combobox):
@@ -54,7 +83,7 @@ if __name__=='__main__':
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
-  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNGripper'))
+  gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNAGripper'))
   joy_dev= get_arg('-joy_dev=',get_arg('--joy_dev=','js0'))
   dxl_dev= get_arg('-dxl_dev=',get_arg('--dxl_dev=','USB0'))
   fullscreen= True if '-fullscreen' in sys.argv or '--fullscreen' in sys.argv else False
@@ -80,6 +109,8 @@ if __name__=='__main__':
     'roscore': ['roscore','bg'],
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
     'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB}','bg'],
+    'reboot_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} Reboot','fg'],
+    'factory_reset_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
     'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG} config2:={FV_R_CONFIG}','bg'],
     'fvp_file': ['roslaunch ay_fv_extra fvp_file1.launch','bg'],
@@ -103,7 +134,15 @@ if __name__=='__main__':
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
   print config
 
-  pm= TSubProcManagerJoy()
+  #List of topics to monitor the status:
+  topics_to_monitor= {
+    'Gripper': '/gripper_driver/joint_states',
+    'FV_L': '/fingervision/fvp_1_l/prox_vision',
+    'FV_R': '/fingervision/fvp_1_r/prox_vision',
+    #'ModbusSrv': '/fingervision/fvp_1_r/prox_vision',
+    }
+
+  pm= TSubProcManagerJoy(topics_to_monitor=topics_to_monitor)
   run_cmd= lambda name: pm.RunBGProcess(name,cmds[name][0]) if cmds[name][1]=='bg' else\
                         pm.RunFGProcess(cmds[name][0]) if cmds[name][1]=='fg' else\
                         None
@@ -113,6 +152,19 @@ if __name__=='__main__':
   set_joy= lambda kind,value=None,is_active=0: pm.SetJoy(kind,value,is_active)
 
 
+  status_grid_list_text= [
+      dict(label='GPos', type='text', state='N/A'),
+      dict(label='GPosTrg', type='text', state='N/A'),
+      dict(label='Action', type='text', state='N/A'),
+    ]
+  status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
+  def UpdateStatusGridText(w,obj,status=None):
+    obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
+    obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
+    obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
+  def UpdateStatusGridColor(w,obj,status=None):
+    for key,topic in pm.topics_to_monitor.iteritems():
+      obj.UpdateStatus(key, 'green' if pm.IsActive(key) else 'red')
 
   #UI for configuring FV control parameters:
   ctrl_config= {
@@ -160,7 +212,6 @@ if __name__=='__main__':
     return ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name))
     #return ('boxv',None, ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name)) ),
 
-
   widgets_common= {
     'rviz': (
       'rviz',{
@@ -170,6 +221,34 @@ if __name__=='__main__':
         'w': 400,
         'h': 1,
         'size_policy': ('fixed', 'fixed')      }),
+    'spacer_cmn2': ('spacer', {
+        'w': 400,
+        'h': 1,
+        'size_policy': ('fixed', 'fixed')      }),
+    'status_grid_text': (
+      'status_grid',{
+        'list_status': status_grid_list_text,
+        'direction':'vertical',
+        'shape':'square',
+        'margin':(0.05,0.05),
+        'rows':None,
+        'columns':1,
+        'font_size_range': (6,24),
+        'size_policy': ('minimum', 'minimum'),
+        'ontopicshzupdated': UpdateStatusGridText,
+        }),
+    'status_grid_color': (
+      'status_grid',{
+        'list_status': status_grid_list_color,
+        'direction':'horizontal',
+        'shape':'square',
+        'margin':(0.05,0.05),
+        'rows':None,
+        'columns':3,
+        'font_size_range': (6,24),
+        'size_policy': ('minimum', 'minimum'),
+        'ontopicshzupdated': UpdateStatusGridColor,
+        }),
     }
 
   widgets_init= {
@@ -198,6 +277,7 @@ if __name__=='__main__':
         'text':('(2)Gripper ctrl','(2)Stop gripper ctrl'),
         'enabled':False,
         'onclick':(lambda w,obj:(
+                      run_cmd('reboot_dxlg'),
                       run_cmd('fix_usb'),
                       run_cmd('gripper'),
                       run_cmd('joy'),
@@ -353,6 +433,23 @@ if __name__=='__main__':
                    lambda w,obj:(
                       stop_cmd('modbus_server'),
                      ) )}),
+    'label_dxlg': (
+      'label',{
+        'text': 'Gripper: ',
+        'font_size_range': (8,24),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_dxlg_reboot': (
+      'button',{
+        'text': 'Reboot',
+        'font_size_range': (8,24),
+        #'size_policy': ('minimum', 'minimum'),
+        'onclick': lambda w,obj: run_cmd('reboot_dxlg'), }),
+    'btn_dxlg_factory_reset': (
+      'button',{
+        'text': 'FactoryReset',
+        'font_size_range': (8,24),
+        #'size_policy': ('minimum', 'minimum'),
+        'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
     'label_processes': (
       'label',{
         'text': 'Processes: ',
@@ -392,6 +489,10 @@ if __name__=='__main__':
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
       ('boxv',None, ('btn_modbus_server',)),
+      ('boxh',None, ('label_dxlg', ('boxv',None, (
+                        ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
+                        ))
+                     )),
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),
@@ -402,7 +503,11 @@ if __name__=='__main__':
 
   layout_main= (
     'boxh',None, (
-      'rviz',
+      #'rviz',
+      ('boxv',None, (
+        'rviz',
+        ('boxv',None, ('status_grid_text','status_grid_color')),
+        )),
       ('boxv',None, (
         ('tab','maintab',(
           #('Initialize',layout_init),
@@ -439,15 +544,21 @@ if __name__=='__main__':
   #panel.showFullScreen()
   #panel.showMaximized()
 
+  #Since the ontopicshzupdated signal is emitted from ProcessManager,
+  #we connect the ontopicshzupdated slots of panel to it.
+  for w_name, (w_type, w_param) in panel.widgets_in.iteritems():
+    if 'ontopicshzupdated' in w_param and w_param['ontopicshzupdated'] is not None:
+      pm.ontopicshzupdated.connect(lambda w_param=w_param,w_name=w_name: w_param['ontopicshzupdated'](panel,panel.widgets[w_name]))
+
   #ROS system initialization.
   run_cmd('roscore')
   pm.InitNode()
-  rospy.wait_for_service('/rosout/get_loggers', timeout=5.0)
+  pm.Setup()
   run_cmd('fix_usb')
-  pm.StartVirtualJoyStick()
   panel.close_callback= lambda event: (
       pm.TerminateAllBGProcesses(),  #including roscore
       #stop_cmd('roscore'),
+      pm.Cleanup(),
       True)[-1]
 
   RunPanelApp()
