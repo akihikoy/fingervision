@@ -45,33 +45,42 @@ if __name__=='__main__':
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
-  #port= int(get_arg('-port=',get_arg('--port=',5020)))
   #no_kbhit= True if '-no_kbhit' in sys.argv or '--no_kbhit' in sys.argv else False
-  plot_rate= 20.0
-  plot_points= 200
-  title= ''
-  xlabel= 'time[s]'
-  ylabel= 'y1'
-  y2label= 'y2'
-  #List of signal name, label, axis, tuple of value-index (specify None for scalar).
-  plots= [('fv.slip','slip',1,None),
-          ('fv.area','area',1,None),
-          ('fv.center','center_y',1,1),
-          ('gripper_pos','gpos',2,None),
-          ('target_pos','gpos_trg',2,None)]
+  plot_rate= float(get_arg('-rate=',get_arg('--rate=',20.0)))
+  plot_points= int(get_arg('-points=',get_arg('--points=',200)))
+  title= get_arg('-title=',get_arg('--title=',''))
+  xlabel= get_arg('-xlabel=',get_arg('--xlabel=',None))
+  ylabel= get_arg('-xlabel=',get_arg('--xlabel=',None))
+  y2label= get_arg('-xlabel=',get_arg('--xlabel=',None))
+  plots= get_arg('-plots=',get_arg('--plots=',''))
+  plots= None if plots=='' else [p.split(':') for p in plots.split(',')]
+  if plots is None:
+    #List of signal name, label, axis, tuple of value-index (specify None for scalar).
+    plots= [('fv.slip','slip',1,None),
+            ('fv.area','area',1,None),
+            ('fv.center','center_y',1,1),
+            ('gripper_pos','gpos',2,None),
+            ('target_pos','gpos_trg',2,None)]
 
   fig= plt.figure(figsize=(7,5))
   ax1= fig.add_subplot(1,1,1)
-
-  signal_names= [signal_name for (signal_name,plot_label,axis,index) in plots]
-  axis_map= {plot_label:axis for (signal_name,plot_label,axis,index) in plots}
+  ax2= ax1.twinx()
 
   rospy.init_node('fvsignal_plot')
   fvsignal_listener= TFVSignalListener()
-  #TODO:FIXME:Add gpos, gpos_trg
+
+  signal_names= [signal_name for (signal_name,plot_label,axis,index) in plots]
+  axis_map= {plot_label:axis for (signal_name,plot_label,axis,index) in plots}
+  t_start= rospy.Time.now().to_sec()
+  if xlabel is None:
+    xlabel= 'time [s] (+ {})'.format(t_start)
+  if ylabel is None:
+    ylabel= ','.join([plot_label for (signal_name,plot_label,axis,index) in plots if axis==1])
+  if y2label is None:
+    y2label= ','.join([plot_label for (signal_name,plot_label,axis,index) in plots if axis==2])
 
   plot_values= [{},{}]
-  #rate_adjuster= rospy.Rate(20)
+  rate_adjuster= rospy.Rate(plot_rate)
   while not rospy.is_shutdown():
     fvsignals_decoded= fvsignal_listener.Decode(signal_names)
     if fvsignals_decoded is None:  continue
@@ -82,7 +91,7 @@ if __name__=='__main__':
                               else fvsignals_decoded[signal_name][tuple(index)]
                   for (signal_name,plot_label,axis,index) in plots
                     if fvsignals_decoded[signal_name] is not None}
-    new_time= rospy.Time.now().to_sec()
+    new_time= rospy.Time.now().to_sec()-t_start
     print new_time,new_values
 
     for plot_label,value in new_values.iteritems():
@@ -98,21 +107,21 @@ if __name__=='__main__':
 
     #print plot_values
     ax1.cla()
-    ax1.set_title(title)
-    ax1.set_xlabel(xlabel)
-    ax1.set_ylabel(ylabel)
-    #ax1.set_ylim(bottom=-1.2,top=1.2)
-    ax2= ax1.twinx()
     ax2.cla()
 
     for plot_label,[times,values] in plot_values[0].iteritems():
       ax1.plot(times,values, linewidth=2, label=plot_label)
+
     for plot_label,[times,values] in plot_values[1].iteritems():
       ax2.plot(times,values, linewidth=2, label=plot_label)
 
-    ax1.legend()
-    ax2.legend()
+    ax1.legend(loc='upper right', bbox_to_anchor=(1.0,1.0))
+    ax2.legend(loc='upper right', bbox_to_anchor=(1.0,0.8))
 
-
-    plt.pause(1.0/plot_rate)
-    #rate_adjuster.sleep()
+    ax1.set_title(title)
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel(ylabel)
+    #ax1.set_ylim(bottom=-1.2,top=1.2)
+    ax2.set_ylabel(y2label)
+    plt.pause(0.001)
+    rate_adjuster.sleep()
