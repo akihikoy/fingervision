@@ -102,6 +102,21 @@ if __name__=='__main__':
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'IS_SIM': is_sim,
+    'PLOT_LIST':[
+        ('fv.area','area',1,None),
+        ('fv.center','center_x',1,0),
+        ('fv.center','center_y',1,1),
+        ('fv.d_area','d_area',1,None),
+        #'fv.d_center_norm',
+        #'fv.d_center',
+        #'fv.d_orientation',
+        #'fv.normal_force',
+        #'fv.num_force_change',
+        ('fv.orientation','orientation',1,None),
+        ('fv.slip','slip',1,None),
+        ('gripper_pos','gpos',2,None),
+        ('target_pos','gpos_trg',2,None),
+      ]
     }
 
   #List of commands (name: [[command/args],'fg'/'bg']).
@@ -124,6 +139,7 @@ if __name__=='__main__':
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
+    'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py','bg'],
     }
   if is_sim:
     cmds['fvp']= cmds['fvp_file']
@@ -411,6 +427,38 @@ if __name__=='__main__':
         ('boxh',None, CtrlConfigSliderLayout('openif_dw_grip') ),
       ))
 
+
+  def RunFVSignalPlot(w,obj):
+    plot_list= [p for p in config['PLOT_LIST'] if w.widgets['checkbox_{}'.format(p[1])].isChecked()]
+    if len(plot_list)==0:  return
+    cmd= cmds['fvsignal_plot'][0]+['--plots={}'.format(repr(plot_list).replace(' ',''))]
+    print 'fvsignal_plot:',cmd
+    pm.RunBGProcess('fvsignal_plot',cmd)
+  widgets_plot_cbs= {
+    'checkbox_{}'.format(plot_label): ('checkbox',{'text': plot_label})
+      for (signal_name,plot_label,axis,index) in config['PLOT_LIST']}
+  layout_plot_cbs= (
+    'boxv',None,(
+        'checkbox_{}'.format(plot_label) for (signal_name,plot_label,axis,index) in config['PLOT_LIST']
+      ))
+  widgets_plots= {
+    'btn_plot': (
+      'buttonchk',{
+        'text':('Plot','Stop Plot'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      RunFVSignalPlot(w,obj),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('fvsignal_plot'),
+                     ) )}),
+    }
+  layout_plots= (
+    'boxh',None,(
+      layout_plot_cbs,
+      'btn_plot',
+      ))
+
   widgets_debug= {
     'btn_rviz': (
       'buttonchk',{
@@ -520,6 +568,7 @@ if __name__=='__main__':
             ))),
           ('Config/1',layout_ctrl_config1),
           ('Config/2',layout_ctrl_config2),
+          ('Plot',layout_plots),
           ('Debug',layout_debug),
           )),
         'spacer_cmn1')),
@@ -536,6 +585,8 @@ if __name__=='__main__':
   panel.AddWidgets(widgets_init)
   panel.AddWidgets(widgets_joy)
   panel.AddWidgets(widgets_ctrl_config)
+  panel.AddWidgets(widgets_plot_cbs)
+  panel.AddWidgets(widgets_plots)
   panel.AddWidgets(widgets_debug)
   panel.Construct(layout_main)
   #for tab in panel.layouts['maintab'].tab:

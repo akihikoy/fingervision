@@ -113,7 +113,7 @@ if __name__=='__main__':
             ('fv.center','center_y',1,1),
             ('gripper_pos','gpos',2,None),
             ('target_pos','gpos_trg',2,None)]
-
+  print 'plots=',plots
 
   rospy.init_node('fvsignal_plot')
   fvsignal_listener= TFVSignalListener(plots, data_skip)
