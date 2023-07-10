@@ -7,7 +7,6 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  fv_data= fvg.fv.data
+def Get(fvg, fv_data):
   d_center= np.mean(fv_data.d_obj_center_filtered,axis=0)  #TODO:FIXME:Is "mean" correct for this?
   return d_center

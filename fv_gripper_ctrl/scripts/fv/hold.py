@@ -22,10 +22,10 @@ Closing gripper if slip is detected.
 def Loop(fvg):
   fv_data= fvg.fv.data
   #slip_detect1= lambda: (sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>fvg.fv_ctrl_param.hold_sensitivity_slip)
-  slip_detect2= lambda: ((slip.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_slip,
-                          d_center_norm.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oc,
-                          d_orientation.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oo,
-                          d_area.Get(fvg)>fvg.fv_ctrl_param.hold_sensitivity_oa))
+  slip_detect2= lambda: ((slip.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_slip,
+                          d_center_norm.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_oc,
+                          d_orientation.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_oo,
+                          d_area.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_oa))
 
   #Stop object detection
   fvg.fv.CallSrv('stop_detect_obj')

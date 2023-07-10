@@ -7,7 +7,6 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  fv_data= fvg.fv.data
+def Get(fvg, fv_data):
   d_area= np.mean(fv_data.d_obj_area_filtered)
   return d_area

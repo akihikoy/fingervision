@@ -31,10 +31,10 @@ def Loop(fvg):
   #FIXME: This should be a distance of (x,y) or (x,y,z) (z is estimated by x,y though...). Do not use torque.
   n_change= lambda side: sum([1 if Dist(f[:6],f0[:6])>fvg.fv_ctrl_param.openif_sensitivity_force else 0 for f,f0 in zip(fv_data.force_array[side],fa0[side])])
   #dth= 5
-  slip_detect2= lambda: ((slip.Get(fvg)>fvg.fv_ctrl_param.openif_sensitivity_slip,
-                          d_center_norm.Get(fvg)>fvg.fv_ctrl_param.openif_sensitivity_oc,
-                          d_orientation.Get(fvg)>fvg.fv_ctrl_param.openif_sensitivity_oo,
-                          d_area.Get(fvg)>fvg.fv_ctrl_param.openif_sensitivity_oa))
+  slip_detect2= lambda: ((slip.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_slip,
+                          d_center_norm.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oc,
+                          d_orientation.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oo,
+                          d_area.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oa))
 
   g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():

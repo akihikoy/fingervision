@@ -7,8 +7,7 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  fv_data= fvg.fv.data
+def Get(fvg, fv_data):
   area= np.mean(fv_data.obj_area_filtered)*100.0  #TODO:FIXME:Put the scale in the parameter set.
   return area
 

@@ -7,7 +7,6 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  fv_data= fvg.fv.data
+def Get(fvg, fv_data):
   orientation= np.mean(fv_data.obj_orientation)  #TODO:FIXME:Is "mean" correct for this?
   return orientation

@@ -7,7 +7,6 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  fv_data= fvg.fv.data
+def Get(fvg, fv_data):
   slip= np.sum(np.sum(s) for s in fv_data.mv_s)
   return slip

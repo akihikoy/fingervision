@@ -36,7 +36,9 @@ def DecodeNamedVariableMsg(msg):
     return msg.name, data
 
 def DecodeNamedVariableListMsg(msg):
-  rawdata= msg.data if isinstance(msg,fingervision_msgs.msg.NamedVariableList) else msg
+  rawdata= (msg.data.data if isinstance(msg,fingervision_msgs.msg.NamedVariableListStamped) else
+            msg.data      if isinstance(msg,fingervision_msgs.msg.NamedVariableList)
+                          else msg)
   data= [DecodeNamedVariableMsg(d) for d in rawdata]
   return {name:value for (name,value) in data}
 
@@ -246,7 +248,7 @@ class TFVGripper(TROSUtil):
     self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64)
     self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64)
     self.AddPub('active_script','~active_script',std_msgs.msg.String)
-    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedVariableList)
+    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedVariableListStamped)
 
     self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data))
     self.AddSrv('run_script', '~run_script', fingervision_msgs.srv.SetString,
@@ -309,18 +311,24 @@ class TFVGripper(TROSUtil):
       if run_reset=='all' or (is_new and run_reset=='only_new'):
         f_reset(self)
 
-  #Run Get functions of all loaded sensors and store them in 'value' entry.
-  def GetAllSensorValues(self):
+  #Run Get functions of all loaded sensors for a given fv_data (snapshot of self.fv.data)
+  # and return time_stamp and {sensor_name:value} dict.
+  def GetAllSensorValues(self, fv_data=None):
+    if fv_data is None:  fv_data= copy.deepcopy(self.fv.data)
+    sensor_values= {}
+    time_stamp= max([tm for tm in fv_data.tm_last_topic if tm is not None])
     for sensor_name,d in self.sensors.iteritems():
       try:
-        d['value']= d['f_get'](fvg)
+        sensor_values[sensor_name]= d['f_get'](self, fv_data)
       except Exception as e:
         print 'Sensor {} error: {}'.format(sensor_name, e)
+    return time_stamp, sensor_values
 
-  def CopySensorValuesToMsg(self):
-    msg= fingervision_msgs.msg.NamedVariableList()
-    msg.data= [EncodeNamedVariableMsg(sensor_name, d['value'] if 'value' in d else None)
-               for sensor_name,d in self.sensors.iteritems()]
+  def CopySensorValuesToMsg(self, time_stamp, sensor_values):
+    msg= fingervision_msgs.msg.NamedVariableListStamped()
+    msg.header.stamp= time_stamp
+    msg.data.data= [EncodeNamedVariableMsg(sensor_name, sensor_values[sensor_name] if sensor_name in sensor_values else None)
+                    for sensor_name,d in self.sensors.iteritems()]
     return msg
 
   def GetScriptFunctions(self, script_name):
@@ -507,8 +515,8 @@ class TFVGripper(TROSUtil):
                 self.gripper.StopHolding()
                 active_holding[0]= False
 
-          self.GetAllSensorValues()
-          fvsignals_msg= self.CopySensorValuesToMsg()
+          time_stamp,sensor_values= self.GetAllSensorValues()
+          fvsignals_msg= self.CopySensorValuesToMsg(time_stamp,sensor_values)
 
           self.pub.gripper_pos.publish(std_msgs.msg.Float64(self.GripperPosition()))
           self.pub.target_pos.publish(std_msgs.msg.Float64(self.GripperTarget()))

@@ -8,6 +8,6 @@ def Help():
 def Reset(fvg):
   pass
 
-def Get(fvg):
-  d_center_norm= np.linalg.norm(d_center.Get(fvg))
+def Get(fvg, fv_data):
+  d_center_norm= np.linalg.norm(d_center.Get(fvg,fv_data))
   return d_center_norm
