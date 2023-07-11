@@ -1,39 +1,54 @@
 <launch>
   <!--Using a single FV as two FV pair-->
 
-  <arg name="fvnode" default="fvp_1" />
+  <!--<arg name="fvnode" default="fvp_1" />-->
   <arg name="fv_src" default="fvp_1_l" />
+  <arg name="fv_dst" default="fvp_1_r" />
   <arg name="fv1" default="fvp_1_l" />
   <arg name="fv2" default="fvp_1_r" />
   <arg name="config1" default="config/fvp_l.yaml" />
   <arg name="pkg_dir" default="$(find ay_fv_extra)/" />
 
-  <node type="fv_core_node" pkg="fingervision" name="$(arg fvnode)" ns="fingervision" output="screen">
+  <arg name="publish_image" default="true" />
+  <arg name="frame_skip" default="0" />
+  <arg name="target_fps" default="0" />
+  <arg name="windows_hidden" default="false" />
+
+  <arg name="normal_f_mode" default="xy_norm" />
+  <arg name="filter_len" default="5" />
+
+  <node type="fv_core_node" pkg="fingervision" name="$(arg fv_src)" ns="fingervision" output="screen">
     <param name="pkg_dir" value="$(arg pkg_dir)" />
     <param name="cam_config" value="$(arg config1)" />
     <param name="stereo_config" value="$(arg config1)" />
     <param name="blobtrack_config" value="$(arg config1)" />
     <param name="objdettrack_config" value="$(arg config1)" />
     <param name="blob_calib_prefix" value="data_gen/blob_" />
-    <param name="publish_image" value="true" />
-    <param name="frame_skip" value="0" />
-    <param name="target_fps" value="0" />
+    <param name="objdet_model_prefix" value="data_gen/objdet_" />
+    <param name="publish_image" value="$(arg publish_image)" />
+    <param name="frame_skip" value="$(arg frame_skip)" />
+    <param name="target_fps" value="$(arg target_fps)" />
+    <param name="windows_hidden" value="$(arg windows_hidden)" />
+  </node>
+  <node type="fv_clone.py" pkg="fingervision" name="$(arg fv_dst)" ns="fingervision" output="screen">
+    <param name="fv_from" value="$(arg fv_src)" />
+    <param name="fv_to" value="$(arg fv_dst)" />
   </node>
   <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1_l" ns="fingervision" output="screen">
     <param name="fv" value="$(arg fv_src)" />
     <param name="fv_out" value="$(arg fv1)" />
     <param name="side" value="l" />
-    <param name="normal_f_mode" value="xy_norm" />
     <param name="reduction_mode" value="mean" />
-    <param name="filter_len" value="5" />
+    <param name="normal_f_mode" value="$(arg normal_f_mode)" />
+    <param name="filter_len" value="$(arg filter_len)" />
   </node>
   <node type="fv_filter1.py" pkg="fingervision" name="fv_filter1_r" ns="fingervision" output="screen">
     <param name="fv" value="$(arg fv_src)" />
     <param name="fv_out" value="$(arg fv2)" />
     <param name="side" value="l" />
-    <param name="normal_f_mode" value="xy_norm" />
     <param name="reduction_mode" value="mean" />
-    <param name="filter_len" value="5" />
+    <param name="normal_f_mode" value="$(arg normal_f_mode)" />
+    <param name="filter_len" value="$(arg filter_len)" />
   </node>
 
 </launch>
