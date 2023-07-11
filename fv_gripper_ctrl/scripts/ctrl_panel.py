@@ -143,7 +143,7 @@ if __name__=='__main__':
     }
   if is_sim:
     cmds['fvp']= cmds['fvp_file']
-    for c in ('fix_usb','gripper','config_fv_l','config_fv_r'):
+    for c in ('fix_usb','gripper','config_fv_l','config_fv_r','reboot_dxlg','factory_reset_dxlg'):
       cmds[c][1]= None
   for key in cmds.iterkeys():
     if isinstance(cmds[key][0],str):
