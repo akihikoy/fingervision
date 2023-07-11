@@ -238,9 +238,9 @@ if __name__=='__main__':
         'h': 1,
         'size_policy': ('fixed', 'fixed')      }),
     'spacer_cmn2': ('spacer', {
-        'w': 400,
+        'w': 100,
         'h': 1,
-        'size_policy': ('fixed', 'fixed')      }),
+        'size_policy': ('fixed', 'expanding')      }),
     'status_grid_text': (
       'status_grid',{
         'list_status': status_grid_list_text,
@@ -455,8 +455,8 @@ if __name__=='__main__':
     }
   layout_plots= (
     'boxh',None,(
-      layout_plot_cbs,
-      'btn_plot',
+      ('boxv',None, (layout_plot_cbs,'spacer_cmn2')),
+      ('boxv',None, ('btn_plot','spacer_cmn2')),
       ))
 
   widgets_debug= {
