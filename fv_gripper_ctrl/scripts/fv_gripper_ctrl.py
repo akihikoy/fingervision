@@ -415,7 +415,7 @@ class TFVGripper(TROSUtil):
       'fv.d_center',
       'fv.d_orientation',
       #'fv.normal_force',
-      #'fv.num_force_change',
+      'fv.num_force_change',
       'fv.orientation',
       'fv.slip',
       ]

@@ -21,7 +21,6 @@ Closing gripper if slip is detected.
 '''
 def Loop(fvg):
   fv_data= fvg.fv.data
-  #slip_detect1= lambda: (sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>fvg.fv_ctrl_param.hold_sensitivity_slip)
   slip_detect2= lambda: ((slip.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_slip,
                           d_center_norm.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_oc,
                           d_orientation.Get(fvg,fv_data)>fvg.fv_ctrl_param.hold_sensitivity_oo,
@@ -35,8 +34,9 @@ def Loop(fvg):
 
   g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():
-    if any(slip_detect2()):
-      print 'slip',slip_detect2(),rospy.Time.now().to_sec()
+    slips= slip_detect2()
+    if any(slips):
+      print 'slip',slips,rospy.Time.now().to_sec()
       g_pos-= fvg.fv_ctrl_param.min_gstep
       fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
       for i in range(100):  #100

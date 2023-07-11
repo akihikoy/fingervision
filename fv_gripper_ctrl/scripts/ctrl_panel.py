@@ -111,7 +111,7 @@ if __name__=='__main__':
         #'fv.d_center',
         #'fv.d_orientation',
         #'fv.normal_force',
-        #'fv.num_force_change',
+        ('fv.num_force_change','num_force_change',1,None),
         ('fv.orientation','orientation',1,None),
         ('fv.slip','slip',1,None),
         ('gripper_pos','gpos',2,None),
