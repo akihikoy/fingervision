@@ -6,9 +6,9 @@ from ay_py.ros import *
 import tf
 import sensor_msgs.msg
 
-'''
-In-hand manipulation (pivoting).
-'''
+def Help():
+  return 'In-hand manipulation (pivoting).'
+
 def Loop(fvg):
   fv_data= fvg.fv.data
 

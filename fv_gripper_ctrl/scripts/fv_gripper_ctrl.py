@@ -244,6 +244,7 @@ class TFVGripper(TROSUtil):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
+    self.LoadCtrlParams()
 
     self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64)
     self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64)
@@ -545,6 +546,7 @@ class TFVGripper(TROSUtil):
       if not script.endswith('.py'):  continue
       mod= self.LoadScript('fv.{}'.format(script[:-3]))
       f_set= getattr(mod,'SetDefaultParams',None)
+      #print 'debug',script,'fv.{}'.format(script[:-3]),f_set
       if f_set is None:  continue
       f_set(self)
 

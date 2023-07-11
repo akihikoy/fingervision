@@ -107,10 +107,11 @@ if __name__=='__main__':
         ('fv.center','center_x',1,0),
         ('fv.center','center_y',1,1),
         ('fv.d_area','d_area',1,None),
-        #'fv.d_center_norm',
-        #'fv.d_center',
-        #'fv.d_orientation',
-        #'fv.normal_force',
+        ('fv.d_center_norm','d_center_norm',1,None),
+        ('fv.d_center','d_center_x',1,0),
+        ('fv.d_center','d_center_y',1,1),
+        ('fv.d_orientation','d_orientation',1,None),
+        #('fv.normal_force','normal_force',
         ('fv.num_force_change','num_force_change',1,None),
         ('fv.orientation','orientation',1,None),
         ('fv.slip','slip',1,None),
@@ -185,22 +186,19 @@ if __name__=='__main__':
   #UI for configuring FV control parameters:
   ctrl_config= {
       #Common control parameters:
-      'min_gstep': 0.0005,
+      'min_gstep': 0.0005,  #Minimum gripper step size.
+      'force_change_sensitivity': 0.9,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
+      'force_init_len': 10,  #Length of initial force array to average as a basis to compute the force array change.
       #Parameters used in fv.grasp:
-      'grasp_th': 3,          #Threshold to stop.
-      'grasp_filter_len': 4,  #Temporal filter length.
-      'grasp_dstate_th': 3,   #Threshold of discrete state.
+      'grasp_nforce_threshold': 20,  #Threshold of number of force changing points to stop closing the gripper.
       #Parameters used in fv.hold, fv.pickup2a, fv.pickup2b:
       'hold_sensitivity_slip': 0.08,  #Sensitivity of slip detection (smaller is more sensitive).
       'hold_sensitivity_oc': 0.2,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
-      'hold_sensitivity_oo': 0.5,  #Sensitivity of object-orientation-movement detection (smaller is more sensitive).
       'hold_sensitivity_oa': 0.4,  #Sensitivity of object-area-change detection (smaller is more sensitive).
       #Parameters used in fv.openif:
       'openif_sensitivity_slip': 0.6,  #Sensitivity of slip detection (smaller is more sensitive).
       'openif_sensitivity_oc': 0.4,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
-      'openif_sensitivity_oo': 4.0,  #Sensitivity of object-orientation-movement detection (smaller is more sensitive).
       'openif_sensitivity_oa': 0.6,  #Sensitivity of object-area-change detection (smaller is more sensitive).
-      'openif_sensitivity_force':0.9,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
       'openif_nforce_threshold': 20,  #Threshold of number of force changing points to open the gripper.
       'openif_dw_grip': 0.02,  #Displacement of gripper movement.
     }
@@ -390,41 +388,37 @@ if __name__=='__main__':
   widgets_ctrl_config= {
     }
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'min_gstep', (0.0,0.01,0.0001))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'grasp_th',         (0,20,1))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'grasp_filter_len', (0,20,1))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'grasp_dstate_th',  (0,20,1))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'hold_sensitivity_slip', (0.0,2.0,0.01))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'force_change_sensitivity', (0.0,4.0,0.01))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'force_init_len', (0,100,1))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'grasp_nforce_threshold', (0,100,1))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'hold_sensitivity_slip', (0.0,1.0,0.001))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'hold_sensitivity_oc', (0.0,2.0,0.01))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'hold_sensitivity_oo', (0.0,4.0,0.01))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'hold_sensitivity_oa', (0.0,2.0,0.01))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_slip', (0.0,2.0,0.01))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_slip', (0.0,1.0,0.001))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_oc', (0.0,2.0,0.01))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_oo', (0.0,4.0,0.01))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_oa', (0.0,2.0,0.01))
-  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_sensitivity_force', (0.0,4.0,0.01))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_nforce_threshold', (1,100,1))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'openif_dw_grip', (0.0,0.1,0.001))
 
   layout_ctrl_config1= (
     'boxv',None, (
         ('boxh',None, CtrlConfigSliderLayout('min_gstep') ),
-        ('boxh',None, CtrlConfigSliderLayout('grasp_th') ),
-        ('boxh',None, CtrlConfigSliderLayout('grasp_filter_len') ),
-        ('boxh',None, CtrlConfigSliderLayout('grasp_dstate_th') ),
+        ('boxh',None, CtrlConfigSliderLayout('force_change_sensitivity') ),
+        ('boxh',None, CtrlConfigSliderLayout('force_init_len') ),
+        ('boxh',None, CtrlConfigSliderLayout('grasp_nforce_threshold') ),
         ('boxh',None, CtrlConfigSliderLayout('hold_sensitivity_slip') ),
         ('boxh',None, CtrlConfigSliderLayout('hold_sensitivity_oc') ),
-        ('boxh',None, CtrlConfigSliderLayout('hold_sensitivity_oo') ),
         ('boxh',None, CtrlConfigSliderLayout('hold_sensitivity_oa') ),
+        'spacer_cmn2',
       ))
   layout_ctrl_config2= (
     'boxv',None, (
         ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_slip') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_oc') ),
-        ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_oo') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_oa') ),
-        ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_force') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_nforce_threshold') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_dw_grip') ),
+        'spacer_cmn2',
       ))
 
 
@@ -569,7 +563,7 @@ if __name__=='__main__':
           ('Config/1',layout_ctrl_config1),
           ('Config/2',layout_ctrl_config2),
           ('Plot',layout_plots),
-          ('Debug',layout_debug),
+          ('Advanced',layout_debug),
           )),
         'spacer_cmn1')),
       ))
