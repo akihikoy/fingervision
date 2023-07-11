@@ -131,8 +131,8 @@ class TFVSensor(TROSUtil):
     else:
       self.srvp['start_detect_obj'](std_srvs.srv.EmptyRequest())
 
-    self.AddSubW('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback, time_out=3.0)
-    self.AddSubW('fv_filter1_objinfo', '/fingervision/fv_filter1_objinfo', fingervision_msgs.msg.Filter1ObjInfo, self.Filter1ObjInfoCallback, time_out=3.0)
+    self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback)
+    self.AddSub('fv_filter1_objinfo', '/fingervision/fv_filter1_objinfo', fingervision_msgs.msg.Filter1ObjInfo, self.Filter1ObjInfoCallback)
 
   #Stop subscribing topics.
   def Stop(self):

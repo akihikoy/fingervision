@@ -317,7 +317,8 @@ class TFVGripper(TROSUtil):
   def GetAllSensorValues(self, fv_data=None):
     if fv_data is None:  fv_data= copy.deepcopy(self.fv.data)
     sensor_values= {}
-    time_stamp= max([tm for tm in fv_data.tm_last_topic if tm is not None])
+    time_stamps= [tm for tm in fv_data.tm_last_topic if tm is not None]
+    time_stamp= max(time_stamps) if len(time_stamps)>0 else None
     for sensor_name,d in self.sensors.iteritems():
       try:
         sensor_values[sensor_name]= d['f_get'](self, fv_data)
