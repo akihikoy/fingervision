@@ -12,6 +12,72 @@ import fingervision_msgs.msg
 import fingervision_msgs.srv
 
 
+def DecodeNamedVariableMsg(msg):
+  accessor= {msg.INT:msg.data_i, msg.FLOAT:msg.data_f, msg.BOOL:msg.data_b, msg.STR:msg.data_s}
+  if msg.type==msg.NONE:
+    if msg.form==msg.SCALAR:  return msg.name, None
+    elif msg.form==msg.LIST_1D:
+      assert(msg.sizes==[0] and len(msg.sizes)==1)
+      return msg.name, []
+    else:
+      raise Exception('Invalid content: {}'.format(msg))
+  if msg.form==msg.SCALAR:
+    return msg.name, accessor[msg.type][0]
+  elif msg.form==msg.LIST_1D:
+    data= accessor[msg.type]
+    assert(len(msg.sizes)==1)
+    assert(msg.sizes[0]==len(data))
+    return msg.name, data
+  elif msg.form==msg.LIST_2D:
+    data= accessor[msg.type]
+    assert(len(msg.sizes)>=2)
+    assert(np.prod(msg.sizes)==len(data))
+    data= np.array(data).reshape(msg.sizes)
+    return msg.name, data
+
+def DecodeNamedVariableListMsg(msg):
+  rawdata= (msg.data.data if isinstance(msg,fingervision_msgs.msg.NamedVariableListStamped) else
+            msg.data      if isinstance(msg,fingervision_msgs.msg.NamedVariableList)
+                          else msg)
+  data= [DecodeNamedVariableMsg(d) for d in rawdata]
+  return {name:value for (name,value) in data}
+
+def EncodeNamedVariableMsg(name, var):
+  msg= fingervision_msgs.msg.NamedVariable()
+  msg.name= name
+  field= {msg.INT:'data_i', msg.FLOAT:'data_f', msg.BOOL:'data_b', msg.STR:'data_s'}
+  assign= lambda type,v: setattr(msg,field[type], v)
+  def detect_type(scalar):
+    dtype= scalar.dtype
+    if   np.issubdtype(dtype,np.str):  return msg.STR
+    elif np.issubdtype(dtype,np.float):  return msg.FLOAT
+    elif np.issubdtype(dtype,np.int):  return msg.INT
+    elif np.issubdtype(dtype,np.bool):  return msg.BOOL
+    raise Exception('Unrecognized variable: {} type: {}'.format(scalar,dtype))
+  if isinstance(var,(list,np.ndarray)):
+    if len(var)==0:
+      msg.type= msg.NONE
+      msg.form= msg.LIST_1D
+      msg.sizes= [0]
+    else:
+      var= np.array(var)
+      msg.type= detect_type(var)
+      msg.form= msg.LIST_1D if len(var.shape)==1 else msg.LIST_2D
+      msg.sizes= var.shape
+      assign(msg.type, var.ravel().tolist())
+  else:
+    if var is None:
+      msg.type= msg.NONE
+      msg.form= msg.SCALAR
+      msg.sizes= []
+    else:
+      msg.type= detect_type(np.array(var))
+      msg.form= msg.SCALAR
+      msg.sizes= []
+      assign(msg.type, [var])
+  return msg
+
+
 def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=False):
   gripper= None
   param= None
@@ -152,8 +218,10 @@ class TFVGripper(TROSUtil):
     self.fv= fv_sensor.TFVSensor()  #FV sensor utility.
     self.frame_id= 'base_link'
     self.fv_ctrl_param= TContainer()
+    self.cnt= TContainer()  #Utility container for the scripts.
     self.script_is_active= False
     self.script_thread= None
+    self.sensors= {}
     self.viz= None
 
     self.state_locker= threading.RLock()
@@ -176,11 +244,12 @@ class TFVGripper(TROSUtil):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
+    self.LoadCtrlParams()
 
     self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64)
     self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64)
     self.AddPub('active_script','~active_script',std_msgs.msg.String)
-    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedFloat64List)
+    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedVariableListStamped)
 
     self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data))
     self.AddSrv('run_script', '~run_script', fingervision_msgs.srv.SetString,
@@ -210,26 +279,83 @@ class TFVGripper(TROSUtil):
 
   def LoadScript(self, script_name):
     try:
-      mod= __import__(script_name,globals(),None,(script_name,))
-      f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
-      if f_run is None and f_loop is None:
-        print 'In script {}, both Run and Loop are not defined'.format(script_name)
-        return None,None
-      if f_run is not None and f_loop is not None:
-        print 'In script {}, both Run and Loop are defined'.format(script_name)
-        return None,None
-      return f_run,f_loop
+      #mod= __import__(script_name,globals(),None,(script_name,))
+      mod= SmartImportReload(script_name)
+      return mod
     except ImportError:
       print 'No script named: {}'.format(script_name)
-    return None,None
+    return None
 
-  def RunScript(self, script_name):
+  def GetSensorFunctions(self, sensor_name):
+    # mod= __import__(sensor_name,globals(),None,(sensor_name,))
+    mod= self.LoadScript(sensor_name)
+    if mod is None:  return None,None
+    f_reset,f_get= getattr(mod,'Reset',None), getattr(mod,'Get',None)
+    return f_reset,f_get
+
+  #Load sensor scripts specified by sensor_name_list.
+  #  run_reset: Control the timing to run Reset function:
+  #    'all': All sensors, 'only_new': Newly added sensors, 'none': No sensors.
+  def LoadAllSensors(self, sensor_name_list, run_reset='only_new'):
+    #Remove sensors that are not included in sensor_name_list:
+    remove_list= [s for s in self.sensors.iterkeys() if s not in sensor_name_list]
+    for s in remove_list:  del self.sensors[s]
+    #Load sensors and store them in self.sensors:
+    for sensor_name in sensor_name_list:
+      f_reset,f_get= self.GetSensorFunctions(sensor_name)
+      is_new= False
+      if sensor_name not in self.sensors:
+        self.sensors[sensor_name]= dict()
+        is_new= True
+      self.sensors[sensor_name]['f_reset']= f_reset
+      self.sensors[sensor_name]['f_get']= f_get
+      if run_reset=='all' or (is_new and run_reset=='only_new'):
+        f_reset(self)
+
+  #Run Get functions of all loaded sensors for a given fv_data (snapshot of self.fv.data)
+  # and return time_stamp and {sensor_name:value} dict.
+  def GetAllSensorValues(self, fv_data=None):
+    if fv_data is None:  fv_data= copy.deepcopy(self.fv.data)
+    sensor_values= {}
+    time_stamp= max([tm for tm in fv_data.tm_last_topic if tm is not None])
+    for sensor_name,d in self.sensors.iteritems():
+      try:
+        sensor_values[sensor_name]= d['f_get'](self, fv_data)
+      except Exception as e:
+        print 'Sensor {} error: {}'.format(sensor_name, e)
+    return time_stamp, sensor_values
+
+  def CopySensorValuesToMsg(self, time_stamp, sensor_values):
+    msg= fingervision_msgs.msg.NamedVariableListStamped()
+    msg.header.stamp= time_stamp
+    msg.data.data= [EncodeNamedVariableMsg(sensor_name, sensor_values[sensor_name] if sensor_name in sensor_values else None)
+                    for sensor_name,d in self.sensors.iteritems()]
+    return msg
+
+  def GetScriptFunctions(self, script_name):
+    # mod= __import__(script_name,globals(),None,(script_name,))
+    mod= self.LoadScript(script_name)
+    if mod is None:  return None,None
+    f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
+    if f_run is None and f_loop is None:
+      print 'In script {}, both Run and Loop are not defined'.format(script_name)
+      return None,None
+    if f_run is not None and f_loop is not None:
+      print 'In script {}, both Run and Loop are defined'.format(script_name)
+      return None,None
+    return f_run,f_loop
+
+  def RunScript(self, script_name, with_update_params=True):
     self.StopScript()
-    f_run,f_loop= self.LoadScript(script_name)
+    if with_update_params:  self.LoadCtrlParams()  #TODO:FIXME:This is tentative.
+    f_run,f_loop= self.GetScriptFunctions(script_name)
     if f_run is not None:
       self.script_is_active= True
       CPrint(2,'{} is called'.format(script_name))
-      f_run(self)
+      try:
+        f_run(self)
+      except Exception as e:
+        print 'Script {} error in Run: {}'.format(script_name, e)
       self.script_is_active= False
     elif f_loop is not None:
       self.script_is_active= True
@@ -240,8 +366,12 @@ class TFVGripper(TROSUtil):
 
   def ScriptLoopExecutor(self, f_loop):
     th= self.script_thread
-    f_loop(self)
-    CPrint(2,'{} is stopped'.format(th.name if th is not None else '???'))
+    script_name= th.name if th is not None else '???'
+    try:
+      f_loop(self)
+    except Exception as e:
+      print 'Script {} error in Loop: {}'.format(script_name, e)
+    CPrint(2,'{} is stopped'.format(script_name))
     self.script_is_active= False
     self.script_thread= None
 
@@ -277,6 +407,21 @@ class TFVGripper(TROSUtil):
       self.g_target= g_target
 
   def CtrlLoop(self):
+    #TODO:FIXME:Pu in the param list.
+    sensor_name_list= [
+      'fv.area',
+      'fv.center',
+      'fv.d_area',
+      'fv.d_center_norm',
+      'fv.d_center',
+      'fv.d_orientation',
+      #'fv.normal_force',
+      'fv.num_force_change',
+      'fv.orientation',
+      'fv.slip',
+      ]
+    self.LoadAllSensors(sensor_name_list)
+
     if self.gripper.Is('DxlGripper'):
       active_holding= [False]
 
@@ -354,10 +499,13 @@ class TFVGripper(TROSUtil):
               if not active_holding[0]:
                 self.gripper.StartHolding()
                 active_holding[0]= True
-            g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
-            if g_target<g_range[0]:  g_target= g_range[0]
-            if g_target>g_range[1]:  g_target= g_range[1]
-            self.SetGripperTarget(g_target)
+            if abs(gsteps[0])>1.0e-5:
+              g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
+              if g_target<g_range[0]:  g_target= g_range[0]
+              if g_target>g_range[1]:  g_target= g_range[1]
+              self.SetGripperTarget(g_target)
+            else:
+              state[1]= 'no_cmd'
 
           if not self.script_is_active:
             self.GripperMoveTo()
@@ -368,11 +516,13 @@ class TFVGripper(TROSUtil):
                 self.gripper.StopHolding()
                 active_holding[0]= False
 
+          time_stamp,sensor_values= self.GetAllSensorValues()
+          fvsignals_msg= self.CopySensorValuesToMsg(time_stamp,sensor_values)
+
           self.pub.gripper_pos.publish(std_msgs.msg.Float64(self.GripperPosition()))
           self.pub.target_pos.publish(std_msgs.msg.Float64(self.GripperTarget()))
           self.pub.active_script.publish(std_msgs.msg.String(self.ActiveScript()))
-          self.pub.fvsignals.publish(fingervision_msgs.msg.NamedFloat64List())
-          #TODO:Implement fvsignals
+          self.pub.fvsignals.publish(fvsignals_msg)
 
           self.VizGripper()
           rate_adjuster.sleep()
@@ -384,6 +534,31 @@ class TFVGripper(TROSUtil):
           self.gripper.StopHolding()
           active_holding[0]= False
       print 'Finished'
+
+  def LoadCtrlParams(self):
+    #Common control parameters:
+    self.fv_ctrl_param.min_gstep= 0.0005
+    self.fv_ctrl_param.effort= 100.0
+
+    #Load default control parameters of scripts.
+    curr_dir= os.path.dirname(__file__)
+    for script in sorted(os.listdir(os.path.join(curr_dir,'fv'))):
+      if not script.endswith('.py'):  continue
+      mod= self.LoadScript('fv.{}'.format(script[:-3]))
+      f_set= getattr(mod,'SetDefaultParams',None)
+      #print 'debug',script,'fv.{}'.format(script[:-3]),f_set
+      if f_set is None:  continue
+      f_set(self)
+
+    #Load fv_ctrl parameters from files.
+    CONFIG_FILE= 'fv_ctrl.yaml'
+    ctrl_params= {}
+    for dir_path in fvg.config_path:
+      file_path= os.path.join(dir_path,CONFIG_FILE)
+      if os.path.exists(file_path):
+        InsertDict(ctrl_params, LoadYAML(file_path))
+    for k,v in ctrl_params.iteritems():
+      fvg.fv_ctrl_param[k]= v
 
 
 if __name__ == '__main__':
