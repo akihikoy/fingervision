@@ -119,7 +119,7 @@ void TrackKeyPoints2(
     // Reset when number of tracking failures in a row exceeds a threshold
     if(mi.NTrackFailed>n_reset)
     {
-      std::cerr<<"TrackKeyPoints2::MESSAGE:: blob tracking reset: "<<i<<std::endl;
+      // std::cerr<<"TrackKeyPoints2::MESSAGE:: blob tracking reset: "<<i<<std::endl;
       mi.Po= oi.pt;
       mi.So= oi.size;
       mi.DP= cv::Point2f(0.0,0.0);
