@@ -88,6 +88,7 @@ if __name__=='__main__':
   dxl_dev= get_arg('-dxl_dev=',get_arg('--dxl_dev=','USB0'))
   fullscreen= True if '-fullscreen' in sys.argv or '--fullscreen' in sys.argv else False
   is_sim= True if '-sim' in sys.argv or '--sim' in sys.argv else False
+  with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   RVIZ_CONFIG= os.environ['HOME']+'/.rviz/default.rviz'
   #Parameters:
@@ -527,10 +528,11 @@ if __name__=='__main__':
         'size_policy': ('expanding', 'fixed'),
         'onclick': lambda w,obj: w.close(), }),
     }
+  if not with_modbus:  del widgets_debug['btn_modbus_server']
   layout_debug= (
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
-      ('boxv',None, ('btn_modbus_server',)),
+      ('boxv',None, ('btn_modbus_server',) if with_modbus else ()),
       ('boxh',None, ('label_dxlg', ('boxv',None, (
                         ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
                         ))

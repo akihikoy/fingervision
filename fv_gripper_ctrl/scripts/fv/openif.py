@@ -12,7 +12,6 @@ def Help():
   return 'Open the gripper if the sensor detects force change or slip.'
 
 def SetDefaultParams(fvg):
-  print 'hoge hoge hoge'
   #Parameters used in fv.openif:
   fvg.fv_ctrl_param.openif_sensitivity_slip= 0.6  #Sensitivity of slip detection (smaller is more sensitive).
   fvg.fv_ctrl_param.openif_sensitivity_oc= 0.4  #Sensitivity of object-center-movement detection (smaller is more sensitive).
