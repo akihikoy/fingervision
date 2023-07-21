@@ -187,20 +187,20 @@ if __name__=='__main__':
   #UI for configuring FV control parameters:
   ctrl_config= {
       #Common control parameters:
-      'min_gstep': 0.0005,  #Minimum gripper step size.
-      'force_change_sensitivity': 0.9,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
+      'min_gstep': 0.001,  #Minimum gripper step size.
+      'force_change_sensitivity': 1.3,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
       'force_init_len': 10,  #Length of initial force array to average as a basis to compute the force array change.
       #Parameters used in fv.grasp:
-      'grasp_nforce_threshold': 20,  #Threshold of number of force changing points to stop closing the gripper.
+      'grasp_nforce_threshold': 10,  #Threshold of number of force changing points to stop closing the gripper.
       #Parameters used in fv.hold, fv.pickup2a, fv.pickup2b:
-      'hold_sensitivity_slip': 0.08,  #Sensitivity of slip detection (smaller is more sensitive).
-      'hold_sensitivity_oc': 0.2,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
-      'hold_sensitivity_oa': 0.4,  #Sensitivity of object-area-change detection (smaller is more sensitive).
+      'hold_sensitivity_slip': 0.02,  #Sensitivity of slip detection (smaller is more sensitive).
+      'hold_sensitivity_oc': 2.0,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
+      'hold_sensitivity_oa': 2.0,  #Sensitivity of object-area-change detection (smaller is more sensitive).
       #Parameters used in fv.openif:
-      'openif_sensitivity_slip': 0.6,  #Sensitivity of slip detection (smaller is more sensitive).
-      'openif_sensitivity_oc': 0.4,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
-      'openif_sensitivity_oa': 0.6,  #Sensitivity of object-area-change detection (smaller is more sensitive).
-      'openif_nforce_threshold': 20,  #Threshold of number of force changing points to open the gripper.
+      'openif_sensitivity_slip': 0.025,  #Sensitivity of slip detection (smaller is more sensitive).
+      'openif_sensitivity_oc': 2.0,  #Sensitivity of object-center-movement detection (smaller is more sensitive).
+      'openif_sensitivity_oa': 2.0,  #Sensitivity of object-area-change detection (smaller is more sensitive).
+      'openif_nforce_threshold': 14,  #Threshold of number of force changing points to open the gripper.
       'openif_dw_grip': 0.02,  #Displacement of gripper movement.
     }
   if os.path.exists(config['FV_CTRL_CONFIG']):
