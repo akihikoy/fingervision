@@ -53,8 +53,8 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
   def Setup(self):
     rospy.wait_for_service('/rosout/get_loggers', timeout=5.0)
 
-    pm.StartTopicMonitorThread()
-    pm.StartVirtualJoyStick()
+    self.StartTopicMonitorThread()
+    self.StartVirtualJoyStick()
 
     self.sub= {}
     for (topic,msg_type) in (
@@ -65,7 +65,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
       self.sub[topic]= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.TopicCallback(topic,msg))
 
   def Cleanup(self):
-    pm.StopTopicMonitorThread()
+    self.StopTopicMonitorThread()
     for key,sub in self.sub.iteritems():
       sub.unregister()
 
