@@ -87,7 +87,10 @@ if __name__=='__main__':
   joy_dev= get_arg('-joy_dev=',get_arg('--joy_dev=','js0'))
   dxl_dev= get_arg('-dxl_dev=',get_arg('--dxl_dev=','USB0'))
   fullscreen= True if '-fullscreen' in sys.argv or '--fullscreen' in sys.argv else False
-  is_sim= True if '-sim' in sys.argv or '--sim' in sys.argv else False
+  #Gripper simulation flag:
+  is_gsim= True if '-gsim' in sys.argv or '--gsim' in sys.argv else False
+  #FV simulation flag:
+  is_fvsim= True if '-fvsim' in sys.argv or '--fvsim' in sys.argv else False
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   RVIZ_CONFIG= os.environ['HOME']+'/.rviz/default.rviz'
@@ -102,7 +105,8 @@ if __name__=='__main__':
     'FV_L_CONFIG': 'config/fvp300x_l.yaml',
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
-    'IS_SIM': is_sim,
+    'IS_GSIM': is_gsim,
+    'IS_FVSIM': is_fvsim,
     'PLOT_LIST':[
         ('fv.area','area',1,None),
         ('fv.center','center_x',1,0),
@@ -125,7 +129,7 @@ if __name__=='__main__':
   cmds= {
     'roscore': ['roscore','bg'],
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
-    'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB}','bg'],
+    'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} is_sim:={IS_GSIM}','bg'],
     'reboot_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} Reboot','fg'],
     'factory_reset_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
@@ -138,14 +142,17 @@ if __name__=='__main__':
     'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
     'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
-    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:={IS_SIM}','bg'],
+    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:=False','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py','bg'],
     }
-  if is_sim:
+  if is_gsim:
+    for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
+      cmds[c][1]= None
+  if is_fvsim:
     cmds['fvp']= cmds['fvp_file']
-    for c in ('fix_usb','gripper','config_fv_l','config_fv_r','reboot_dxlg','factory_reset_dxlg'):
+    for c in ('config_fv_l','config_fv_r'):
       cmds[c][1]= None
   for key in cmds.iterkeys():
     if isinstance(cmds[key][0],str):

@@ -78,15 +78,13 @@ def EncodeNamedVariableMsg(name, var):
   return msg
 
 
-def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=False):
+def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
   gripper= None
   param= None
   if gripper_type in ('RHP12RNGripper','RHP12RNAGripper'):
-    if not is_sim:
-      mod= __import__('ay_py.ros.rbt_rhp12rn',globals(),None,('TRHP12RNGripper',))
-      gripper= mod.TRHP12RNGripper(node_name=gripper_node)
-    else:
-      gripper= TSimGripper2F1(('RHP12RNGripper','ThGripper'),pos_range=[0.0,0.109])
+    mod= __import__('ay_py.ros.rbt_rhp12rn',globals(),None,('TRHP12RNGripper',))
+    gripper= mod.TRHP12RNGripper(node_name=gripper_node)
+    #gripper= TSimGripper2F1(('RHP12RNGripper','ThGripper'),pos_range=[0.0,0.109])
     param={
       'lx': [0.0,0.0,0.218, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -95,11 +93,9 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=Fals
         }
       }
   elif gripper_type=='DxlGripper':
-    if not is_sim:
-      mod= __import__('ay_py.ros.rbt_dxlg',globals(),None,('TDxlGripper',))
-      gripper= mod.TDxlGripper(node_name=gripper_node)
-    else:
-      gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.095])
+    mod= __import__('ay_py.ros.rbt_dxlg',globals(),None,('TDxlGripper',))
+    gripper= mod.TDxlGripper(node_name=gripper_node)
+    #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.095])
     param={
       'lx': [0.0,0.0,0.16, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -108,11 +104,9 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=Fals
         }
       }
   elif gripper_type=='EZGripper':
-    if not is_sim:
-      mod= __import__('ay_py.ros.rbt_ezg',globals(),None,('TEZGripper',))
-      gripper= mod.TEZGripper(node_name=gripper_node)
-    else:
-      gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.150])
+    mod= __import__('ay_py.ros.rbt_ezg',globals(),None,('TEZGripper',))
+    gripper= mod.TEZGripper(node_name=gripper_node)
+    #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.150])
     param={
       'lx': [0,0,0, 0.0,-0.70710678,0.0,0.70710678],
       'bound_box':{
@@ -123,11 +117,9 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=Fals
   elif gripper_type.startswith('DxlpO2Gripper'):
     finger_type= gripper_type.replace('DxlpO2Gripper_','')
     fts= {'Straight1':'st1','SRound1':'sr1','Fork1':'f1'}[finger_type]
-    if not is_sim:
-      mod= __import__('ay_py.ros.rbt_dxlpo2',globals(),None,('TDxlpO2Gripper',))
-      gripper= mod.TDxlpO2Gripper(node_name=gripper_node, finger_type=finger_type)
-    else:
-      gripper= TSimGripper2F1((gripper_type,),pos_range={'st1':[0.0,0.300],'sr1':[0.0,0.1950],'f1':[-0.0189,0.200]}[fts])
+    mod= __import__('ay_py.ros.rbt_dxlpo2',globals(),None,('TDxlpO2Gripper',))
+    gripper= mod.TDxlpO2Gripper(node_name=gripper_node, finger_type=finger_type)
+    #gripper= TSimGripper2F1((gripper_type,),pos_range={'st1':[0.0,0.300],'sr1':[0.0,0.1950],'f1':[-0.0189,0.200]}[fts])
     param={
       'lx': [0.0,0.0,{'st1':0.31,'sr1':0.22,'f1':0.22}[fts], 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -136,11 +128,9 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver', is_sim=Fals
         }
       }
   elif gripper_type=='DxlpY1Gripper':
-    if not is_sim:
-      mod= __import__('ay_py.ros.rbt_dxlpy1',globals(),None,('TDxlpY1Gripper',))
-      gripper= mod.TDxlpY1Gripper(node_name=gripper_node)
-    else:
-      gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.133])
+    mod= __import__('ay_py.ros.rbt_dxlpy1',globals(),None,('TDxlpY1Gripper',))
+    gripper= mod.TDxlpY1Gripper(node_name=gripper_node)
+    #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.133])
     param={
       'lx': [0.0,0.0,0.264, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -240,8 +230,8 @@ class TFVGripper(TROSUtil):
       self.gripper= None
     if TFVGripper is not None:  super(TFVGripper,self).Cleanup()
 
-  def Setup(self, fv_names, fv_nodes, is_sim=False):
-    self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node, is_sim=is_sim)
+  def Setup(self, fv_names, fv_nodes):
+    self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
     self.LoadCtrlParams()
@@ -567,12 +557,11 @@ if __name__ == '__main__':
 
   gripper_type= rospy.get_param('~gripper_type', 'RHP12RNGripper')
   gripper_node= rospy.get_param('~gripper_node', 'gripper_driver')
-  is_sim= rospy.get_param('~is_sim', False)
   fv_names= rospy.get_param('~fv_names', {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'})
   fv_nodes= rospy.get_param('~fv_nodes', None)
 
   fvg= TFVGripper()
-  fvg.Setup(fv_names, fv_nodes, is_sim=is_sim)
+  fvg.Setup(fv_names, fv_nodes)
 
   fvg.CtrlLoop()
   fvg.Cleanup()
