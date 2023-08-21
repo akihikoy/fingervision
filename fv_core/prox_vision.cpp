@@ -141,7 +141,6 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
 
 void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name)
 {
-  params.clear();
   cv::FileStorage fs(file_name, cv::FileStorage::READ);
   cv::FileNode data= fs["ObjDetTrack"];
   if(data.empty())
@@ -149,6 +148,7 @@ void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string 
     fs.release();
     return;
   }
+  params.clear();
   for(cv::FileNodeIterator itr(data.begin()),itr_end(data.end()); itr!=itr_end; ++itr)
   {
     TObjDetTrackBSPParams cf;

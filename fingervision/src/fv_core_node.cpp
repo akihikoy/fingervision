@@ -15,6 +15,7 @@
 #include "ay_vision/vision_util.h"
 #include "ay_cpp/geom_util.h"
 #include "ay_cpp/sys_util.h"
+#include "ay_cpp/cpp_util.h"
 //-------------------------------------------------------------------------------------------
 #include "fingervision_msgs/BlobMoves.h"
 #include "fingervision_msgs/ProxVision.h"
@@ -697,6 +698,15 @@ inline std::string CheckYAMLExistence(const std::string &filename)
 }
 //-------------------------------------------------------------------------------------------
 
+inline std::vector<std::string> CheckYAMLExistence(const std::vector<std::string> &filenames)
+{
+  for(std::vector<std::string>::const_iterator fitr(filenames.begin()),fitr_end(filenames.end());
+      fitr!=fitr_end; ++fitr)
+    CheckYAMLExistence(*fitr);
+  return filenames;
+}
+//-------------------------------------------------------------------------------------------
+
 int main(int argc, char**argv)
 {
   ros::init(argc, argv, "fv_core_node");
@@ -734,9 +744,9 @@ int main(int argc, char**argv)
 
   std::vector<TBlobTracker2Params> blobtrack_info;
   std::vector<TObjDetTrackBSPParams> objdettrack_info;
-  ReadFromYAML(CamInfo, CheckYAMLExistence(pkg_dir+"/"+cam_config));
-  ReadFromYAML(blobtrack_info, CheckYAMLExistence(pkg_dir+"/"+blobtrack_config));
-  ReadFromYAML(objdettrack_info, CheckYAMLExistence(pkg_dir+"/"+objdettrack_config));
+  ReadFromYAML(CamInfo, CheckYAMLExistence(PathJoin(pkg_dir,SplitString(cam_config))));
+  ReadFromYAML(blobtrack_info, CheckYAMLExistence(PathJoin(pkg_dir,SplitString(blobtrack_config))));
+  ReadFromYAML(objdettrack_info, CheckYAMLExistence(PathJoin(pkg_dir,SplitString(objdettrack_config))));
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
   ObjDetModelPrefix= pkg_dir+"/"+objdet_model_prefix;
 

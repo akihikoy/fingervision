@@ -12,6 +12,8 @@
 #include <sstream>
 #include <cstdlib>  // strtol, atol
 #include <cctype>
+#include <vector>
+#include <string>
 //-------------------------------------------------------------------------------------------
 namespace trick
 {
@@ -21,6 +23,40 @@ template <typename t_value>
 inline t_value Sq(const t_value &val)
 {
   return val*val;
+}
+//-------------------------------------------------------------------------------------------
+
+template<typename t_value>
+t_value Mean(const std::vector<t_value> &vec)
+{
+  t_value sum(0.0);
+  for(typename std::vector<t_value>::const_iterator itr(vec.begin()),itr_end(vec.end());
+      itr!=itr_end; ++itr)
+    sum+= *itr;
+  return sum/(t_value)(vec.size());
+}
+//-------------------------------------------------------------------------------------------
+
+// Return a median of vec.
+// NOTE: vec is modified (sorted).
+template<typename t_value>
+inline t_value Median(std::vector<t_value> &vec)
+{
+  std::sort(vec.begin(),vec.end());
+  if(vec.size()%2==1)  return vec[(vec.size()-1)/2];
+  return 0.5*(vec[vec.size()/2-1]+vec[vec.size()/2]);
+}
+//-------------------------------------------------------------------------------------------
+
+// Return a q-th percentile of vec.
+// NOTE: vec is modified (sorted).
+// NOTE: This method calculates a "lower" value of percentile.
+template<typename t_value>
+inline t_value Percentile(std::vector<t_value> &vec, const double &q)
+{
+  std::sort(vec.begin(),vec.end());
+  int nth= std::max(0, std::min(int(vec.size()-1), int(q*vec.size()-1)));
+  return vec[nth];
 }
 //-------------------------------------------------------------------------------------------
 
@@ -61,6 +97,44 @@ int FindIndex(const t_vector &vec, typename t_vector::const_reference val)
 }
 //-------------------------------------------------------------------------------------------
 
+// Split a string str by  delimiter delim.
+inline void SplitString(const std::string &str, std::vector<std::string> &result, char delim=',')
+{
+  std::stringstream ss(str);
+  result.clear();
+  while(ss.good())
+  {
+    std::string substr;
+    std::getline(ss, substr, delim);
+    result.push_back(substr);
+  }
+}
+// Split a string str by  delimiter delim.
+inline std::vector<std::string> SplitString(const std::string &str, char delim=',')
+{
+  std::vector<std::string> result;
+  SplitString(str, result, delim);
+  return result;
+}
+//-------------------------------------------------------------------------------------------
+
+// Make a vector of path: [base_dir+f for f in file_names].
+inline std::vector<std::string> PathJoin(const std::string base_dir, const std::vector<std::string> &file_names)
+{
+  std::string delim;
+  std::vector<std::string> result;
+  for(std::vector<std::string>::const_iterator fitr(file_names.begin()),fitr_end(file_names.end());
+      fitr!=fitr_end; ++fitr)
+  {
+    if((base_dir.size()>0&&base_dir.back()=='/') || (fitr->size()>0&&fitr->front()=='/'))
+      delim= "";
+    else
+      delim= "/";
+    result.push_back(base_dir+delim+*fitr);
+  }
+  return result;
+}
+//-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------
 }  // end of trick

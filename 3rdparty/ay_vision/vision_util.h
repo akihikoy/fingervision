@@ -334,6 +334,17 @@ void vec_write(cv::FileStorage &fs, const cv::String&, const std::vector<T> &x)
   fs<<"]";
 }
 //-------------------------------------------------------------------------------------------
+// Template to read from multiple YAML files.
+// Assuming that ReadFromYAML(t_data &data, const std::string &file_name) is defined,
+// and ReadFromYAML does not reset (clear) data when reading.
+template<typename t_data>
+void ReadFromYAML(t_data &data, const std::vector<std::string> &file_names)
+{
+  for(std::vector<std::string>::const_iterator itr(file_names.begin()),itr_end(file_names.end());
+      itr!=itr_end; ++itr)
+    ReadFromYAML(data, *itr);
+}
+//-------------------------------------------------------------------------------------------
 // NOTE: kp_write and kp_read are different from write and read in OpenCV 3.4+ for KeyPoint.
 void kp_write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
 void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
