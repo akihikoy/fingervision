@@ -245,9 +245,11 @@ TBlobTracker2Params::TBlobTracker2Params()
 }
 //-------------------------------------------------------------------------------------------
 
-void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std::string &file_name)
+void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std::string &file_name, cv::FileStorage *pfs)
 {
-  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs1;
+  if(pfs==NULL)  fs1.open(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage &fs(pfs==NULL?fs1:*pfs);
   fs<<"BlobTracker2"<<"[";
   for(std::vector<TBlobTracker2Params>::const_iterator itr(blob_params.begin()),itr_end(blob_params.end()); itr!=itr_end; ++itr)
   {
@@ -277,7 +279,7 @@ void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std:
     #undef PROC_VAR
   }
   fs<<"]";
-  fs.release();
+  if(pfs==NULL)  fs.release();
 }
 //-------------------------------------------------------------------------------------------
 

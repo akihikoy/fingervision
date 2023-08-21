@@ -91,9 +91,11 @@ TObjDetTrackBSPParams::TObjDetTrackBSPParams()
 }
 //-------------------------------------------------------------------------------------------
 
-void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name)
+void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name, cv::FileStorage *pfs)
 {
-  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs1;
+  if(pfs==NULL)  fs1.open(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage &fs(pfs==NULL?fs1:*pfs);
   fs<<"ObjDetTrack"<<"[";
   for(std::vector<TObjDetTrackBSPParams>::const_iterator itr(params.begin()),itr_end(params.end()); itr!=itr_end; ++itr)
   {
@@ -135,7 +137,7 @@ void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::st
     #undef PROC_VAR
   }
   fs<<"]";
-  fs.release();
+  if(pfs==NULL)  fs.release();
 }
 //-------------------------------------------------------------------------------------------
 

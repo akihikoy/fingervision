@@ -86,7 +86,7 @@ struct TBlobTracker2Params
 
   TBlobTracker2Params();
 };
-void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std::string &file_name);
+void WriteToYAML(const std::vector<TBlobTracker2Params> &blob_params, const std::string &file_name, cv::FileStorage *pfs=NULL);
 void ReadFromYAML(std::vector<TBlobTracker2Params> &blob_params, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
 

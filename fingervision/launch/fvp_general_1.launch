@@ -1,6 +1,7 @@
 <launch>
   <arg name="fv1" default="fvp_1_l" />
   <arg name="config1" default="config/fvp_l.yaml" />
+  <arg name="config_out1" default="data_gen/fvp_out_l.yaml" />
   <arg name="pkg_dir" default="$(find ay_fv_extra)/" />
 
   <node type="fv_core_node" pkg="fingervision" name="$(arg fv1)" ns="fingervision" output="screen">
@@ -9,6 +10,7 @@
     <param name="stereo_config" value="$(arg config1)" />
     <param name="blobtrack_config" value="$(arg config1)" />
     <param name="objdettrack_config" value="$(arg config1)" />
+    <param name="config_out" value="$(arg config_out1)" />
     <param name="blob_calib_prefix" value="data_gen/blob_" />
     <param name="publish_image" value="true" />
     <param name="frame_skip" value="0" />

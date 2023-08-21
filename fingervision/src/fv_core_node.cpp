@@ -70,6 +70,7 @@ double CaptureFPS(0);  // 0: no FPS control
 
 std::string BlobCalibPrefix("blob_");
 std::string ObjDetModelPrefix("objdet_");
+std::string ConfigOut("out1.yaml");  // Default file to save the configuration.
 std::vector<TCameraInfo> CamInfo;
 std::vector<TBlobTracker2> BlobTracker;  // Marker tracker
 std::vector<TObjDetTrackBSP> ObjDetTracker;  // Proximity vision
@@ -222,7 +223,7 @@ bool HandleKeyEvent()
   {
     TrackerInitRequest= true;
   }
-  else if(c=='p' || c=='P')
+  else if(c=='p')  // || c=='P'
   {
     if(CurrentWin!=NULL && WindowInfo[*CurrentWin].Kind=="BlobTracker")
     {
@@ -242,6 +243,22 @@ bool HandleKeyEvent()
       WriteToYAML(p,file_name.c_str());
       std::cerr<<"Parameters of the tracker are saved into "<<file_name<<std::endl;
     }
+  }
+  else if(c=='P')  // Save all parameters into ConfigOut.
+  {
+    std::vector<TBlobTracker2Params> blobtrack_info(BlobTracker.size());
+    for(int idx(0),idx_end(BlobTracker.size()); idx<idx_end; ++idx)
+      blobtrack_info[idx]= BlobTracker[idx].Params();
+
+    std::vector<TObjDetTrackBSPParams> objdettrack_info(ObjDetTracker.size());
+    for(int idx(0),idx_end(ObjDetTracker.size()); idx<idx_end; ++idx)
+      objdettrack_info[idx]= ObjDetTracker[idx].Params();
+
+    cv::FileStorage fs(ConfigOut, cv::FileStorage::WRITE);
+    WriteToYAML(blobtrack_info, "", &fs);
+    WriteToYAML(objdettrack_info, "", &fs);
+    fs.release();
+    std::cerr<<"Parameters of the trackers are saved into "<<ConfigOut<<std::endl;
   }
   else if(c=='r')
   {
@@ -716,6 +733,7 @@ int main(int argc, char**argv)
   std::string cam_config("config/cam1.yaml");
   std::string blobtrack_config("config/cam1.yaml");
   std::string objdettrack_config("config/cam1.yaml");
+  std::string config_out("out1.yaml");
   std::string blob_calib_prefix("blob_");
   std::string objdet_model_prefix("objdet_");
   std::string vout_base("/tmp/vout-");
@@ -725,6 +743,7 @@ int main(int argc, char**argv)
   node.param("cam_config",cam_config,cam_config);
   node.param("blobtrack_config",blobtrack_config,blobtrack_config);
   node.param("objdettrack_config",objdettrack_config,objdettrack_config);
+  node.param("config_out",config_out,config_out);
   node.param("blob_calib_prefix",blob_calib_prefix,blob_calib_prefix);
   node.param("objdet_model_prefix",objdet_model_prefix,objdet_model_prefix);
   node.param("vout_base",vout_base,vout_base);
@@ -739,6 +758,7 @@ int main(int argc, char**argv)
   std::cerr<<"cam_config: "<<cam_config<<std::endl;
   std::cerr<<"blobtrack_config: "<<blobtrack_config<<std::endl;
   std::cerr<<"objdettrack_config: "<<objdettrack_config<<std::endl;
+  std::cerr<<"config_out: "<<config_out<<std::endl;
   std::cerr<<"blob_calib_prefix: "<<blob_calib_prefix<<std::endl;
   std::cerr<<"objdet_model_prefix: "<<objdet_model_prefix<<std::endl;
 
@@ -749,6 +769,7 @@ int main(int argc, char**argv)
   ReadFromYAML(objdettrack_info, CheckYAMLExistence(PathJoin(pkg_dir,SplitString(objdettrack_config))));
   BlobCalibPrefix= pkg_dir+"/"+blob_calib_prefix;
   ObjDetModelPrefix= pkg_dir+"/"+objdet_model_prefix;
+  ConfigOut= pkg_dir+"/"+config_out;
 
   std::vector<cv::VideoCapture> cap(CamInfo.size());
   CamRectifier.resize(CamInfo.size());

@@ -348,7 +348,7 @@ void ReadFromYAML(t_data &data, const std::vector<std::string> &file_names)
 // NOTE: kp_write and kp_read are different from write and read in OpenCV 3.4+ for KeyPoint.
 void kp_write(cv::FileStorage &fs, const cv::String&, const cv::KeyPoint &x);
 void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &default_value=cv::KeyPoint());
-void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name);
+void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name, cv::FileStorage *pfs=NULL);
 void ReadFromYAML(std::vector<cv::KeyPoint> &keypoints, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
 
@@ -381,7 +381,7 @@ struct TCameraRectifier;
 // Apply an image pre-processing to an image according to the camera info.
 void Preprocess(cv::Mat &frame, const TCameraInfo &info, TCameraRectifier *pcam_rectifier=NULL);
 void Print(const std::vector<TCameraInfo> &cam_info);
-void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name);
+void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name, cv::FileStorage *pfs=NULL);
 void ReadFromYAML(std::vector<TCameraInfo> &cam_info, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
 
@@ -395,7 +395,7 @@ struct TStereoInfo
 };
 //-------------------------------------------------------------------------------------------
 void Print(const std::vector<TStereoInfo> &cam_info);
-void WriteToYAML(const std::vector<TStereoInfo> &cam_info, const std::string &file_name);
+void WriteToYAML(const std::vector<TStereoInfo> &cam_info, const std::string &file_name, cv::FileStorage *pfs=NULL);
 void ReadFromYAML(std::vector<TStereoInfo> &cam_info, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
 

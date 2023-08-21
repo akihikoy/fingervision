@@ -79,7 +79,7 @@ struct TObjDetTrackBSPParams
 
   TObjDetTrackBSPParams();
 };
-void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name);
+void WriteToYAML(const std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name, cv::FileStorage *pfs=NULL);
 void ReadFromYAML(std::vector<TObjDetTrackBSPParams> &params, const std::string &file_name);
 //-------------------------------------------------------------------------------------------
 

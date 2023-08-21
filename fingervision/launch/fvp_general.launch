@@ -3,6 +3,8 @@
   <arg name="fv2" default="fvp_1_r" />
   <arg name="config1" default="config/fvp_l.yaml" />
   <arg name="config2" default="config/fvp_r.yaml" />
+  <arg name="config_out1" default="data_gen/fvp_out_l.yaml" />
+  <arg name="config_out2" default="data_gen/fvp_out_r.yaml" />
   <arg name="pkg_dir" default="$(find ay_fv_extra)/" />
 
   <arg name="publish_image" default="true" />
@@ -19,6 +21,7 @@
     <param name="stereo_config" value="$(arg config1)" />
     <param name="blobtrack_config" value="$(arg config1)" />
     <param name="objdettrack_config" value="$(arg config1)" />
+    <param name="config_out" value="$(arg config_out1)" />
     <param name="blob_calib_prefix" value="data_gen/blob_" />
     <param name="objdet_model_prefix" value="data_gen/objdet_" />
     <param name="publish_image" value="$(arg publish_image)" />
@@ -32,6 +35,7 @@
     <param name="stereo_config" value="$(arg config2)" />
     <param name="blobtrack_config" value="$(arg config2)" />
     <param name="objdettrack_config" value="$(arg config2)" />
+    <param name="config_out" value="$(arg config_out2)" />
     <param name="blob_calib_prefix" value="data_gen/blob_" />
     <param name="objdet_model_prefix" value="data_gen/objdet_" />
     <param name="publish_image" value="$(arg publish_image)" />

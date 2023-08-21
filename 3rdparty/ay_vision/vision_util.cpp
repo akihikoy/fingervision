@@ -475,9 +475,11 @@ void kp_read(const cv::FileNode &data, cv::KeyPoint &x, const cv::KeyPoint &defa
 }
 //-------------------------------------------------------------------------------------------
 
-void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name)
+void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &file_name, cv::FileStorage *pfs)
 {
-  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs1;
+  if(pfs==NULL)  fs1.open(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage &fs(pfs==NULL?fs1:*pfs);
   // fs<<"KeyPoints"<<keypoints;
   fs<<"KeyPoints"<<"[";
   for(std::vector<cv::KeyPoint>::const_iterator itr(keypoints.begin()),itr_end(keypoints.end()); itr!=itr_end; ++itr)
@@ -485,7 +487,7 @@ void WriteToYAML(const std::vector<cv::KeyPoint> &keypoints, const std::string &
     kp_write(fs,"",*itr);
   }
   fs<<"]";
-  fs.release();
+  if(pfs==NULL)  fs.release();
 }
 //-------------------------------------------------------------------------------------------
 
@@ -601,16 +603,18 @@ void Print(const std::vector<TCameraInfo> &cam_info)
 }
 //-------------------------------------------------------------------------------------------
 
-void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name)
+void WriteToYAML(const std::vector<TCameraInfo> &cam_info, const std::string &file_name, cv::FileStorage *pfs)
 {
-  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs1;
+  if(pfs==NULL)  fs1.open(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage &fs(pfs==NULL?fs1:*pfs);
   fs<<"CameraInfo"<<"[";
   for(std::vector<TCameraInfo>::const_iterator itr(cam_info.begin()),itr_end(cam_info.end()); itr!=itr_end; ++itr)
   {
     fs<<(*itr);
   }
   fs<<"]";
-  fs.release();
+  if(pfs==NULL)  fs.release();
 }
 //-------------------------------------------------------------------------------------------
 
@@ -654,9 +658,11 @@ void Print(const std::vector<TStereoInfo> &stereo_info)
 }
 //-------------------------------------------------------------------------------------------
 
-void WriteToYAML(const std::vector<TStereoInfo> &stereo_info, const std::string &file_name)
+void WriteToYAML(const std::vector<TStereoInfo> &stereo_info, const std::string &file_name, cv::FileStorage *pfs)
 {
-  cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage fs1;
+  if(pfs==NULL)  fs1.open(file_name, cv::FileStorage::WRITE);
+  cv::FileStorage &fs(pfs==NULL?fs1:*pfs);
   fs<<"StereoInfo"<<"[";
   for(std::vector<TStereoInfo>::const_iterator itr(stereo_info.begin()),itr_end(stereo_info.end()); itr!=itr_end; ++itr)
   {
@@ -673,7 +679,7 @@ void WriteToYAML(const std::vector<TStereoInfo> &stereo_info, const std::string 
     #undef PROC_VAR
   }
   fs<<"]";
-  fs.release();
+  if(pfs==NULL)  fs.release();
 }
 //-------------------------------------------------------------------------------------------
 
