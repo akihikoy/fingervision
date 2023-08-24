@@ -1,0 +1,4 @@
+string data_s
+int32[] data_i
+---
+bool result

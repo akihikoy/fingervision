@@ -118,19 +118,30 @@ inline std::vector<std::string> SplitString(const std::string &str, char delim='
 }
 //-------------------------------------------------------------------------------------------
 
+// Join two pathes: base_dir+file_name.
+// If file_name starts with '/', file_name is returned as an absolute path.
+// Otherwise, base_dir/file_name is returned.
+inline std::string PathJoin(const std::string base_dir, const std::string &file_name)
+{
+  std::string delim;
+  if(file_name.size()>0&&file_name.front()=='/')
+    return file_name;
+  if(base_dir.size()>0&&base_dir.back()=='/')
+    delim= "";
+  else
+    delim= "/";
+  return base_dir+delim+file_name;
+}
+//-------------------------------------------------------------------------------------------
+
 // Make a vector of path: [base_dir+f for f in file_names].
 inline std::vector<std::string> PathJoin(const std::string base_dir, const std::vector<std::string> &file_names)
 {
-  std::string delim;
   std::vector<std::string> result;
   for(std::vector<std::string>::const_iterator fitr(file_names.begin()),fitr_end(file_names.end());
       fitr!=fitr_end; ++fitr)
   {
-    if((base_dir.size()>0&&base_dir.back()=='/') || (fitr->size()>0&&fitr->front()=='/'))
-      delim= "";
-    else
-      delim= "/";
-    result.push_back(base_dir+delim+*fitr);
+    result.push_back(PathJoin(base_dir,*fitr));
   }
   return result;
 }
