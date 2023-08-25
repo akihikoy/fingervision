@@ -49,10 +49,10 @@ def EncodeNamedVariableMsg(name, var):
   assign= lambda type,v: setattr(msg,field[type], v)
   def detect_type(scalar):
     dtype= scalar.dtype
-    if   np.issubdtype(dtype,np.str):  return msg.STR
-    elif np.issubdtype(dtype,np.float):  return msg.FLOAT
-    elif np.issubdtype(dtype,np.int):  return msg.INT
-    elif np.issubdtype(dtype,np.bool):  return msg.BOOL
+    if   np.issubdtype(dtype,np.dtype(str).type):  return msg.STR
+    elif np.issubdtype(dtype,np.dtype(float).type):  return msg.FLOAT
+    elif np.issubdtype(dtype,np.dtype(int).type):  return msg.INT
+    elif np.issubdtype(dtype,np.dtype(bool).type):  return msg.BOOL
     raise Exception('Unrecognized variable: {} type: {}'.format(scalar,dtype))
   if isinstance(var,(list,np.ndarray)):
     if len(var)==0:
@@ -559,6 +559,15 @@ if __name__ == '__main__':
   gripper_node= rospy.get_param('~gripper_node', 'gripper_driver')
   fv_names= rospy.get_param('~fv_names', {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'})
   fv_nodes= rospy.get_param('~fv_nodes', None)
+  def convert_key(key):
+    table= {'left':LEFT,'LEFT':LEFT,'Left':LEFT,
+            'right':RIGHT,'RIGHT':RIGHT,'Right':RIGHT}
+    if isinstance(key,str):
+      if key in table:  return table[key]
+      return int(key)
+    return key
+  print 'fv_names: {}'.format(fv_names)
+  fv_names= {convert_key(key):value for key,value in fv_names.iteritems()}
 
   fvg= TFVGripper()
   fvg.Setup(fv_names, fv_nodes)

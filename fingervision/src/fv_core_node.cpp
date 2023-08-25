@@ -79,6 +79,8 @@ std::vector<TBlobTracker2> BlobTracker;  // Marker tracker
 std::vector<TObjDetTrackBSP> ObjDetTracker;  // Proximity vision
 std::vector<TCameraRectifier> CamRectifier;
 
+std::map<std::string, boost::shared_ptr<boost::mutex> > MutTracker;  // tracker: Mutex for tracker
+
 std::map<std::string, TEasyVideoOut> VideoOut;
 struct TShowTrackbars
 {
@@ -658,11 +660,13 @@ bool LoadParameters(fingervision_msgs::SetString::Request &req, fingervision_msg
   ReadFromYAML(objdettrack_info, file_names);
   for(int idx(0),idx_end(std::min(blobtrack_info.size(),BlobTracker.size())); idx<idx_end; ++idx)
   {
+    boost::mutex::scoped_lock lock(*MutTracker[BlobTracker[idx].Name]);
     BlobTracker[idx].Params()= blobtrack_info[idx];
     BlobTracker[idx].Init();
   }
   for(int idx(0),idx_end(std::min(objdettrack_info.size(),ObjDetTracker.size())); idx<idx_end; ++idx)
   {
+    boost::mutex::scoped_lock lock(*MutTracker[ObjDetTracker[idx].Name]);
     ObjDetTracker[idx].Params()= objdettrack_info[idx];
     ObjDetTracker[idx].Init();
   }
@@ -703,12 +707,14 @@ bool LoadCalibration(fingervision_msgs::SetStringInt32::Request &req, fingervisi
   if(kind=="BlobTracker")
   {
     std::cerr<<"Loading calibration data of "<<BlobTracker[idx].Name<<" from "<<PathJoin(PkgDir,BlobCalibPrefix+CamInfo[i_cam].Name+".yaml")<<std::endl;
+    boost::mutex::scoped_lock lock(*MutTracker[BlobTracker[idx].Name]);
     BlobTracker[idx].LoadCalib(PathJoin(PkgDir,BlobCalibPrefix+CamInfo[i_cam].Name+".yaml"));
     res.result= true;
   }
   else if(kind=="ObjDetTracker")
   {
     std::cerr<<"Loading BG+Object models of "<<ObjDetTracker[idx].Name<<" from "<<PathJoin(PkgDir,ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml")<<std::endl;
+    boost::mutex::scoped_lock lock(*MutTracker[ObjDetTracker[idx].Name]);
     ObjDetTracker[idx].LoadBGObjModels(PathJoin(PkgDir,ObjDetModelPrefix+CamInfo[i_cam].Name+".yaml"));
     res.result= true;
   }
@@ -725,6 +731,7 @@ void ExecBlobTrack(int i_cam)
 {
   TCameraInfo &info(CamInfo[i_cam]);
   TBlobTracker2 &tracker(BlobTracker[i_cam]);
+  boost::mutex &mut_tracker(*MutTracker[tracker.Name]);
   cv::Mat frame;
   int64_t t_cap(0);
   ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
@@ -732,6 +739,8 @@ void ExecBlobTrack(int i_cam)
   {
     if(Running)
     {
+      boost::mutex::scoped_lock lock(mut_tracker);
+
       if(TrackerInitRequest
         && TrackerInitReqWinInfo.Kind=="BlobTracker"
         && TrackerInitReqWinInfo.CamIdx==i_cam
@@ -808,6 +817,7 @@ void ExecBlobTrack(int i_cam)
     {
       usleep(200*1000);
     }
+    usleep(100);  // short wait for mutex(mut_tracker).
   }
 }
 //-------------------------------------------------------------------------------------------
@@ -816,6 +826,7 @@ void ExecObjDetTrack(int i_cam)
 {
   TCameraInfo &info(CamInfo[i_cam]);
   TObjDetTrackBSP &tracker(ObjDetTracker[i_cam]);
+  boost::mutex &mut_tracker(*MutTracker[tracker.Name]);
   cv::Mat frame;
   int64_t t_cap(0);
   ros::Rate rate(TargetFPS>0.0?TargetFPS:1);
@@ -823,6 +834,8 @@ void ExecObjDetTrack(int i_cam)
   {
     if(Running)
     {
+      boost::mutex::scoped_lock lock(mut_tracker);
+
       if(TrackerInitRequest
         && TrackerInitReqWinInfo.Kind=="ObjDetTracker"
         && TrackerInitReqWinInfo.CamIdx==i_cam
@@ -909,6 +922,7 @@ void ExecObjDetTrack(int i_cam)
     {
       usleep(200*1000);
     }
+    usleep(100);  // short wait for mutex(mut_tracker).
   }
 }
 //-------------------------------------------------------------------------------------------
@@ -1050,6 +1064,7 @@ int main(int argc, char**argv)
     BlobTracker[j].Init();
     if(FileExists(PathJoin(PkgDir,BlobCalibPrefix+CamInfo[j].Name+".yaml")))
       BlobTracker[j].LoadCalib(PathJoin(PkgDir,BlobCalibPrefix+CamInfo[j].Name+".yaml"));
+    MutTracker[BlobTracker[j].Name]= boost::shared_ptr<boost::mutex>(new boost::mutex);
     WindowInfo[BlobTracker[j].Name]= TWindowInfo(j, "BlobTracker", j);
     if(!WindowsHidden)
     {
@@ -1074,6 +1089,7 @@ int main(int argc, char**argv)
       ObjDetTracker[j].LoadBGObjModels(PathJoin(PkgDir,ObjDetModelPrefix+CamInfo[j].Name+".yaml"));
       objdet_model_loaded= true;
     }
+    MutTracker[ObjDetTracker[j].Name]= boost::shared_ptr<boost::mutex>(new boost::mutex);
     WindowInfo[ObjDetTracker[j].Name]= TWindowInfo(j, "ObjDetTracker", j);
     if(!WindowsHidden)
     {
@@ -1217,23 +1233,21 @@ int main(int argc, char**argv)
       // Handle blob tracker calibration request
       if(CalibrationRequest && BlobTracker.size()>0 && CalibrationReqWinInfo.Kind=="BlobTracker")
       {
-        Running= false;
         int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
+        boost::mutex::scoped_lock lock(*MutTracker[BlobTracker[idx].Name]);
         std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, BlobTracker[idx].Params().NCalibPoints);
         for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
           Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
         BlobTracker[idx].Calibrate(frames);
-        Running= true;
       }
       if(CalibrationRequest && ObjDetTracker.size()>0 && CalibrationReqWinInfo.Kind=="ObjDetTracker")
       {
-        Running= false;
         int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
+        boost::mutex::scoped_lock lock(*MutTracker[ObjDetTracker[idx].Name]);
         std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[idx].Params().NCalibBGFrames);
         for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
           Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
         ObjDetTracker[idx].CalibBG(frames);
-        Running= true;
       }
       CalibrationRequest= false;
 

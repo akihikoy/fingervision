@@ -530,23 +530,32 @@ void CreateTrackbars(const std::string &window_name, TObjDetTrackBSPParams &para
     CreateTrackbar<int>("BinsS:",   win, &params.BinsS,     1, 100, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("BinsV:",   win, &params.BinsV,     1, 100, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("HistogramMax:", win, &params.HistogramMax, 0.0, 1000.0, 1.0, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==3)
+  {
     CreateTrackbar<float>("Fbg:",     win, &params.Fbg, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fgain:",   win, &params.Fgain, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NumModel:",   win, &params.NumModel, 1, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NumFramesInHist:", win, &params.NumFramesInHist, 0, 1000, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<bool>("NoNewModel:", win, &params.NoNewModel, &TrackbarPrintOnTrack);
   }
-  else if(trackbar_mode==3)
+  else if(trackbar_mode==4)
   {
     CreateTrackbar<double>("BackProjScale:", win, &params.BackProjScale, 0.0, 20.0, 0.1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NErode2:",   win, &params.NErode2,     0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NDilate2:",  win, &params.NDilate2,    0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NThreshold2:", win, &params.NThreshold2, 0, 255, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NCalibBGFrames:", win, &params.NCalibBGFrames, 1, 50, 1, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==5)
+  {
     CreateTrackbar<int>("NUpDiff:", win, &params.NUpDiff, 0, 50, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("NLoDiff:", win, &params.NLoDiff, 0, 50, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fgain_Add:", win, &params.Fgain_Add, 0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("Fgain_Remove:", win, &params.Fgain_Remove, 0, 10.0, 0.01, &TrackbarPrintOnTrack);
+  }
+  else if(trackbar_mode==6)
+  {
     CreateTrackbar<int>("ObjSW:", win, &params.ObjSW, 0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("ObjSH:", win, &params.ObjSH, 0, 20, 1, &TrackbarPrintOnTrack);
     CreateTrackbar<int>("MvSW:", win, &params.MvSW, 0, 20, 1, &TrackbarPrintOnTrack);

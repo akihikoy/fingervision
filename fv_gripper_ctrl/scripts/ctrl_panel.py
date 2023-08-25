@@ -24,6 +24,7 @@ Setup:
 '''
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import os,sys
+import subprocess
 import rospy
 import rospkg
 from ay_py.core import InsertDict, LoadYAML, SaveYAML
@@ -33,6 +34,7 @@ from proc_manager import TSubProcManager
 from joy_fv import TJoyEmulator
 from topic_monitor import TTopicMonitor
 import std_msgs.msg
+import fv_sensor
 
 class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMonitor):
   ontopicshzupdated= QtCore.pyqtSignal()
@@ -42,6 +44,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     TSubProcManager.__init__(self)
     TJoyEmulator.__init__(self)
     self.node_name= node_name
+    self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
 
     TTopicMonitor.__init__(self, topics_to_monitor)
     self.thread_topics_hz_callback= lambda: self.ontopicshzupdated.emit()
@@ -64,7 +67,15 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
       setattr(self, topic, None)
       self.sub[topic]= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.TopicCallback(topic,msg))
 
+  def SerupFVSrv(self, fv_names, fv_node_names=None):
+    self.fv.Setup(gripper=None, g_param=None, frame_id='base_link',
+                  fv_names=fv_names, node_names=fv_node_names, service_only=True)
+
+  def StopFVSrv(self):
+    self.fv.Stop()
+
   def Cleanup(self):
+    self.fv.Cleanup()
     self.StopTopicMonitorThread()
     for key,sub in self.sub.iteritems():
       sub.unregister()
@@ -94,6 +105,7 @@ if __name__=='__main__':
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   RVIZ_CONFIG= os.environ['HOME']+'/.rviz/default.rviz'
+  RIGHT,LEFT= fv_sensor.RIGHT,fv_sensor.LEFT
   #Parameters:
   config={
     'GripperType': gripper_type,
@@ -104,7 +116,11 @@ if __name__=='__main__':
     'FV_BASE_DIR': '{}/data'.format(os.environ['HOME']),
     'FV_L_CONFIG': 'config/fvp300x_l.yaml',
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
+    'FV_FILE_BASE_DIR': subprocess.check_output('rospack find ay_fv_extra'.split(' ')).strip(),
+    'FV_FILE_L_CONFIG': 'config/fvp_file1_l.yaml',
+    'FV_FILE_R_CONFIG': 'config/fvp_file1_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
+    'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'PLOT_LIST':[
@@ -124,6 +140,7 @@ if __name__=='__main__':
         ('target_pos','gpos_trg',2,None),
       ]
     }
+  config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
 
   #List of commands (name: [[command/args],'fg'/'bg']).
   cmds= {
@@ -134,7 +151,7 @@ if __name__=='__main__':
     'factory_reset_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
     'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG} config2:={FV_R_CONFIG}','bg'],
-    'fvp_file': ['roslaunch ay_fv_extra fvp_file1.launch','bg'],
+    'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG} config2:={FV_FILE_R_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
     'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
@@ -142,7 +159,7 @@ if __name__=='__main__':
     'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
     'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
-    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _is_sim:=False','bg'],
+    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py','bg'],
@@ -287,10 +304,12 @@ if __name__=='__main__':
                       rospy.sleep(0.2),
                       run_cmd('config_fv_l'),
                       run_cmd('config_fv_r'),
+                      pm.SerupFVSrv(fv_names=config['FV_NAMES']),
                       w.widgets['rviz'].setup(),
                       w.widgets['btn_init2'].setEnabled(True),
                      ),
                    lambda w,obj:(
+                      pm.StopFVSrv(),
                       stop_cmd('fvp'),
                       w.widgets['btn_init2'].setEnabled(False),
                      ) )}),
@@ -391,6 +410,157 @@ if __name__=='__main__':
     'boxv',None, (
       ('boxh',None,('label_grip','joy_grip','btn_grip_open')),
       ('boxh',None, ('btn_grasp','btn_hold','btn_openif','btn_stop')),
+      ))
+
+  widgets_fv_sensor= {
+    'btn_show_fv': (
+      'buttonchk',{
+        'text':('Hide FV Windows','Show FV Windows'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      pm.fv.CallSrv('hide_windows'),
+                     ),
+                   lambda w,obj:(
+                      pm.fv.CallSrv('show_windows'),
+                     ) )}),
+    'label_set_dim': (
+      'label',{
+        'text': 'Window Brightness: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'label_set_dim_blob': (
+      'label',{
+        'text': 'blob:',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'label_set_dim_pxv': (
+      'label',{
+        'text': 'pxv:',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'combobox_set_dim_blob': (
+      'combobox',{
+        'options':map(str,[0.0,0.3,0.7,1.0]),
+        'index': 3,
+        'font_size_range': (8,24),
+        'size_adjust_policy': 'all_contents',
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','BlobTracker',obj.currentIndex()) }),
+    'combobox_set_dim_pxv': (
+      'combobox',{
+        'options':map(str,[0.0,0.3,0.7,1.0]),
+        'index': 1,
+        'font_size_range': (8,24),
+        'size_adjust_policy': 'all_contents',
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','ObjDetTracker',obj.currentIndex()) }),
+    'label_calib': (
+      'label',{
+        'text': 'Calibration: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_calib_r_blob': (
+      'button',{
+        'text':'r_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','BlobTracker',0),  }),
+    'btn_calib_l_blob': (
+      'button',{
+        'text':'l_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','BlobTracker',0),  }),
+    'btn_calib_r_pxv': (
+      'button',{
+        'text':'r_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','ObjDetTracker',0),  }),
+    'btn_calib_l_pxv': (
+      'button',{
+        'text':'l_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','ObjDetTracker',0),  }),
+    'label_save_calib': (
+      'label',{
+        'text': 'Save calibration: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_save_calib_r_blob': (
+      'button',{
+        'text':'r_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','BlobTracker',0),  }),
+    'btn_save_calib_l_blob': (
+      'button',{
+        'text':'l_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','BlobTracker',0),  }),
+    'btn_save_calib_r_pxv': (
+      'button',{
+        'text':'r_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','ObjDetTracker',0),  }),
+    'btn_save_calib_l_pxv': (
+      'button',{
+        'text':'l_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','ObjDetTracker',0),  }),
+    'label_load_calib': (
+      'label',{
+        'text': 'Reload calibration: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_load_calib_r_blob': (
+      'button',{
+        'text':'r_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('load_calibration','BlobTracker',0),  }),
+    'btn_load_calib_l_blob': (
+      'button',{
+        'text':'l_blob',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('load_calibration','BlobTracker',0),  }),
+    'btn_load_calib_r_pxv': (
+      'button',{
+        'text':'r_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvR('load_calibration','ObjDetTracker',0),  }),
+    'btn_load_calib_l_pxv': (
+      'button',{
+        'text':'l_pxv',
+        'onclick': lambda w,obj:pm.fv.CallSrvL('load_calibration','ObjDetTracker',0),  }),
+    }
+
+  '''
+stop_detect_obj / start_detect_obj / clear_obj:
+  pm.fv.CallSrv('start_detect_obj')
+  pm.fv.CallSrv('stop_detect_obj')
+  pm.fv.CallSrv('clear_obj')
+save_calibration: r_blob, l_blob, r_pxv, l_pxv
+  pm.fv.CallSrvL('save_calibration','BlobTracker',0)
+  pm.fv.CallSrvR('save_calibration','BlobTracker',0)
+  pm.fv.CallSrvL('save_calibration','ObjDetTracker',0)
+  pm.fv.CallSrvR('save_calibration','ObjDetTracker',0)
+load_calibration: r_blob, l_blob, r_pxv, l_pxv
+  pm.fv.CallSrvL('load_calibration','BlobTracker',0)
+  pm.fv.CallSrvR('load_calibration','BlobTracker',0)
+  pm.fv.CallSrvL('load_calibration','ObjDetTracker',0)
+  pm.fv.CallSrvR('load_calibration','ObjDetTracker',0)
+set_trackbar_mode: Combo/blob, pxv
+  pm.fv.CallSrv('set_trackbar_mode','BlobTracker',0-5)
+  pm.fv.CallSrv('set_trackbar_mode','BlobTracker',0-5)
+  pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',0-6)
+  pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',0-6)
+save_parameters: right, left
+  pm.fv.CallSrvL('save_parameters','/tmp/params_l.yaml')
+  pm.fv.CallSrvR('save_parameters','/tmp/params_r.yaml')
+  '''
+
+  layout_fv_sensor= (
+    'boxv',None, (
+      'btn_show_fv',
+      ('boxh',None, ('label_set_dim', ('boxv',None, (
+                        ('boxh',None, ('label_set_dim_blob','combobox_set_dim_blob', 'label_set_dim_pxv','combobox_set_dim_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_calib', ('boxv',None, (
+                        ('boxh',None, ('btn_calib_r_blob','btn_calib_l_blob','btn_calib_r_pxv','btn_calib_l_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_save_calib', ('boxv',None, (
+                        ('boxh',None, ('btn_save_calib_r_blob','btn_save_calib_l_blob','btn_save_calib_r_pxv','btn_save_calib_l_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_load_calib', ('boxv',None, (
+                        ('boxh',None, ('btn_load_calib_r_blob','btn_load_calib_l_blob','btn_load_calib_r_pxv','btn_load_calib_l_pxv',)),
+                        ))
+                     )),
       ))
 
   widgets_ctrl_config= {
@@ -561,17 +731,22 @@ if __name__=='__main__':
         )),
       ('boxv',None, (
         ('tab','maintab',(
+          ('Main',('tab',None,(
+              ('Operation',('boxv',None,(
+                layout_init,
+                'btn_fv_record',
+                layout_joy,
+                'btn_exit',
+                ))),
+              ('Signal',layout_plots),
+            ))),
+          ('Configuration',('tab',None,(
+              ('FV_sensor',layout_fv_sensor),
+              ('Control/1',layout_ctrl_config1),
+              ('Control/2',layout_ctrl_config2),
+            ))),
           #('Initialize',layout_init),
           #('Joy',layout_joy),
-          ('Main',('boxv',None,(
-            layout_init,
-            'btn_fv_record',
-            layout_joy,
-            'btn_exit',
-            ))),
-          ('Config/1',layout_ctrl_config1),
-          ('Config/2',layout_ctrl_config2),
-          ('Plot',layout_plots),
           ('Advanced',layout_debug),
           )),
         'spacer_cmn1')),
@@ -587,6 +762,7 @@ if __name__=='__main__':
   panel.AddWidgets(widgets_common)
   panel.AddWidgets(widgets_init)
   panel.AddWidgets(widgets_joy)
+  panel.AddWidgets(widgets_fv_sensor)
   panel.AddWidgets(widgets_ctrl_config)
   panel.AddWidgets(widgets_plot_cbs)
   panel.AddWidgets(widgets_plots)

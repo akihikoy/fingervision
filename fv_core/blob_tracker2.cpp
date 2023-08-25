@@ -498,13 +498,16 @@ void CreateTrackbars(const std::string &window_name, TBlobTracker2Params &params
     CreateTrackbar<bool>("SBDParams.filterByColor", win, &params.SBDParams.filterByColor, &TrackbarPrintOnTrackAndInit<bool>, &init_request);
     CreateTrackbar<float>("SBDParams.minArea", win, &params.SBDParams.minArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.maxArea", win, &params.SBDParams.maxArea, 0.0, 20000.0, 1.0, &TrackbarPrintOnTrackAndInit<float>, &init_request);
+  }
+  else if(trackbar_mode==4)
+  {
     CreateTrackbar<float>("SBDParams.minCircularity:", win, &params.SBDParams.minCircularity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.minConvexity:", win, &params.SBDParams.minConvexity, 0.0, 1.0, 0.001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.minInertiaRatio:", win, &params.SBDParams.minInertiaRatio, 0.0, 10.0, 0.0001, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<float>("SBDParams.minDistBetweenBlobs:", win, &params.SBDParams.minDistBetweenBlobs, 0.0, 1000.0, 0.1, &TrackbarPrintOnTrackAndInit<float>, &init_request);
     CreateTrackbar<size_t>("SBDParams.minRepeatability:", win, &params.SBDParams.minRepeatability, 1, 10, 1, &TrackbarPrintOnTrackAndInit<size_t>, &init_request);
   }
-  else if(trackbar_mode==4)
+  else if(trackbar_mode==5)
   {
     CreateTrackbar<float>("DistMaxCalib:", win, &params.DistMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
     CreateTrackbar<float>("DSMaxCalib:", win, &params.DSMaxCalib, 0.0, 10.0, 0.01, &TrackbarPrintOnTrack);
