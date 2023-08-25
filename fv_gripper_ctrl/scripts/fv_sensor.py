@@ -230,31 +230,34 @@ class TFVSensor(TROSUtil):
   NOTE: Tracker kind: BlobTracker, ObjDetTracker.
   '''
   def CallSrv(self, command, *args, **kwargs):
+    if self.config is None:  return
     if command in SRV_TO_TYPE:
       req= SRV_TO_TYPE[command]._request_class(*args, **kwargs)
       if self.config['srv_separated']:
-        self.srvp[command+'_r'](req)
-        self.srvp[command+'_l'](req)
+        if command+'_r' in self.srvp:  self.srvp[command+'_r'](req)
+        if command+'_l' in self.srvp:  self.srvp[command+'_l'](req)
       else:
-        self.srvp[command](req)
+        if command in self.srvp:  self.srvp[command](req)
     else:
       CPrint(4,'fv.CallSrv: Invalid command:',command)
   def CallSrvR(self, command, *args, **kwargs):
+    if self.config is None:  return
     if not self.config['srv_separated']:
       CPrint(4,'fv.CallSrvR is called but srv_separated={}'.format(self.config['srv_separated']))
       return
     if command in SRV_TO_TYPE:
       req= SRV_TO_TYPE[command]._request_class(*args, **kwargs)
-      self.srvp[command+'_r'](req)
+      if command+'_r' in self.srvp:  self.srvp[command+'_r'](req)
     else:
       CPrint(4,'fv.CallSrvR: Invalid command:',command)
   def CallSrvL(self, command, *args, **kwargs):
+    if self.config is None:  return
     if not self.config['srv_separated']:
       CPrint(4,'fv.CallSrvL is called but srv_separated={}'.format(self.config['srv_separated']))
       return
     if command in SRV_TO_TYPE:
       req= SRV_TO_TYPE[command]._request_class(*args, **kwargs)
-      self.srvp[command+'_l'](req)
+      if command+'_l' in self.srvp:  self.srvp[command+'_l'](req)
     else:
       CPrint(4,'fv.CallSrvL: Invalid command:',command)
 

@@ -116,9 +116,13 @@ if __name__=='__main__':
     'FV_BASE_DIR': '{}/data'.format(os.environ['HOME']),
     'FV_L_CONFIG': 'config/fvp300x_l.yaml',
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
+    'FV_L_GUI_CONFIG': 'data_gen/fvp_l.yaml',
+    'FV_R_GUI_CONFIG': 'data_gen/fvp_r.yaml',
     'FV_FILE_BASE_DIR': subprocess.check_output('rospack find ay_fv_extra'.split(' ')).strip(),
     'FV_FILE_L_CONFIG': 'config/fvp_file1_l.yaml',
     'FV_FILE_R_CONFIG': 'config/fvp_file1_r.yaml',
+    'FV_FILE_L_GUI_CONFIG': 'data_gen/fvp_file1_l.yaml',
+    'FV_FILE_R_GUI_CONFIG': 'data_gen/fvp_file1_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
     'IS_GSIM': is_gsim,
@@ -150,8 +154,8 @@ if __name__=='__main__':
     'reboot_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} Reboot','fg'],
     'factory_reset_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
-    'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG} config2:={FV_R_CONFIG}','bg'],
-    'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG} config2:={FV_FILE_R_CONFIG}','bg'],
+    'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG},{FV_L_GUI_CONFIG} config2:={FV_R_CONFIG},{FV_R_GUI_CONFIG}','bg'],
+    'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
     'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
@@ -171,6 +175,8 @@ if __name__=='__main__':
     cmds['fvp']= cmds['fvp_file']
     for c in ('config_fv_l','config_fv_r'):
       cmds[c][1]= None
+    config['FV_L_GUI_CONFIG']= config['FV_FILE_L_GUI_CONFIG']
+    config['FV_R_GUI_CONFIG']= config['FV_FILE_R_GUI_CONFIG']
   for key in cmds.iterkeys():
     if isinstance(cmds[key][0],str):
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
@@ -428,26 +434,16 @@ if __name__=='__main__':
         'text': 'Window Brightness: ',
         'font_size_range': (12,14),
         'size_policy': ('minimum', 'minimum')}),
-    'label_set_dim_blob': (
-      'label',{
-        'text': 'blob:',
-        'font_size_range': (12,14),
-        'size_policy': ('minimum', 'minimum')}),
-    'label_set_dim_pxv': (
-      'label',{
-        'text': 'pxv:',
-        'font_size_range': (12,14),
-        'size_policy': ('minimum', 'minimum')}),
     'combobox_set_dim_blob': (
       'combobox',{
-        'options':map(str,[0.0,0.3,0.7,1.0]),
+        'options':map(lambda v:'blob:'+str(v),[0.0,0.3,0.7,1.0]),
         'index': 3,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
         'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','BlobTracker',obj.currentIndex()) }),
     'combobox_set_dim_pxv': (
       'combobox',{
-        'options':map(str,[0.0,0.3,0.7,1.0]),
+        'options':map(lambda v:'pxv:'+str(v),[0.0,0.3,0.7,1.0]),
         'index': 1,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
@@ -460,18 +456,22 @@ if __name__=='__main__':
     'btn_calib_r_blob': (
       'button',{
         'text':'r_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','BlobTracker',0),  }),
     'btn_calib_l_blob': (
       'button',{
         'text':'l_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','BlobTracker',0),  }),
     'btn_calib_r_pxv': (
       'button',{
         'text':'r_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','ObjDetTracker',0),  }),
     'btn_calib_l_pxv': (
       'button',{
         'text':'l_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','ObjDetTracker',0),  }),
     'label_save_calib': (
       'label',{
@@ -481,18 +481,22 @@ if __name__=='__main__':
     'btn_save_calib_r_blob': (
       'button',{
         'text':'r_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','BlobTracker',0),  }),
     'btn_save_calib_l_blob': (
       'button',{
         'text':'l_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','BlobTracker',0),  }),
     'btn_save_calib_r_pxv': (
       'button',{
         'text':'r_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','ObjDetTracker',0),  }),
     'btn_save_calib_l_pxv': (
       'button',{
         'text':'l_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','ObjDetTracker',0),  }),
     'label_load_calib': (
       'label',{
@@ -502,19 +506,57 @@ if __name__=='__main__':
     'btn_load_calib_r_blob': (
       'button',{
         'text':'r_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('load_calibration','BlobTracker',0),  }),
     'btn_load_calib_l_blob': (
       'button',{
         'text':'l_blob',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('load_calibration','BlobTracker',0),  }),
     'btn_load_calib_r_pxv': (
       'button',{
         'text':'r_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvR('load_calibration','ObjDetTracker',0),  }),
     'btn_load_calib_l_pxv': (
       'button',{
         'text':'l_pxv',
+        'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('load_calibration','ObjDetTracker',0),  }),
+    'label_set_trackbar_mode': (
+      'label',{
+        'text': 'Trackbar mode: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'combobox_set_trackbar_blob': (
+      'combobox',{
+        'options':map(lambda v:'blob:'+str(v),range(6)),
+        'index': 0,
+        'font_size_range': (8,24),
+        'size_adjust_policy': 'all_contents',
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','BlobTracker',obj.currentIndex()) }),
+    'combobox_set_trackbar_pxv': (
+      'combobox',{
+        'options':map(lambda v:'pxv:'+str(v),range(7)),
+        'index': 0,
+        'font_size_range': (8,24),
+        'size_adjust_policy': 'all_contents',
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',obj.currentIndex()) }),
+    'label_save_parameters': (
+      'label',{
+        'text': 'Save parameters: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_save_parameters_r': (
+      'button',{
+        'text':'right',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrvR('save_parameters',config['FV_R_GUI_CONFIG']),  }),
+    'btn_save_parameters_l': (
+      'button',{
+        'text':'left',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('save_parameters',config['FV_L_GUI_CONFIG']),  }),
     }
 
   '''
@@ -522,31 +564,13 @@ stop_detect_obj / start_detect_obj / clear_obj:
   pm.fv.CallSrv('start_detect_obj')
   pm.fv.CallSrv('stop_detect_obj')
   pm.fv.CallSrv('clear_obj')
-save_calibration: r_blob, l_blob, r_pxv, l_pxv
-  pm.fv.CallSrvL('save_calibration','BlobTracker',0)
-  pm.fv.CallSrvR('save_calibration','BlobTracker',0)
-  pm.fv.CallSrvL('save_calibration','ObjDetTracker',0)
-  pm.fv.CallSrvR('save_calibration','ObjDetTracker',0)
-load_calibration: r_blob, l_blob, r_pxv, l_pxv
-  pm.fv.CallSrvL('load_calibration','BlobTracker',0)
-  pm.fv.CallSrvR('load_calibration','BlobTracker',0)
-  pm.fv.CallSrvL('load_calibration','ObjDetTracker',0)
-  pm.fv.CallSrvR('load_calibration','ObjDetTracker',0)
-set_trackbar_mode: Combo/blob, pxv
-  pm.fv.CallSrv('set_trackbar_mode','BlobTracker',0-5)
-  pm.fv.CallSrv('set_trackbar_mode','BlobTracker',0-5)
-  pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',0-6)
-  pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',0-6)
-save_parameters: right, left
-  pm.fv.CallSrvL('save_parameters','/tmp/params_l.yaml')
-  pm.fv.CallSrvR('save_parameters','/tmp/params_r.yaml')
   '''
 
   layout_fv_sensor= (
     'boxv',None, (
       'btn_show_fv',
       ('boxh',None, ('label_set_dim', ('boxv',None, (
-                        ('boxh',None, ('label_set_dim_blob','combobox_set_dim_blob', 'label_set_dim_pxv','combobox_set_dim_pxv',)),
+                        ('boxh',None, ('combobox_set_dim_blob','combobox_set_dim_pxv',)),
                         ))
                      )),
       ('boxh',None, ('label_calib', ('boxv',None, (
@@ -559,6 +583,14 @@ save_parameters: right, left
                      )),
       ('boxh',None, ('label_load_calib', ('boxv',None, (
                         ('boxh',None, ('btn_load_calib_r_blob','btn_load_calib_l_blob','btn_load_calib_r_pxv','btn_load_calib_l_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_set_trackbar_mode', ('boxv',None, (
+                        ('boxh',None, ('combobox_set_trackbar_blob','combobox_set_trackbar_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_save_parameters', ('boxv',None, (
+                        ('boxh',None, ('btn_save_parameters_r','btn_save_parameters_l',)),
                         ))
                      )),
       ))
