@@ -15,6 +15,7 @@ import rospy
 import rospkg
 sys.path.append(os.path.join(rospkg.RosPack().get_path('fv_gripper_ctrl'),'scripts'))
 from fv_gripper_ctrl import DecodeNamedVariableMsg,DecodeNamedVariableListMsg
+from fvsignal_log import TFVSignalListener
 from ay_py.core import LoadYAML
 import fingervision_msgs.msg
 import std_msgs.msg
@@ -23,68 +24,31 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as plt_cols
 
 
-class TFVSignalListener(object):
-  def __init__(self, plot_config, data_skip):
+class TFVSignalListenerForPlot(TFVSignalListener):
+  def __init__(self, fvsignal_list, data_skip):
     self.plot_value_locker= threading.RLock()
-
-    self.plot_config= plot_config
-    self.data_skip= data_skip
     self.plot_values= {}
-    self.signal_names= [signal_name for (signal_name,plot_label,axis,index) in plot_config]
+    super(TFVSignalListenerForPlot,self).__init__(fvsignal_list, data_skip)
 
-    for (topic,msg_type) in (
-        ('gripper_pos',std_msgs.msg.Float64),
-        ('target_pos',std_msgs.msg.Float64) ):
-      setattr(self, topic, None)
-      cb= self.UpdatePlotValues if topic=='fvsignals' else None
-      sub= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic,cb=cb:self.Callback(topic,msg,cb))
-      setattr(self, 'sub_{}'.format(topic), sub)
-
-    self.fvsignals= None
-    self.fvsignals_header= None
-    self.sub_fvsignals= rospy.Subscriber('/fv_gripper_ctrl/fvsignals', fingervision_msgs.msg.NamedVariableListStamped, self.CallbackFVSignals)
-
-  def Callback(self, topic, msg, cb):
-    setattr(self, topic, msg.data)
-    setattr(self, topic+'_header', getattr(msg,'header',None))
-    if cb is not None:  cb()
-
-  def CallbackFVSignals(self, msg):
-    if self.data_skip>0 and msg.header.seq%self.data_skip!=0:  return
-    self.fvsignals= msg.data
-    self.fvsignals_header= msg.header
-    self.UpdatePlotValues()
-
-  def Decode(self, names):
-    fvsignals,time_stamp= self.fvsignals.data,self.fvsignals_header.stamp.to_sec()
-    if fvsignals is None:  return None
-    data= [DecodeNamedVariableMsg(d) for d in fvsignals if d.name in names]
-    decoded= {name:value for (name,value) in data}
-    decoded['gripper_pos']= self.gripper_pos
-    decoded['target_pos']= self.target_pos
-    return decoded, time_stamp
-
-  def UpdatePlotValues(self):
+  def UpdateValues(self):
     fvsignals_decoded,time_stamp= self.Decode(self.signal_names)
     if fvsignals_decoded is None:  return False
     #print fvsignals_decoded
 
-    new_values= {plot_label: fvsignals_decoded[signal_name] if index is None
-                              else fvsignals_decoded[signal_name][index] if isinstance(index,int)
-                              else fvsignals_decoded[signal_name][tuple(index)]
-                  for (signal_name,plot_label,axis,index) in self.plot_config
+    new_values= {label: self.ToValue(fvsignals_decoded, signal_name, index)
+                  for (signal_name,label,axis,index) in self.fvsignal_list
                     if fvsignals_decoded[signal_name] is not None}
 
     plot_values= copy.deepcopy(self.plot_values)
-    for plot_label,value in new_values.iteritems():
-      if plot_label in plot_values:
-        plot_values[plot_label][0].append(time_stamp)
-        plot_values[plot_label][1].append(value)
-        while len(plot_values[plot_label][0])>plot_points:
-          plot_values[plot_label][0].pop(0)
-          plot_values[plot_label][1].pop(0)
+    for label,value in new_values.iteritems():
+      if label in plot_values:
+        plot_values[label][0].append(time_stamp)
+        plot_values[label][1].append(value)
+        while len(plot_values[label][0])>plot_points:
+          plot_values[label][0].pop(0)
+          plot_values[label][1].pop(0)
       else:
-        plot_values[plot_label]= [[time_stamp],[value]]
+        plot_values[label]= [[time_stamp],[value]]
     with self.plot_value_locker:
       self.plot_values= plot_values
     return True
@@ -121,10 +85,10 @@ if __name__=='__main__':
             ('target_pos','gpos_trg',2,None, True)]
   print 'plots=',plots
 
-  plots= [(signal_name,plot_label,axis,index) for (signal_name,plot_label,axis,index,enabled) in plots if enabled]
+  plots= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in plots if enabled]
 
   rospy.init_node('fvsignal_plot')
-  fvsignal_listener= TFVSignalListener(plots, data_skip)
+  fvsignal_listener= TFVSignalListenerForPlot(plots, data_skip)
 
   #t_start= rospy.Time.now().to_sec()
 
@@ -136,9 +100,9 @@ if __name__=='__main__':
     #xlabel= 'time [s] (+ {})'.format(t_start)
     xlabel= 'time [s]'
   if ylabel is None:
-    ylabel= ','.join([plot_label for (signal_name,plot_label,axis,index) in plots if axis==1])
+    ylabel= ','.join([label for (signal_name,label,axis,index) in plots if axis==1])
   if y2label is None:
-    y2label= ','.join([plot_label for (signal_name,plot_label,axis,index) in plots if axis==2])
+    y2label= ','.join([label for (signal_name,label,axis,index) in plots if axis==2])
 
   rate_adjuster= rospy.Rate(plot_rate)
   while not rospy.is_shutdown():
@@ -150,11 +114,11 @@ if __name__=='__main__':
 
     lines= []
     col_scheme= plt_cols.TABLEAU_COLORS
-    for i,(signal_name,plot_label,axis,index) in enumerate(fvsignal_listener.plot_config):
-      times,values= plot_values[plot_label]
+    for i,(signal_name,label,axis,index) in enumerate(fvsignal_listener.fvsignal_list):
+      times,values= plot_values[label]
       col= col_scheme.values()[i%len(col_scheme)]
       ax= (None,ax1,ax2)[axis]
-      lines+= ax.plot(times,values, color=col, linewidth=2, label=plot_label)
+      lines+= ax.plot(times,values, color=col, linewidth=2, label=label)
 
     #ax1.legend(loc='upper left', bbox_to_anchor=(0.0,1.0))
     #ax2.legend(loc='upper left', bbox_to_anchor=(0.0,0.8))

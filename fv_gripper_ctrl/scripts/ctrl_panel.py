@@ -162,6 +162,7 @@ if __name__=='__main__':
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
     'VIDEO_PREFIX': '{}/data/data_gen/video-'.format(os.environ['HOME']),
+    'LOG_PREFIX': '{}/data/data_gen/log-'.format(os.environ['HOME']),
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'PLOT_LOGGER_CONFIG': '{}/data/config/plot_logger.yaml'.format(os.environ['HOME']),
@@ -196,6 +197,7 @@ if __name__=='__main__':
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
+    'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
     }
   if is_gsim:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
@@ -761,7 +763,7 @@ if __name__=='__main__':
   widgets_plots= {
     'btn_plot': (
       'buttonchk',{
-        'text':('Plot','Stop Plot'),
+        'text':('Plot','Stop plot'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
                       #RunFVSignalPlot(w,obj),
@@ -770,11 +772,21 @@ if __name__=='__main__':
                    lambda w,obj:(
                       stop_cmd('fvsignal_plot'),
                      ) )}),
+    'btn_log': (
+      'buttonchk',{
+        'text':('Log','Stop log'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('fvsignal_log'),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('fvsignal_log'),
+                     ) )}),
     }
   layout_plots= (
-    'boxh',None,(
+    'boxv',None,(
+      ('boxh',None, ('btn_plot','btn_log',)),
       ('boxv',None, (layout_plot_cbs,'spacer_cmn2')),
-      ('boxv',None, ('btn_plot','spacer_cmn2')),
       ))
 
   widgets_debug= {
