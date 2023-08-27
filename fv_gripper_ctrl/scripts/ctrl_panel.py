@@ -22,12 +22,13 @@ Setup:
     $ ln -s `rospack find ay_fv_extra`/config/fvp_5_l.yaml fvp300x_l.yaml
     $ ln -s `rospack find ay_fv_extra`/config/fvp_5_r.yaml fvp300x_r.yaml
 '''
+from __future__ import print_function
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import os,sys
 import subprocess
 import rospy
 import rospkg
-from ay_py.core import InsertDict, LoadYAML, SaveYAML
+from ay_py.core import InsertDict, LoadYAML, SaveYAML, CPrint
 from ay_py.tool.py_panel import TSimplePanel, InitPanelApp, RunPanelApp, AskYesNoDialog, QtCore, QtGui
 sys.path.append(os.path.join(rospkg.RosPack().get_path('ay_util'),'scripts'))
 from proc_manager import TSubProcManager
@@ -101,6 +102,29 @@ def UpdateProcList(pm,combobox):
   for name,proc in pm.procs.iteritems():
     combobox.addItem('{0}/{1}'.format(name,proc.pid))
 
+#Align windows to window_positions (dict of: {'window_title': 'x,y,w,h'}).
+def AlignWindows(window_positions):
+  try:
+    window_list= subprocess.check_output(['wmctrl', '-l']).decode('utf-8').splitlines()
+  except subprocess.CalledProcessError:
+    CPrint(4, 'Failed to get the window list with wmctrl.')
+    CPrint('Please check if wmctrl is installed.')
+    return
+
+  def get_window_id_by_title(window_list, title):
+    for line in window_list:
+      if title.lower() in line.lower():
+        return line.split()[0]
+    return None
+
+  for title, pos in window_positions.items():
+    window_id= get_window_id_by_title(window_list, title)
+    if window_id:
+      subprocess.call(['wmctrl', '-i', '-r', window_id, '-e', '0,{}'.format(pos)])
+      subprocess.call(['wmctrl', '-i', '-a', window_id])
+    else:
+      print('No window with title containing "{}" found.'.format(title))
+
 if __name__=='__main__':
   def get_arg(opt_name, default):
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
@@ -155,7 +179,14 @@ if __name__=='__main__':
         ('fv.slip','slip',1,None),
         ('gripper_pos','gpos',2,None),
         ('target_pos','gpos_trg',2,None),
-      ]
+      ],
+    'WINDOW_ALIGNMENT':{
+        'fvp_1_l-blob': '0,0,640,480',
+        'fvp_1_r-blob': '648,0,640,480',
+        'fvp_1_l-pxv': '0,545,640,480',
+        'fvp_1_r-pxv': '648,545,640,480',
+        'Robot Operation Panel': '1200,0,600,500',
+      }
     }
   config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
 
@@ -193,7 +224,7 @@ if __name__=='__main__':
   for key in cmds.iterkeys():
     if isinstance(cmds[key][0],str):
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
-  print config
+  print(config)
 
   #List of topics to monitor the status:
   topics_to_monitor= {
@@ -369,7 +400,7 @@ if __name__=='__main__':
         #'onclick': lambda w,obj: run_cmd('shutdown_pc'), }),
     'btn_fv_record': (
       'buttonchk',{
-        'text':('Record FV','Stop Record'),
+        'text':('Record FV','Stop recording'),
         #'enabled':False,
         'size_policy': ('expanding', 'fixed'),
         'onclick':(lambda w,obj:(
@@ -378,6 +409,11 @@ if __name__=='__main__':
                    lambda w,obj:(
                       pm.fv.CallSrv('stop_record'),
                      ) )}),
+    'btn_align_windows': (
+      'button',{
+        'text': 'Align windows',
+        'size_policy': ('expanding', 'fixed'),
+        'onclick': lambda w,obj: AlignWindows(config['WINDOW_ALIGNMENT']), }),
     }
   layout_init= (
     'grid',None,(
@@ -674,7 +710,7 @@ stop_detect_obj / start_detect_obj / clear_obj:
     plot_list= [p for p in config['PLOT_LIST'] if w.widgets['checkbox_{}'.format(p[1])].isChecked()]
     if len(plot_list)==0:  return
     cmd= cmds['fvsignal_plot'][0]+['--plots={}'.format(repr(plot_list).replace(' ',''))]
-    print 'fvsignal_plot:',cmd
+    print('fvsignal_plot: {}'.format(cmd))
     pm.RunBGProcess('fvsignal_plot',cmd)
   widgets_plot_cbs= {
     'checkbox_{}'.format(plot_label): ('checkbox',{'text': plot_label})
@@ -805,6 +841,7 @@ stop_detect_obj / start_detect_obj / clear_obj:
               ('Operation',('boxv',None,(
                 layout_init,
                 'btn_fv_record',
+                'btn_align_windows',
                 layout_joy,
                 'btn_exit',
                 ))),
@@ -825,7 +862,7 @@ stop_detect_obj / start_detect_obj / clear_obj:
   app= InitPanelApp()
   win_size= (1000,500)
   if fullscreen:  #NOTE: fullscreen mode will work only with Qt5.
-    print 'Screen size:', app.screens()[0].size()
+    print('Screen size: {}'.format(app.screens()[0].size()))
     screen_size= app.screens()[0].size()
     win_size= (screen_size.width(),screen_size.height())
   panel= TSimplePanel('Robot Operation Panel', size=win_size, font_height_scale=300.0)
