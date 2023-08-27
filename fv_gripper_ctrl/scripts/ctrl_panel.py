@@ -87,7 +87,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     pass
 
   def Cleanup(self):
-    if self.gripper is not None:  self.gripper.Cleanup()
+    self.StopGripper()
     self.fv.Cleanup()
     self.StopTopicMonitorThread()
     for key,sub in self.sub.iteritems():
@@ -245,14 +245,14 @@ if __name__=='__main__':
 
 
   status_grid_list_text= [
-      dict(label='ObjDetection(l,r)', type='text', state='N/A'),
+      dict(label='ObjDetect(l,r)', type='text', state='N/A'),
       dict(label='GPos', type='text', state='N/A'),
       dict(label='GPosTrg', type='text', state='N/A'),
       dict(label='Action', type='text', state='N/A'),
     ]
   status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
   def UpdateStatusGridText(w,obj,status=None):
-    obj.UpdateStatus('ObjDetection(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
+    obj.UpdateStatus('ObjDetect(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
     obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
     obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
     obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
@@ -524,7 +524,7 @@ if __name__=='__main__':
         'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','ObjDetTracker',obj.currentIndex()) }),
     'label_calib': (
       'label',{
-        'text': 'Calibration: ',
+        'text': 'Calibration:      ',
         'font_size_range': (12,14),
         'size_policy': ('minimum', 'minimum')}),
     'btn_calib_r_blob': (
@@ -574,7 +574,7 @@ if __name__=='__main__':
         'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','ObjDetTracker',0),  }),
     'label_load_calib': (
       'label',{
-        'text': 'Reload calibration: ',
+        'text': 'Load calibration: ',
         'font_size_range': (12,14),
         'size_policy': ('minimum', 'minimum')}),
     'btn_load_calib_r_blob': (
@@ -631,20 +631,45 @@ if __name__=='__main__':
         'text':'left',
         'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrvL('save_parameters',config['FV_L_GUI_CONFIG']),  }),
+    'label_obj_detection': (
+      'label',{
+        'text': 'Object detection: ',
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_start_detect_obj': (
+      'button',{
+        'text':'Start',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrv('start_detect_obj'),  }),
+    'btn_stop_detect_obj': (
+      'button',{
+        'text':'Stop',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrv('stop_detect_obj'),  }),
+    'btn_clear_obj': (
+      'button',{
+        'text':'ClearObj',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrv('clear_obj'),  }),
     }
-
-  '''
-stop_detect_obj / start_detect_obj / clear_obj:
-  pm.fv.CallSrv('start_detect_obj')
-  pm.fv.CallSrv('stop_detect_obj')
-  pm.fv.CallSrv('clear_obj')
-  '''
 
   layout_fv_sensor= (
     'boxv',None, (
       'btn_show_fv',
       ('boxh',None, ('label_set_dim', ('boxv',None, (
                         ('boxh',None, ('combobox_set_dim_blob','combobox_set_dim_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_set_trackbar_mode', ('boxv',None, (
+                        ('boxh',None, ('combobox_set_trackbar_blob','combobox_set_trackbar_pxv',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_save_parameters', ('boxv',None, (
+                        ('boxh',None, ('btn_save_parameters_r','btn_save_parameters_l',)),
+                        ))
+                     )),
+      ('boxh',None, ('label_obj_detection', ('boxv',None, (
+                        ('boxh',None, ('btn_start_detect_obj','btn_stop_detect_obj','btn_clear_obj',)),
                         ))
                      )),
       ('boxh',None, ('label_calib', ('boxv',None, (
@@ -657,14 +682,6 @@ stop_detect_obj / start_detect_obj / clear_obj:
                      )),
       ('boxh',None, ('label_load_calib', ('boxv',None, (
                         ('boxh',None, ('btn_load_calib_r_blob','btn_load_calib_l_blob','btn_load_calib_r_pxv','btn_load_calib_l_pxv',)),
-                        ))
-                     )),
-      ('boxh',None, ('label_set_trackbar_mode', ('boxv',None, (
-                        ('boxh',None, ('combobox_set_trackbar_blob','combobox_set_trackbar_pxv',)),
-                        ))
-                     )),
-      ('boxh',None, ('label_save_parameters', ('boxv',None, (
-                        ('boxh',None, ('btn_save_parameters_r','btn_save_parameters_l',)),
                         ))
                      )),
       ))
@@ -805,11 +822,11 @@ stop_detect_obj / start_detect_obj / clear_obj:
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'fixed'),
         'onclick': lambda w,obj: pm.KillBGProcess(str(w.widgets['combobox_procs'].currentText()).split('/')[0]), }),
-    'btn_dbg_exit': (
-      'button',{
-        'text': 'Exit',
-        'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj: w.close(), }),
+    #'btn_dbg_exit': (
+      #'button',{
+        #'text': 'Exit',
+        #'size_policy': ('expanding', 'fixed'),
+        #'onclick': lambda w,obj: w.close(), }),
     }
   if not with_modbus:  del widgets_debug['btn_modbus_server']
   layout_debug= (
@@ -823,7 +840,7 @@ stop_detect_obj / start_detect_obj / clear_obj:
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),
-                        ('boxh',None, ('btn_dbg_exit',)),
+                        #('boxh',None, ('btn_dbg_exit',)),
                         ))
                      )),
       ))
@@ -843,7 +860,6 @@ stop_detect_obj / start_detect_obj / clear_obj:
                 'btn_fv_record',
                 'btn_align_windows',
                 layout_joy,
-                'btn_exit',
                 ))),
               ('Signal',layout_plots),
             ))),
@@ -856,6 +872,7 @@ stop_detect_obj / start_detect_obj / clear_obj:
           #('Joy',layout_joy),
           ('Advanced',layout_debug),
           )),
+        'btn_exit',
         'spacer_cmn1')),
       ))
 
