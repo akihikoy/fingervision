@@ -230,7 +230,7 @@ class TFVGripper(TROSUtil):
       self.gripper= None
     if TFVGripper is not None:  super(TFVGripper,self).Cleanup()
 
-  def Setup(self, fv_names, fv_nodes):
+  def Setup(self, gripper_type, gripper_node, fv_names, fv_nodes):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
@@ -570,7 +570,7 @@ if __name__ == '__main__':
   fv_names= {convert_key(key):value for key,value in fv_names.iteritems()}
 
   fvg= TFVGripper()
-  fvg.Setup(fv_names, fv_nodes)
+  fvg.Setup(gripper_type, gripper_node, fv_names, fv_nodes)
 
   fvg.CtrlLoop()
   fvg.Cleanup()

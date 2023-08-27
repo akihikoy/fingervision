@@ -28,6 +28,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 #include <std_srvs/Empty.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -91,8 +92,9 @@ struct TShowTrackbars
 };
 std::map<std::string, TShowTrackbars> ShowTrackbars;
 
-std::vector<ros::Publisher> BlobPub;
-std::vector<ros::Publisher> PXVPub;
+std::vector<ros::Publisher> BlobPub;  // Blob (marker) tracking publisher.
+std::vector<ros::Publisher> PXVPub;  // Proximity-vision (object and slip detection) publisher.
+std::vector<ros::Publisher> PXVObjDetModePub;  // Object-detection mode publisher.
 std::vector<image_transport::Publisher> ImgPub;  // Image publisher [i_cam]
 std::vector<cv::Mat> Frame;
 std::vector<int64_t> CapTime;
@@ -916,6 +918,11 @@ void ExecObjDetTrack(int i_cam)
 
         PXVPub[i_cam].publish(prox_vision);
       }
+      {
+        std_msgs::Bool pxv_obj_detection;
+        pxv_obj_detection.data= tracker.ModeDetect();
+        PXVObjDetModePub[i_cam].publish(pxv_obj_detection);
+      }
       // usleep(10*1000);
     }  // Running
     else
@@ -1107,8 +1114,12 @@ int main(int argc, char**argv)
     BlobPub[j]= node.advertise<fingervision_msgs::BlobMoves>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/blob_moves", 1);
 
   PXVPub.resize(ObjDetTracker.size());
+  PXVObjDetModePub.resize(ObjDetTracker.size());
   for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
+  {
     PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/prox_vision", 1);
+    PXVObjDetModePub[j]= node.advertise<std_msgs::Bool>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/pxv_obj_detection", 1);
+  }
 
   image_transport::ImageTransport imgtr(node);
   typedef boost::shared_ptr<camera_info_manager::CameraInfoManager> CamInfoMngrPtr;

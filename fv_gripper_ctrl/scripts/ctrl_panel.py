@@ -45,6 +45,8 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     TJoyEmulator.__init__(self)
     self.node_name= node_name
     self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
+    self.pub= {}
+    self.sub= {}
 
     TTopicMonitor.__init__(self, topics_to_monitor)
     self.thread_topics_hz_callback= lambda: self.ontopicshzupdated.emit()
@@ -59,13 +61,16 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     self.StartTopicMonitorThread()
     self.StartVirtualJoyStick()
 
-    self.sub= {}
     for (topic,msg_type) in (
         ('gripper_pos',std_msgs.msg.Float64),
         ('target_pos',std_msgs.msg.Float64),
         ('active_script',std_msgs.msg.String), ):
       setattr(self, topic, None)
       self.sub[topic]= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.TopicCallback(topic,msg))
+    self.r_pxv_obj_detection= None
+    self.l_pxv_obj_detection= None
+    self.sub['r_pxv_obj_detection']= rospy.Subscriber('/fingervision/fvp_1_r/pxv_obj_detection', std_msgs.msg.Bool, lambda msg:self.TopicCallback('r_pxv_obj_detection',msg))
+    self.sub['l_pxv_obj_detection']= rospy.Subscriber('/fingervision/fvp_1_l/pxv_obj_detection', std_msgs.msg.Bool, lambda msg:self.TopicCallback('l_pxv_obj_detection',msg))
 
   def SerupFVSrv(self, fv_names, fv_node_names=None):
     self.fv.Setup(gripper=None, g_param=None, frame_id='base_link',
@@ -74,7 +79,14 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
   def StopFVSrv(self):
     self.fv.Stop()
 
+  def SetupGripper(self):
+    self.pub['set_target_pos']= rospy.Publisher('/fv_gripper_ctrl/set_target_pos', std_msgs.msg.Float64, queue_size=1)
+
+  def StopGripper(self):
+    pass
+
   def Cleanup(self):
+    if self.gripper is not None:  self.gripper.Cleanup()
     self.fv.Cleanup()
     self.StopTopicMonitorThread()
     for key,sub in self.sub.iteritems():
@@ -125,6 +137,7 @@ if __name__=='__main__':
     'FV_FILE_R_GUI_CONFIG': 'data_gen/fvp_file1_r.yaml',
     'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
     'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
+    'VIDEO_PREFIX': '{}/data/data_gen/video-'.format(os.environ['HOME']),
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'PLOT_LIST':[
@@ -158,10 +171,10 @@ if __name__=='__main__':
     'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
-    'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
-    'start_record_r': ['rosservice call /fingervision/fvp_1_r/start_record','fg'],
-    'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
-    'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
+    #'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
+    #'start_record_r': ['rosservice call /fingervision/fvp_1_r/start_record','fg'],
+    #'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
+    #'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
@@ -201,12 +214,14 @@ if __name__=='__main__':
 
 
   status_grid_list_text= [
+      dict(label='ObjDetection(l,r)', type='text', state='N/A'),
       dict(label='GPos', type='text', state='N/A'),
       dict(label='GPosTrg', type='text', state='N/A'),
       dict(label='Action', type='text', state='N/A'),
     ]
   status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
   def UpdateStatusGridText(w,obj,status=None):
+    obj.UpdateStatus('ObjDetection(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
     obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
     obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
     obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
@@ -311,6 +326,7 @@ if __name__=='__main__':
                       run_cmd('config_fv_l'),
                       run_cmd('config_fv_r'),
                       pm.SerupFVSrv(fv_names=config['FV_NAMES']),
+                      pm.fv.CallSrv('set_video_prefix', config['VIDEO_PREFIX']),
                       w.widgets['rviz'].setup(),
                       w.widgets['btn_init2'].setEnabled(True),
                      ),
@@ -329,9 +345,11 @@ if __name__=='__main__':
                       run_cmd('gripper'),
                       run_cmd('joy'),
                       run_cmd('fv_gripper_ctrl'),
+                      pm.SetupGripper(),
                       w.widgets['btn_init1'].setEnabled(False),
                      ),
                    lambda w,obj:(
+                      pm.StopGripper(),
                       stop_cmd('gripper'),
                       stop_cmd('joy'),
                       stop_cmd('fv_gripper_ctrl'),
@@ -355,12 +373,10 @@ if __name__=='__main__':
         #'enabled':False,
         'size_policy': ('expanding', 'fixed'),
         'onclick':(lambda w,obj:(
-                      run_cmd('start_record_l'),
-                      run_cmd('start_record_r'),
+                      pm.fv.CallSrv('start_record'),
                      ),
                    lambda w,obj:(
-                      run_cmd('stop_record_l'),
-                      run_cmd('stop_record_r'),
+                      pm.fv.CallSrv('stop_record'),
                      ) )}),
     }
   layout_init= (
@@ -402,19 +418,41 @@ if __name__=='__main__':
         'onclick': lambda w,obj:(set_joy('open'),), }),
     'label_grip': (
       'label',{
-        'text': 'Gripper',
+        'text': 'Gripper: ',
+        'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum')}),
     'joy_grip': (
       'virtual_joystick',{
         'kind':'hbox',
         'stick_color':[255,128,128],
-        'size_policy': ('expanding','minimum'),
+        'size_policy': ('expanding','expanding'),
         'onstickmoved': lambda w,obj:set_joy('grip',obj.position(),is_active=1), }),
+    'lineedit_g_trg': (
+      'lineedit',{
+        'text': '',
+        'validator': 'float',
+        'font_size_range': (8,24),
+        'size_policy': ('expanding', 'minimum')}),
+    'btn_go_g_trg': (
+      'button',{
+        'text': 'Go',
+        'font_size_range': (8,24),
+        'size_policy': ('expanding', 'minimum'),
+        'onclick': lambda w,obj:(pm.pub['set_target_pos'].publish(std_msgs.msg.Float64(float(w.widgets['lineedit_g_trg'].text())))
+                                 if w.widgets['lineedit_g_trg'].text()!='' else None,), }),
     }
 
   layout_joy= (
     'boxv',None, (
-      ('boxh',None,('label_grip','joy_grip','btn_grip_open')),
+      #('boxh',None,('label_grip','joy_grip','btn_grip_open')),
+      ('boxh',None,(
+        'label_grip',
+        ('boxv',None, (
+          ('boxh',None,('joy_grip',)),
+          ('boxh',None,('lineedit_g_trg','btn_go_g_trg')),
+          )),
+        'btn_grip_open',
+        )),
       ('boxh',None, ('btn_grasp','btn_hold','btn_openif','btn_stop')),
       ))
 
