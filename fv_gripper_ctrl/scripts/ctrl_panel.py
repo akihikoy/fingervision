@@ -164,22 +164,7 @@ if __name__=='__main__':
     'VIDEO_PREFIX': '{}/data/data_gen/video-'.format(os.environ['HOME']),
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
-    'PLOT_LIST':[
-        ('fv.area','area',1,None),
-        ('fv.center','center_x',1,0),
-        ('fv.center','center_y',1,1),
-        ('fv.d_area','d_area',1,None),
-        ('fv.d_center_norm','d_center_norm',1,None),
-        ('fv.d_center','d_center_x',1,0),
-        ('fv.d_center','d_center_y',1,1),
-        ('fv.d_orientation','d_orientation',1,None),
-        #('fv.normal_force','normal_force',
-        ('fv.num_force_change','num_force_change',1,None),
-        ('fv.orientation','orientation',1,None),
-        ('fv.slip','slip',1,None),
-        ('gripper_pos','gpos',2,None),
-        ('target_pos','gpos_trg',2,None),
-      ],
+    'PLOT_LOGGER_CONFIG': '{}/data/config/plot_logger.yaml'.format(os.environ['HOME']),
     'WINDOW_ALIGNMENT':{
         'fvp_1_l-blob': '0,0,640,480',
         'fvp_1_r-blob': '648,0,640,480',
@@ -210,7 +195,7 @@ if __name__=='__main__':
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
-    'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py','bg'],
+    'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
     }
   if is_gsim:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
@@ -284,24 +269,36 @@ if __name__=='__main__':
   def UpdateCtrlConfig(name, value):
     ctrl_config[name]= value
     SaveYAML(ctrl_config, config['FV_CTRL_CONFIG'], interactive=False)
-  def AddCtrlConfigSliderWidget(widgets, name, prange):
-    widgets['slider_ctrl_config_{}'.format(name)]= (
-      'sliderh',{
-        'range': prange,
-        'value': ctrl_config[name],
-        'n_labels': 3,
-        'slider_style':1,
-        'font_size_range': (10,12),
-        #'size_policy': ('minimum', 'minimum'),
-        'onvaluechange': lambda w,obj:UpdateCtrlConfig(name,obj.value())} )
-    widgets['label_ctrl_config_{}'.format(name)]= (
-      'label',{
-        'text': name,
-        'font_size_range': (12,14),
-        'size_policy': ('minimum', 'minimum')} )
-  def CtrlConfigSliderLayout(name):
-    return ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name))
-    #return ('boxv',None, ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name)) ),
+
+  #Plot and logger config.
+  #Each item=[signal name, label, axis (1 or 2), tuple of value-index (specify None for scalar), enabled]
+  plot_logger_config= [
+      ['fv.area','area',1,None, False],
+      ['fv.center','center_x',1,0, False],
+      ['fv.center','center_y',1,1, False],
+      ['fv.d_area','d_area',1,None, False],
+      ['fv.d_center_norm','d_center_norm',1,None, False],
+      ['fv.d_center','d_center_x',1,0, False],
+      ['fv.d_center','d_center_y',1,1, False],
+      ['fv.d_orientation','d_orientation',1,None, False],
+      #['fv.normal_force','normal_force',
+      ['fv.num_force_change','num_force_change',1,None, False],
+      ['fv.orientation','orientation',1,None, False],
+      ['fv.slip','slip',1,None, False],
+      ['gripper_pos','gpos',2,None, False],
+      ['target_pos','gpos_trg',2,None, False],
+    ]
+  if os.path.exists(config['PLOT_LOGGER_CONFIG']):
+    plot_logger_config= LoadYAML(config['PLOT_LOGGER_CONFIG'])
+  else:
+    SaveYAML(plot_logger_config, config['PLOT_LOGGER_CONFIG'], interactive=False)
+  def UpdatePlotLoggerConfig(label, checked):
+    try:
+      entry= next(entry for entry in plot_logger_config if entry[1]==label)
+      entry[-1]= checked
+    except StopIteration:
+      pass
+    SaveYAML(plot_logger_config, config['PLOT_LOGGER_CONFIG'], interactive=False)
 
   widgets_common= {
     'rviz': (
@@ -686,6 +683,25 @@ if __name__=='__main__':
                      )),
       ))
 
+  def AddCtrlConfigSliderWidget(widgets, name, prange):
+    widgets['slider_ctrl_config_{}'.format(name)]= (
+      'sliderh',{
+        'range': prange,
+        'value': ctrl_config[name],
+        'n_labels': 3,
+        'slider_style':1,
+        'font_size_range': (10,12),
+        #'size_policy': ('minimum', 'minimum'),
+        'onvaluechange': lambda w,obj:UpdateCtrlConfig(name,obj.value())} )
+    widgets['label_ctrl_config_{}'.format(name)]= (
+      'label',{
+        'text': name,
+        'font_size_range': (12,14),
+        'size_policy': ('minimum', 'minimum')} )
+  def CtrlConfigSliderLayout(name):
+    return ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name))
+    #return ('boxv',None, ('label_ctrl_config_{}'.format(name),'slider_ctrl_config_{}'.format(name)) ),
+
   widgets_ctrl_config= {
     }
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'min_gstep', (0.0,0.01,0.0001))
@@ -723,18 +739,24 @@ if __name__=='__main__':
       ))
 
 
-  def RunFVSignalPlot(w,obj):
-    plot_list= [p for p in config['PLOT_LIST'] if w.widgets['checkbox_{}'.format(p[1])].isChecked()]
-    if len(plot_list)==0:  return
-    cmd= cmds['fvsignal_plot'][0]+['--plots={}'.format(repr(plot_list).replace(' ',''))]
-    print('fvsignal_plot: {}'.format(cmd))
-    pm.RunBGProcess('fvsignal_plot',cmd)
+  #def RunFVSignalPlot(w,obj):
+    #plot_list= [p for p in config['PLOT_LIST'] if w.widgets['checkbox_{}'.format(p[1])].isChecked()]
+    #if len(plot_list)==0:  return
+    #cmd= cmds['fvsignal_plot'][0]+['--plots={}'.format(repr(plot_list).replace(' ',''))]
+    #print('fvsignal_plot: {}'.format(cmd))
+    #pm.RunBGProcess('fvsignal_plot',cmd)
   widgets_plot_cbs= {
-    'checkbox_{}'.format(plot_label): ('checkbox',{'text': plot_label})
-      for (signal_name,plot_label,axis,index) in config['PLOT_LIST']}
+    'checkbox_{}'.format(plot_label): (
+        'checkbox',{
+            'text': plot_label,
+            'checked': enabled,
+            'font_size_range': (8,24),
+            'onclick': lambda w,obj,label=plot_label: UpdatePlotLoggerConfig(label, obj.isChecked()),
+          })
+      for (signal_name,plot_label,axis,index,enabled) in plot_logger_config}
   layout_plot_cbs= (
     'boxv',None,(
-        'checkbox_{}'.format(plot_label) for (signal_name,plot_label,axis,index) in config['PLOT_LIST']
+        'checkbox_{}'.format(plot_label) for (signal_name,plot_label,axis,index,enabled) in plot_logger_config
       ))
   widgets_plots= {
     'btn_plot': (
@@ -742,7 +764,8 @@ if __name__=='__main__':
         'text':('Plot','Stop Plot'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
-                      RunFVSignalPlot(w,obj),
+                      #RunFVSignalPlot(w,obj),
+                      run_cmd('fvsignal_plot'),
                      ),
                    lambda w,obj:(
                       stop_cmd('fvsignal_plot'),

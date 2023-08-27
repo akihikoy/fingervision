@@ -15,6 +15,7 @@ import rospy
 import rospkg
 sys.path.append(os.path.join(rospkg.RosPack().get_path('fv_gripper_ctrl'),'scripts'))
 from fv_gripper_ctrl import DecodeNamedVariableMsg,DecodeNamedVariableListMsg
+from ay_py.core import LoadYAML
 import fingervision_msgs.msg
 import std_msgs.msg
 import numpy as np
@@ -105,15 +106,22 @@ if __name__=='__main__':
   xlabel= get_arg('-xlabel=',get_arg('--xlabel=',None))
   ylabel= get_arg('-xlabel=',get_arg('--xlabel=',None))
   y2label= get_arg('-xlabel=',get_arg('--xlabel=',None))
-  plots= eval(get_arg('-plots=',get_arg('--plots=','None')))
+  plots= get_arg('-plots=',get_arg('--plots=',None))
+  if plots is not None:
+    if os.path.exists(plots):
+      plots= LoadYAML(plots)
+    else:
+      plots= eval(plots)
   if plots is None:
-    #List of signal name, label, axis, tuple of value-index (specify None for scalar).
-    plots= [('fv.slip','slip',1,None),
-            ('fv.area','area',1,None),
-            ('fv.center','center_y',1,1),
-            ('gripper_pos','gpos',2,None),
-            ('target_pos','gpos_trg',2,None)]
+    #List of (signal name, label, axis (1 or 2), tuple of value-index (specify None for scalar), enabled).
+    plots= [('fv.slip','slip',1,None, True),
+            ('fv.area','area',1,None, True),
+            ('fv.center','center_y',1,1, True),
+            ('gripper_pos','gpos',2,None, True),
+            ('target_pos','gpos_trg',2,None, True)]
   print 'plots=',plots
+
+  plots= [(signal_name,plot_label,axis,index) for (signal_name,plot_label,axis,index,enabled) in plots if enabled]
 
   rospy.init_node('fvsignal_plot')
   fvsignal_listener= TFVSignalListener(plots, data_skip)
