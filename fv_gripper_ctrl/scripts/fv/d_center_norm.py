@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from ay_py.core import *
+from ay_py.ros import *
 d_center= SmartImportReload('fv.d_center')
 
 def Help():

@@ -400,15 +400,21 @@ class TFVGripper(TROSUtil):
   def CtrlLoop(self):
     #TODO:FIXME:Pu in the param list.
     sensor_name_list= [
+      'fv.area_l',
+      'fv.area_r',
       'fv.area',
       'fv.center',
       'fv.d_area',
       'fv.d_center_norm',
       'fv.d_center',
       'fv.d_orientation',
-      #'fv.normal_force',
+      'fv.force_l',
+      'fv.force_r',
       'fv.num_force_change',
-      'fv.orientation',
+      'fv.orientation_l',
+      'fv.orientation_r',
+      'fv.slip_l',
+      'fv.slip_r',
       'fv.slip',
       ]
     self.LoadAllSensors(sensor_name_list)

@@ -36,6 +36,7 @@ from joy_fv import TJoyEmulator
 from topic_monitor import TTopicMonitor
 import std_msgs.msg
 import fv_sensor
+import numpy as np
 
 class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMonitor):
   ontopicshzupdated= QtCore.pyqtSignal()
@@ -275,6 +276,8 @@ if __name__=='__main__':
   #Plot and logger config.
   #Each item=[signal name, label, axis (1 or 2), tuple of value-index (specify None for scalar), enabled]
   plot_logger_config= [
+      ['fv.area_l','area_l',1,None, False],
+      ['fv.area_r','area_r',1,None, False],
       ['fv.area','area',1,None, False],
       ['fv.center','center_x',1,0, False],
       ['fv.center','center_y',1,1, False],
@@ -283,15 +286,29 @@ if __name__=='__main__':
       ['fv.d_center','d_center_x',1,0, False],
       ['fv.d_center','d_center_y',1,1, False],
       ['fv.d_orientation','d_orientation',1,None, False],
-      #['fv.normal_force','normal_force',
+      ['fv.force_l','force_l_x',1,0, False],
+      ['fv.force_l','force_l_y',1,1, False],
+      ['fv.force_l','force_l_z',1,2, False],
+      ['fv.force_r','force_r_x',1,0, False],
+      ['fv.force_r','force_r_y',1,1, False],
+      ['fv.force_r','force_r_z',1,2, False],
       ['fv.num_force_change','num_force_change',1,None, False],
-      ['fv.orientation','orientation',1,None, False],
+      ['fv.orientation_l','orientation_l',1,None, False],
+      ['fv.orientation_r','orientation_r',1,None, False],
+      ['fv.slip_l','slip_l',1,None, False],
+      ['fv.slip_r','slip_r',1,None, False],
       ['fv.slip','slip',1,None, False],
       ['gripper_pos','gpos',2,None, False],
       ['target_pos','gpos_trg',2,None, False],
     ]
   if os.path.exists(config['PLOT_LOGGER_CONFIG']):
-    plot_logger_config= LoadYAML(config['PLOT_LOGGER_CONFIG'])
+    plot_logger_config_loaded= LoadYAML(config['PLOT_LOGGER_CONFIG'])
+    #Add items in plot_logger_config to plot_logger_config_loaded if they are missing.
+    labels= [label for (signal_name,label,axis,index,enabled) in plot_logger_config_loaded]
+    for entry in plot_logger_config:
+      if entry[1] not in labels:
+        plot_logger_config_loaded.append(entry)
+    plot_logger_config= plot_logger_config_loaded
   else:
     SaveYAML(plot_logger_config, config['PLOT_LOGGER_CONFIG'], interactive=False)
   def UpdatePlotLoggerConfig(label, checked):
@@ -761,9 +778,15 @@ if __name__=='__main__':
             'onclick': lambda w,obj,label=plot_label: UpdatePlotLoggerConfig(label, obj.isChecked()),
           })
       for (signal_name,plot_label,axis,index,enabled) in plot_logger_config}
+  num_column= 3
+  num_row= int(np.ceil(float(len(plot_logger_config))/num_column))
   layout_plot_cbs= (
-    'boxv',None,(
-        'checkbox_{}'.format(plot_label) for (signal_name,plot_label,axis,index,enabled) in plot_logger_config
+    'boxh',None,(
+      ('boxv',None,(
+          'checkbox_{}'.format(plot_label)
+          for (signal_name,plot_label,axis,index,enabled) in plot_logger_config[i:i+num_row]
+        ))
+        for i in range(0,len(plot_logger_config),num_row)
       ))
   widgets_plots= {
     'btn_plot': (
@@ -897,8 +920,7 @@ if __name__=='__main__':
           ('Main',('tab',None,(
               ('Operation',('boxv',None,(
                 layout_init,
-                'btn_fv_record',
-                'btn_align_windows',
+                ('boxh',None, ('btn_fv_record','btn_align_windows',)),
                 layout_joy,
                 ))),
               ('Signal',layout_plots),

@@ -3,12 +3,12 @@ from ay_py.core import *
 from ay_py.ros import *
 
 def Help():
-  return 'A signal function to get an area of nearby object.'
+  return 'A signal function to get an average force (right sensor).'
 
 def Reset(fvg):
   pass
 
 def Get(fvg, fv_data):
-  area= np.mean(fv_data.obj_area_filtered)
-  return area
+  force= list(fv_data.force[RIGHT])
+  return force
 
