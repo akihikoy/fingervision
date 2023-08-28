@@ -632,7 +632,7 @@ if __name__=='__main__':
         'onclick': lambda w,obj:pm.fv.CallSrvL('save_parameters',config['FV_L_GUI_CONFIG']),  }),
     'label_obj_detection': (
       'label',{
-        'text': 'Object detection: ',
+        'text': 'Object detection(pxv): ',
         'font_size_range': (12,14),
         'size_policy': ('minimum', 'minimum')}),
     'btn_start_detect_obj': (
@@ -645,11 +645,16 @@ if __name__=='__main__':
         'text':'Stop',
         'font_size_range': (8,24),
         'onclick': lambda w,obj:pm.fv.CallSrv('stop_detect_obj'),  }),
-    'btn_clear_obj': (
+    'btn_clear_obj_l': (
       'button',{
-        'text':'ClearObj',
+        'text':'ClearObj(l)',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrv('clear_obj'),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('clear_obj'),  }),
+    'btn_clear_obj_r': (
+      'button',{
+        'text':'ClearObj(r)',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj:pm.fv.CallSrvR('clear_obj'),  }),
     }
 
   layout_fv_sensor= (
@@ -664,23 +669,23 @@ if __name__=='__main__':
                         ))
                      )),
       ('boxh',None, ('label_save_parameters', ('boxv',None, (
-                        ('boxh',None, ('btn_save_parameters_r','btn_save_parameters_l',)),
+                        ('boxh',None, ('btn_save_parameters_l','btn_save_parameters_r',)),
                         ))
                      )),
       ('boxh',None, ('label_obj_detection', ('boxv',None, (
-                        ('boxh',None, ('btn_start_detect_obj','btn_stop_detect_obj','btn_clear_obj',)),
+                        ('boxh',None, ('btn_start_detect_obj','btn_stop_detect_obj','btn_clear_obj_l','btn_clear_obj_r',)),
                         ))
                      )),
       ('boxh',None, ('label_calib', ('boxv',None, (
-                        ('boxh',None, ('btn_calib_r_blob','btn_calib_l_blob','btn_calib_r_pxv','btn_calib_l_pxv',)),
+                        ('boxh',None, ('btn_calib_l_blob','btn_calib_r_blob','btn_calib_l_pxv','btn_calib_r_pxv',)),
                         ))
                      )),
       ('boxh',None, ('label_save_calib', ('boxv',None, (
-                        ('boxh',None, ('btn_save_calib_r_blob','btn_save_calib_l_blob','btn_save_calib_r_pxv','btn_save_calib_l_pxv',)),
+                        ('boxh',None, ('btn_save_calib_l_blob','btn_save_calib_r_blob','btn_save_calib_l_pxv','btn_save_calib_r_pxv',)),
                         ))
                      )),
       ('boxh',None, ('label_load_calib', ('boxv',None, (
-                        ('boxh',None, ('btn_load_calib_r_blob','btn_load_calib_l_blob','btn_load_calib_r_pxv','btn_load_calib_l_pxv',)),
+                        ('boxh',None, ('btn_load_calib_l_blob','btn_load_calib_r_blob','btn_load_calib_l_pxv','btn_load_calib_r_pxv',)),
                         ))
                      )),
       ))
