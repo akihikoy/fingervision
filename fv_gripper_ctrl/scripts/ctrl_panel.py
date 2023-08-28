@@ -139,10 +139,14 @@ if __name__=='__main__':
   is_gsim= True if '-gsim' in sys.argv or '--gsim' in sys.argv else False
   #FV simulation flag:
   is_fvsim= True if '-fvsim' in sys.argv or '--fvsim' in sys.argv else False
+  #Sensor-only application:
+  sensor_app= True if '-sensor_app' in sys.argv or '--sensor_app' in sys.argv else False
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   RVIZ_CONFIG= os.environ['HOME']+'/.rviz/default.rviz'
   RIGHT,LEFT= fv_sensor.RIGHT,fv_sensor.LEFT
+  if sensor_app:
+    is_gsim= True
   #Parameters:
   config={
     'GripperType': gripper_type,
@@ -166,6 +170,7 @@ if __name__=='__main__':
     'LOG_PREFIX': '{}/data/data_gen/log-'.format(os.environ['HOME']),
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
+    'SENSOR_APP': sensor_app,
     'PLOT_LOGGER_CONFIG': '{}/data/config/plot_logger.yaml'.format(os.environ['HOME']),
     'WINDOW_ALIGNMENT':{
         'fvp_1_l-blob': '0,0,640,480',
@@ -216,11 +221,12 @@ if __name__=='__main__':
 
   #List of topics to monitor the status:
   topics_to_monitor= {
-    'Gripper': '/gripper_driver/joint_states',
     'FV_L': '/fingervision/fvp_1_l/prox_vision',
     'FV_R': '/fingervision/fvp_1_r/prox_vision',
     #'ModbusSrv': '/fingervision/fvp_1_r/prox_vision',
     }
+  if not sensor_app:
+    topics_to_monitor['Gripper']= '/gripper_driver/joint_states'
 
   pm= TSubProcManagerJoy(topics_to_monitor=topics_to_monitor)
   run_cmd= lambda name: pm.RunBGProcess(name,cmds[name][0]) if cmds[name][1]=='bg' else\
@@ -232,18 +238,25 @@ if __name__=='__main__':
   set_joy= lambda kind,value=None,is_active=0: pm.SetJoy(kind,value,is_active)
 
 
-  status_grid_list_text= [
-      dict(label='ObjDetect(l,r)', type='text', state='N/A'),
-      dict(label='GPos', type='text', state='N/A'),
-      dict(label='GPosTrg', type='text', state='N/A'),
-      dict(label='Action', type='text', state='N/A'),
-    ]
+  if not sensor_app:
+    status_grid_list_text= [
+        dict(label='ObjDetect(l,r)', type='text', state='N/A'),
+        dict(label='GPos', type='text', state='N/A'),
+        dict(label='GPosTrg', type='text', state='N/A'),
+        dict(label='Action', type='text', state='N/A'),
+      ]
+  else:
+    status_grid_list_text= [
+        dict(label='ObjDetect(l,r)', type='text', state='N/A'),
+      ]
+
   status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
   def UpdateStatusGridText(w,obj,status=None):
     obj.UpdateStatus('ObjDetect(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
-    obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
-    obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
-    obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
+    if not sensor_app:
+      obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
+      obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
+      obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
   def UpdateStatusGridColor(w,obj,status=None):
     for key,topic in pm.topics_to_monitor.iteritems():
       obj.UpdateStatus(key, 'green' if pm.IsActive(key) else 'red')
@@ -384,7 +397,8 @@ if __name__=='__main__':
                      ) )}),
     'btn_init2': (
       'buttonchk',{
-        'text':('(2)Gripper ctrl','(2)Stop gripper ctrl'),
+        'text':('(2)Gripper ctrl','(2)Stop gripper ctrl') if not sensor_app
+                else ('(2)Run filters','(2)Stop filters'),
         'enabled':False,
         'onclick':(lambda w,obj:(
                       run_cmd('reboot_dxlg'),
@@ -828,34 +842,6 @@ if __name__=='__main__':
                    lambda w,obj:(
                       stop_cmd('rviz'),
                      ) )}),
-    'btn_modbus_server': (
-      'buttonchk',{
-        'text':('Modbus Server','Stop Modbus Srv'),
-        'font_size_range': (8,24),
-        'onclick':(lambda w,obj:(
-                      run_cmd('modbus_port_fwd'),
-                      run_cmd('modbus_server'),
-                     ),
-                   lambda w,obj:(
-                      stop_cmd('modbus_server'),
-                     ) )}),
-    'label_dxlg': (
-      'label',{
-        'text': 'Gripper: ',
-        'font_size_range': (8,24),
-        'size_policy': ('minimum', 'minimum')}),
-    'btn_dxlg_reboot': (
-      'button',{
-        'text': 'Reboot',
-        'font_size_range': (8,24),
-        #'size_policy': ('minimum', 'minimum'),
-        'onclick': lambda w,obj: run_cmd('reboot_dxlg'), }),
-    'btn_dxlg_factory_reset': (
-      'button',{
-        'text': 'FactoryReset',
-        'font_size_range': (8,24),
-        #'size_policy': ('minimum', 'minimum'),
-        'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
     'label_processes': (
       'label',{
         'text': 'Processes: ',
@@ -891,7 +877,38 @@ if __name__=='__main__':
         #'size_policy': ('expanding', 'fixed'),
         #'onclick': lambda w,obj: w.close(), }),
     }
-  if not with_modbus:  del widgets_debug['btn_modbus_server']
+  widgets_debug_gripper= {
+    'label_dxlg': (
+      'label',{
+        'text': 'Gripper: ',
+        'font_size_range': (8,24),
+        'size_policy': ('minimum', 'minimum')}),
+    'btn_dxlg_reboot': (
+      'button',{
+        'text': 'Reboot',
+        'font_size_range': (8,24),
+        #'size_policy': ('minimum', 'minimum'),
+        'onclick': lambda w,obj: run_cmd('reboot_dxlg'), }),
+    'btn_dxlg_factory_reset': (
+      'button',{
+        'text': 'FactoryReset',
+        'font_size_range': (8,24),
+        #'size_policy': ('minimum', 'minimum'),
+        'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
+    }
+  widgets_debug_modbus= {
+    'btn_modbus_server': (
+      'buttonchk',{
+        'text':('Modbus Server','Stop Modbus Srv'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('modbus_port_fwd'),
+                      run_cmd('modbus_server'),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('modbus_server'),
+                     ) )}),
+    }
   layout_debug= (
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
@@ -899,7 +916,7 @@ if __name__=='__main__':
       ('boxh',None, ('label_dxlg', ('boxv',None, (
                         ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
                         ))
-                     )),
+                     ) if not sensor_app else ()),
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),
@@ -921,7 +938,7 @@ if __name__=='__main__':
               ('Operation',('boxv',None,(
                 layout_init,
                 ('boxh',None, ('btn_fv_record','btn_align_windows',)),
-                layout_joy,
+                layout_joy if not sensor_app else 'spacer_cmn1',
                 ))),
               ('Signal',layout_plots),
             ))),
@@ -929,7 +946,10 @@ if __name__=='__main__':
               ('FV_sensor',layout_fv_sensor),
               ('Control/1',layout_ctrl_config1),
               ('Control/2',layout_ctrl_config2),
-            ))),
+            ))) if not sensor_app
+          else ('Configuration',('tab',None,(
+                  ('FV_sensor',layout_fv_sensor),
+                ))),
           #('Initialize',layout_init),
           #('Joy',layout_joy),
           ('Advanced',layout_debug),
@@ -947,12 +967,18 @@ if __name__=='__main__':
   panel= TSimplePanel('Robot Operation Panel', size=win_size, font_height_scale=300.0)
   panel.AddWidgets(widgets_common)
   panel.AddWidgets(widgets_init)
-  panel.AddWidgets(widgets_joy)
+  if not sensor_app:
+    panel.AddWidgets(widgets_joy)
   panel.AddWidgets(widgets_fv_sensor)
-  panel.AddWidgets(widgets_ctrl_config)
+  if not sensor_app:
+    panel.AddWidgets(widgets_ctrl_config)
   panel.AddWidgets(widgets_plot_cbs)
   panel.AddWidgets(widgets_plots)
   panel.AddWidgets(widgets_debug)
+  if not sensor_app:
+    panel.AddWidgets(widgets_debug_gripper)
+  if with_modbus:
+    panel.AddWidgets(widgets_debug_modbus)
   panel.Construct(layout_main)
   #for tab in panel.layouts['maintab'].tab:
     #tab.setFont(QtGui.QFont('', 24))
