@@ -1290,10 +1290,10 @@ void StartThreads(
 
   // Start threads:
 
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
     ThBlobTrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecBlobTrack,j))));
 
-  for(int j(0),j_end(CamInfo.size());j<j_end;++j)
+  for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
     ThObjDetTrack.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecObjDetTrack,j))));
 
   // if(publish_image)
