@@ -585,7 +585,7 @@ bool SetTrackbarMode(fingervision_msgs::SetStringInt32::Request &req, fingervisi
   {
     for(int it(0),it_end(BlobTracker.size()); it!=it_end; ++it)
     {
-      string &win_name(BlobTracker[it].Name);
+      std::string &win_name(BlobTracker[it].Name);
       if(ShowTrackbars[win_name].Mode!=mode)
       {
         cv::destroyWindow(win_name);
@@ -601,7 +601,7 @@ bool SetTrackbarMode(fingervision_msgs::SetStringInt32::Request &req, fingervisi
   {
     for(int it(0),it_end(ObjDetTracker.size()); it!=it_end; ++it)
     {
-      string &win_name(ObjDetTracker[it].Name);
+      std::string &win_name(ObjDetTracker[it].Name);
       if(ShowTrackbars[win_name].Mode!=mode)
       {
         cv::destroyWindow(win_name);
@@ -1003,6 +1003,130 @@ std::vector<cv::Mat> CaptureSeq(cv::VideoCapture &cap, int i_cam, int num)
 }
 //-------------------------------------------------------------------------------------------
 
+bool DisplayImages();
+
+void ExecImgCapture(std::vector<cv::VideoCapture> &cap, bool camera_auto_reopen, bool disp_images, bool handle_key_event)
+{
+  int show_fps(0);
+  ros::Rate rate(CaptureFPS>0.0?CaptureFPS:1);
+  for(int f(0);!IsShutdown();++f)
+  {
+    if(Running)
+    {
+      // Capture from cameras:
+      for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
+      {
+        cv::Mat frame= Capture(cap[i_cam], i_cam, camera_auto_reopen);
+        if(frame.empty())  Shutdown=true;
+        if(FrameSkip<=0 || f%(FrameSkip+1)==0)
+        {
+          boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
+          Frame[i_cam]= frame;
+          CapTime[i_cam]= GetCurrentTimeL();
+        }
+      }
+      if(IsShutdown())  break;
+
+      // NOTE: In case ExecImgCapture is executed as a thread,
+      // DisplayImages / cv::imshow should not be performed here but be called from the main thread.
+      if(disp_images)  DisplayImages();
+
+
+      // Handle blob tracker calibration request
+      if(CalibrationRequest && BlobTracker.size()>0 && CalibrationReqWinInfo.Kind=="BlobTracker")
+      {
+        int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
+        boost::mutex::scoped_lock lock(*MutTracker[BlobTracker[idx].Name]);
+        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, BlobTracker[idx].Params().NCalibPoints);
+        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
+          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
+        BlobTracker[idx].Calibrate(frames);
+      }
+      if(CalibrationRequest && ObjDetTracker.size()>0 && CalibrationReqWinInfo.Kind=="ObjDetTracker")
+      {
+        int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
+        boost::mutex::scoped_lock lock(*MutTracker[ObjDetTracker[idx].Name]);
+        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[idx].Params().NCalibBGFrames);
+        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
+          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
+        ObjDetTracker[idx].CalibBG(frames);
+      }
+      CalibrationRequest= false;
+
+      // usleep(10*1000);
+      if(show_fps==0)
+      {
+        std::cerr<<"FPS: "<<VideoOut.begin()->second.FPS()<<std::endl;
+        show_fps=VideoOut.begin()->second.FPS()*4;
+      }
+      --show_fps;
+
+      if(CaptureFPS>0.0)  rate.sleep();
+
+    }  // Running
+    else
+    {
+      usleep(200*1000);
+    }
+
+    if(handle_key_event && !HandleKeyEvent())  break;
+
+    ros::spinOnce();
+  }
+  Shutdown= true;
+}
+//-------------------------------------------------------------------------------------------
+
+// Handle the window visibility request and return if the windows are visible.
+bool HandleWindowVisibilityRequest()
+{
+  if(!WindowsHidden && WindowVisibilityRequest==wvrHide)
+  {
+    for(std::map<std::string, TIMShowStuff>::const_iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+      cv::destroyWindow(itr->first);
+    WindowsHidden= true;
+  }
+  if(WindowsHidden && WindowVisibilityRequest==wvrShow)
+  {
+    for(std::map<std::string, TIMShowStuff>::const_iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+    {
+      std::string &window_name(const_cast<std::string&>(itr->first));
+      cv::namedWindow(window_name,1);
+      cv::setMouseCallback(window_name, OnMouse, &window_name);
+    }
+    WindowsHidden= false;
+  }
+  WindowVisibilityRequest= wvrNone;
+  return !WindowsHidden;
+}
+//-------------------------------------------------------------------------------------------
+
+// Handle the window visibility request, display images with imshow, and run the key event handler.
+// return: false if shutdown is requested.
+bool DisplayImages()
+{
+  HandleWindowVisibilityRequest();
+
+  // Show windows
+  if(!WindowsHidden)
+  {
+    for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
+    {
+      boost::mutex::scoped_lock lock(*itr->second.Mutex);
+      if(itr->second.Frame.total()>0)
+        cv::imshow(itr->first, itr->second.Frame);
+    }
+  }
+
+  if(!HandleKeyEvent())
+  {
+    Shutdown= true;
+    return false;
+  }
+  return true;
+}
+//-------------------------------------------------------------------------------------------
+
 int main(int argc, char**argv)
 {
   ros::init(argc, argv, "fv_core_node");
@@ -1156,8 +1280,6 @@ int main(int argc, char**argv)
   ros::ServiceServer srv_save_calibration= node.advertiseService("save_calibration", &SaveCalibration);
   ros::ServiceServer srv_load_calibration= node.advertiseService("load_calibration", &LoadCalibration);
 
-  int show_fps(0);
-
   // Dummy capture.
   for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
   {
@@ -1192,96 +1314,8 @@ int main(int argc, char**argv)
     for(int j(0),j_end(CamInfo.size());j<j_end;++j)
       th_imgpub.push_back(boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(ExecImgPublisher,j))));
 
-  ros::Rate rate(CaptureFPS>0.0?CaptureFPS:1);
-  for(int f(0);!IsShutdown();++f)
-  {
-    if(Running)
-    {
-      // Capture from cameras:
-      for(int i_cam(0), i_cam_end(CamInfo.size()); i_cam<i_cam_end; ++i_cam)
-      {
-        cv::Mat frame= Capture(cap[i_cam], i_cam, camera_auto_reopen);
-        if(frame.empty())  Shutdown=true;
-        if(FrameSkip<=0 || f%(FrameSkip+1)==0)
-        {
-          boost::mutex::scoped_lock lock(*MutFrameCopy[i_cam]);
-          Frame[i_cam]= frame;
-          CapTime[i_cam]= GetCurrentTimeL();
-        }
-      }
-      if(IsShutdown())  break;
+  ExecImgCapture(cap, camera_auto_reopen, /*disp_images=*/true, /*handle_key_event=*/true);
 
-      // Show windows
-      if(!WindowsHidden)
-      {
-        bool hide_req= (WindowVisibilityRequest==wvrHide);
-        for(std::map<std::string, TIMShowStuff>::iterator itr(IMShowStuff.begin()),itr_end(IMShowStuff.end()); itr!=itr_end; ++itr)
-        {
-          boost::mutex::scoped_lock lock(*itr->second.Mutex);
-          if(itr->second.Frame.total()>0 && !hide_req)
-            cv::imshow(itr->first, itr->second.Frame);
-          if(hide_req)
-            cv::destroyWindow(itr->first);
-        }
-        if(hide_req)
-        {
-          WindowVisibilityRequest= wvrNone;
-          WindowsHidden= true;
-        }
-      }
-      if(WindowsHidden && WindowVisibilityRequest==wvrShow)
-      {
-        for(std::map<std::string, TWindowInfo>::const_iterator itr(WindowInfo.begin()),itr_end(WindowInfo.end()); itr!=itr_end; ++itr)
-        {
-          std::string &window_name(const_cast<std::string&>(itr->first));
-          cv::namedWindow(window_name,1);
-          cv::setMouseCallback(window_name, OnMouse, &window_name);
-        }
-        WindowVisibilityRequest= wvrNone;
-        WindowsHidden= false;
-      }
-
-      // Handle blob tracker calibration request
-      if(CalibrationRequest && BlobTracker.size()>0 && CalibrationReqWinInfo.Kind=="BlobTracker")
-      {
-        int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
-        boost::mutex::scoped_lock lock(*MutTracker[BlobTracker[idx].Name]);
-        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, BlobTracker[idx].Params().NCalibPoints);
-        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
-          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
-        BlobTracker[idx].Calibrate(frames);
-      }
-      if(CalibrationRequest && ObjDetTracker.size()>0 && CalibrationReqWinInfo.Kind=="ObjDetTracker")
-      {
-        int i_cam(CalibrationReqWinInfo.CamIdx), idx(CalibrationReqWinInfo.Index);
-        boost::mutex::scoped_lock lock(*MutTracker[ObjDetTracker[idx].Name]);
-        std::vector<cv::Mat> frames= CaptureSeq(cap[i_cam], i_cam, ObjDetTracker[idx].Params().NCalibBGFrames);
-        for(int i_frame(0),i_frame_end(frames.size()); i_frame<i_frame_end; ++i_frame)
-          Preprocess(frames[i_frame], CamInfo[i_cam], &CamRectifier[i_cam]);
-        ObjDetTracker[idx].CalibBG(frames);
-      }
-      CalibrationRequest= false;
-
-      // usleep(10*1000);
-      if(show_fps==0)
-      {
-        std::cerr<<"FPS: "<<VideoOut.begin()->second.FPS()<<std::endl;
-        show_fps=VideoOut.begin()->second.FPS()*4;
-      }
-      --show_fps;
-
-      if(CaptureFPS>0.0)  rate.sleep();
-
-    }  // Running
-    else
-    {
-      usleep(200*1000);
-    }
-
-    if(!HandleKeyEvent())  break;
-
-    ros::spinOnce();
-  }
   Shutdown= true;
   for(int j(0),j_end(th_blobtrack.size());j<j_end;++j)
     th_blobtrack[j]->join();

@@ -48,6 +48,7 @@ if __name__=='__main__':
         name= fv.GetDisplayImageList()[{'c':0,'C':1}[c]]
         print 'Calibrating {}...'.format(name)
         fv.SetCalibrationRequest(name)
+      windows_hidden= not fv.HandleWindowVisibilityRequest()
       if not windows_hidden:
         for name in fv.GetDisplayImageList():
           fv.DisplayImage(name)

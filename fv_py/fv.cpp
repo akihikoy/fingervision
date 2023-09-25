@@ -18,9 +18,9 @@ namespace trick
 //-------------------------------------------------------------------------------------------
 
 namespace py= pybind11;
-PYBIND11_PLUGIN(fv)
+PYBIND11_MODULE(fv, m)
 {
-  py::module m("fv", "FingerVision library for Python (test).");
+  m.doc() = "FingerVision library for Python (test).";
 
   py::class_<TBlobMove>(m, "TBlobMove")
     .def_readwrite("Pox", &TBlobMove::Pox)
@@ -77,7 +77,16 @@ PYBIND11_PLUGIN(fv)
   m.def("StartDetectObj", &StartDetectObj, "Start detecting the objects on ObjDetTracker.");
   m.def("ClearObj", &ClearObj, "Clear the object model of ObjDetTracker.");
   m.def("SetCalibrationRequest", &SetCalibrationRequest, "Set the calibration flag with the specified name of a window.");
-  m.def("DisplayImages", &DisplayImages, "Display images with imshow and run the key event handler."
+  m.def("ReqCalibrate", &ReqCalibrate, "ReqCalibrate.");
+  m.def("ReqInitialize", &ReqInitialize, "ReqInitialize.");
+  m.def("SetDimLevel", &SetDimLevel, "SetDimLevel.");
+  m.def("SetTrackbarMode", &SetTrackbarMode, "SetTrackbarMode.");
+  m.def("SaveParameters", &SaveParameters, "SaveParameters.");
+  m.def("LoadParameters", &LoadParameters, "LoadParameters.");
+  m.def("SaveCalibration", &SaveCalibration, "SaveCalibration.");
+  m.def("LoadCalibration", &LoadCalibration, "LoadCalibration.");
+  m.def("HandleWindowVisibilityRequest", &HandleWindowVisibilityRequest, "Handle the window visibility request and return if the windows are visible.");
+  m.def("DisplayImages", &DisplayImages, "Handle the window visibility request, display images with imshow, and run the key event handler."
         "return: false if shutdown is requested.");
   m.def("DisplayImage", &DisplayImage, "Display an image (window) specified by name.");
   m.def("GetDisplayImageList", &GetDisplayImageList, "Return a list of image (window) names to be displayed.");
@@ -90,12 +99,16 @@ PYBIND11_PLUGIN(fv)
   m.def("StartThreads", &StartThreads, "Start the image capture and the computer vision threads.",
         py::arg("pkg_dir")=".",
         py::arg("config")="config/cam1.yaml",
+        py::arg("config_out")="out1.yaml",
         py::arg("blob_calib_prefix")="blob_",
+        py::arg("objdet_model_prefix")="objdet_",
         py::arg("frame_skip")=0,
         py::arg("target_fps")=0,
         py::arg("capture_fps")=0,
         py::arg("windows_hidden")=false,
-        py::arg("camera_auto_reopen")=true);
+        py::arg("camera_auto_reopen")=true,
+        py::arg("initial_obj_detect")=true);
+
 }
 //-------------------------------------------------------------------------------------------
 
