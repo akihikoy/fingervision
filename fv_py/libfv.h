@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <opencv2/core/core.hpp>
 //-------------------------------------------------------------------------------------------
 namespace trick
 {
@@ -175,6 +176,8 @@ bool HandleWindowVisibilityRequest();
 bool DisplayImages();
 // Display an image (window) specified by name.
 void DisplayImage(const std::string &name);
+// Copy an image for display specified by the window name to dst.
+void CopyDispImage(const std::string &name, cv::Mat &dst);
 // Return a list of image (window) names to be displayed.
 std::list<std::string> GetDisplayImageList();
 // Return the number of cameras.

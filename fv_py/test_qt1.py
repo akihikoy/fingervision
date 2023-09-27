@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #\file    test_qt1.py
-#\brief   Example of fv_py with Qt.
+#\brief   Example of fv_py with Qt (the images are rendered with OpenCV).
 #\author  Akihiko Yamaguchi, info@akihikoy.net
 #\version 0.1
 #\date    Sep.26, 2023
@@ -45,7 +45,7 @@ def FVLoop(config_file, queue_cmd, queue_out):
   queue_out.put('done')
 
 
-class TButton(QtGui.QWidget):
+class TFVApp(QtGui.QWidget):
   def __init__(self, queue_cmd, queue_out):
     QtGui.QWidget.__init__(self)
     self.queue_cmd= queue_cmd
@@ -99,6 +99,6 @@ if __name__=='__main__':
   a= QtGui.QApplication(sys.argv)
 
   # The QWidget widget is the base class of all user interface objects in PyQt4.
-  w= TButton(queue_cmd, queue_out)
+  w= TFVApp(queue_cmd, queue_out)
 
   sys.exit(a.exec_())

@@ -1083,6 +1083,20 @@ void DisplayImage(const std::string &name)
 }
 //-------------------------------------------------------------------------------------------
 
+// Copy an image for display specified by the window name to dst.
+void CopyDispImage(const std::string &name, cv::Mat &dst)
+{
+  if(IMShowStuff.count(name)==0)
+  {
+    std::cerr<<"CopyDispImage: No image named "<<name<<std::endl;
+    return;
+  }
+  boost::mutex::scoped_lock lock(*IMShowStuff[name].Mutex);
+  if(IMShowStuff[name].Frame.total()>0)
+    IMShowStuff[name].Frame.copyTo(dst);
+}
+//-------------------------------------------------------------------------------------------
+
 // Return a list of image (window) names to be displayed.
 std::list<std::string> GetDisplayImageList()
 {
