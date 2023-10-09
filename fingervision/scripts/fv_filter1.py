@@ -88,7 +88,6 @@ def MovingAverageFilter(value,log,length):
 def ProxVision(msg,fv,pub_fobjinfo,options,state):
   cx= msg.width/2
   cy= msg.height/2
-  div= float(msg.width+msg.height)/2.0
   diva= float(msg.width*msg.height)
   #Object and movement detection (shrunken form, e.g. 3x3 mat)
   obj_s= [i/diva for i in msg.ObjS]  #FIXME: Do not divide by diva since MvS elements are already normalized by the local area!!! 255 would be better
@@ -97,7 +96,7 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
   m00,m10,m01= msg.ObjM_m[:3]
   mu20,mu11,mu02= msg.ObjM_mu[:3]
   if m00>0.0:
-    obj_center= [(m10/m00-cx)/div, (m01/m00-cy)/div]
+    obj_center= [(m10/m00-cx)/msg.width, (m01/m00-cy)/msg.height]
     obj_orientation= 0.5*math.atan2(2.0*mu11/m00, (mu20/m00-mu02/m00))
     obj_area= m00/diva
   else:

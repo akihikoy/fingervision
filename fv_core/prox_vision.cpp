@@ -290,7 +290,10 @@ void TObjDetTrackBSP::Step(const cv::Mat &frame)
 
     mask_bs_.copyTo(mask_mv_, mask_obj2_);
 
-    obj_mu_= cv::moments(mask_obj1_, /*binaryImage=*/true);
+    // Compute image moments for un-resized mask_obj1_.
+    cv::Mat mask_obj1_l;
+    cv::resize(mask_obj1_, mask_obj1_l, frame.size(), 0, 0, cv::INTER_NEAREST);
+    obj_mu_= cv::moments(mask_obj1_l, /*binaryImage=*/true);
 
     // Shrink object and movement data
     // cv::resize(mask_obj1_, obj_, cv::Size(3,3), 0, 0, cv::INTER_AREA);
