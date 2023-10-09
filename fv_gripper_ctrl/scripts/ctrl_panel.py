@@ -265,6 +265,7 @@ if __name__=='__main__':
   ctrl_config= {
       #Common control parameters:
       'min_gstep': 0.001,  #Minimum gripper step size.
+      'min_obj_area': 0.05,  #Minimum object area to detect an object (used in center/orientation/d_area/d_center/d_orientation sensors).
       'force_change_sensitivity': 1.3,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
       'force_init_len': 10,  #Length of initial force array to average as a basis to compute the force array change.
       #Parameters used in fv.grasp:
@@ -298,8 +299,10 @@ if __name__=='__main__':
       ['fv.center_r','center_r_y',1,1, False],
       ['fv.d_area','d_area',1,None, False],
       ['fv.d_center_norm','d_center_norm',1,None, False],
-      ['fv.d_center','d_center_x',1,0, False],
-      ['fv.d_center','d_center_y',1,1, False],
+      ['fv.d_center_l','d_center_l_x',1,0, False],
+      ['fv.d_center_l','d_center_l_y',1,1, False],
+      ['fv.d_center_r','d_center_r_x',1,0, False],
+      ['fv.d_center_r','d_center_r_y',1,1, False],
       ['fv.d_orientation','d_orientation',1,None, False],
       ['fv.force_l','force_l_x',1,0, False],
       ['fv.force_l','force_l_y',1,1, False],
@@ -307,6 +310,8 @@ if __name__=='__main__':
       ['fv.force_r','force_r_x',1,0, False],
       ['fv.force_r','force_r_y',1,1, False],
       ['fv.force_r','force_r_z',1,2, False],
+      ['fv.is_detected_l','is_detected_l',1,None, False],
+      ['fv.is_detected_r','is_detected_r',1,None, False],
       ['fv.num_force_change','num_force_change',1,None, False],
       ['fv.orientation_l','orientation_l',1,None, False],
       ['fv.orientation_r','orientation_r',1,None, False],
@@ -749,6 +754,7 @@ if __name__=='__main__':
   widgets_ctrl_config= {
     }
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'min_gstep', (0.0,0.01,0.0001))
+  AddCtrlConfigSliderWidget(widgets_ctrl_config, 'min_obj_area', (0.0,1.0,0.01))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'force_change_sensitivity', (0.0,4.0,0.01))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'force_init_len', (0,100,1))
   AddCtrlConfigSliderWidget(widgets_ctrl_config, 'grasp_nforce_threshold', (0,100,1))
@@ -764,6 +770,7 @@ if __name__=='__main__':
   layout_ctrl_config1= (
     'boxv',None, (
         ('boxh',None, CtrlConfigSliderLayout('min_gstep') ),
+        ('boxh',None, CtrlConfigSliderLayout('min_obj_area') ),
         ('boxh',None, CtrlConfigSliderLayout('force_change_sensitivity') ),
         ('boxh',None, CtrlConfigSliderLayout('force_init_len') ),
         ('boxh',None, CtrlConfigSliderLayout('grasp_nforce_threshold') ),

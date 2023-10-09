@@ -119,9 +119,9 @@ def ProxVision(msg,fv,pub_fobjinfo,options,state):
   dt= (msg.header.stamp-state.last_tm).to_sec()
   if dt>0.0:
     angle_mod= lambda q: Mod(q+0.5*math.pi,math.pi)-0.5*math.pi
-    d_obj_center= [(state.last_obj_center[i]-obj_center[i])/dt for i in (0,1)]
-    d_obj_orientation= angle_mod(state.last_obj_orientation-obj_orientation)/dt
-    d_obj_area= (state.last_obj_area-obj_area)/dt
+    d_obj_center= [(obj_center[i]-state.last_obj_center[i])/dt for i in (0,1)]
+    d_obj_orientation= angle_mod(obj_orientation-state.last_obj_orientation)/dt
+    d_obj_area= (obj_area-state.last_obj_area)/dt
   else:
     d_obj_center= [0.0, 0.0]
     d_obj_orientation= 0.0
