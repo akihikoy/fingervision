@@ -292,6 +292,7 @@ class TFVGripper(TROSUtil):
     for s in remove_list:  del self.sensors[s]
     #Load sensors and store them in self.sensors:
     for sensor_name in sensor_name_list:
+      print 'Loading sensor {}'.format(sensor_name)
       f_reset,f_get= self.GetSensorFunctions(sensor_name)
       is_new= False
       if sensor_name not in self.sensors:
@@ -300,7 +301,11 @@ class TFVGripper(TROSUtil):
       self.sensors[sensor_name]['f_reset']= f_reset
       self.sensors[sensor_name]['f_get']= f_get
       if run_reset=='all' or (is_new and run_reset=='only_new'):
-        f_reset(self)
+        try:
+          f_reset(self)
+        except Exception as e:
+          print '  Error in executing {}.Reset: {}'.format(sensor_name, e)
+          del self.sensors[sensor_name]
 
   #Run Get functions of all loaded sensors for a given fv_data (snapshot of self.fv.data)
   # and return time_stamp and {sensor_name:value} dict.
@@ -398,12 +403,13 @@ class TFVGripper(TROSUtil):
       self.g_target= g_target
 
   def CtrlLoop(self):
-    #TODO:FIXME:Pu in the param list.
+    #TODO:FIXME:Put in the param list.
     sensor_name_list= [
       'fv.area_l',
       'fv.area_r',
       'fv.area',
-      'fv.center',
+      'fv.center_l',
+      'fv.center_r',
       'fv.d_area',
       'fv.d_center_norm',
       'fv.d_center',

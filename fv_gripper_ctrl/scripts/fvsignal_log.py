@@ -111,7 +111,7 @@ if __name__=='__main__':
     #NOTE: axis is only used by plotter, ignored by the logger.
     logs= [('fv.slip','slip',1,None, True),
             ('fv.area','area',1,None, True),
-            ('fv.center','center_y',1,1, True),
+            ('fv.center_l','center_l_y',1,1, True),
             ('gripper_pos','gpos',2,None, True),
             ('target_pos','gpos_trg',2,None, True)]
   print 'logs=',logs

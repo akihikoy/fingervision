@@ -292,8 +292,10 @@ if __name__=='__main__':
       ['fv.area_l','area_l',1,None, False],
       ['fv.area_r','area_r',1,None, False],
       ['fv.area','area',1,None, False],
-      ['fv.center','center_x',1,0, False],
-      ['fv.center','center_y',1,1, False],
+      ['fv.center_l','center_l_x',1,0, False],
+      ['fv.center_l','center_l_y',1,1, False],
+      ['fv.center_r','center_r_x',1,0, False],
+      ['fv.center_r','center_r_y',1,1, False],
       ['fv.d_area','d_area',1,None, False],
       ['fv.d_center_norm','d_center_norm',1,None, False],
       ['fv.d_center','d_center_x',1,0, False],
@@ -317,11 +319,15 @@ if __name__=='__main__':
   if os.path.exists(config['PLOT_LOGGER_CONFIG']):
     plot_logger_config_loaded= LoadYAML(config['PLOT_LOGGER_CONFIG'])
     #Add items in plot_logger_config to plot_logger_config_loaded if they are missing.
-    labels= [label for (signal_name,label,axis,index,enabled) in plot_logger_config_loaded]
+    labels_loaded= [label for (signal_name,label,axis,index,enabled) in plot_logger_config_loaded]
     for entry in plot_logger_config:
-      if entry[1] not in labels:
+      if entry[1] not in labels_loaded:
         plot_logger_config_loaded.append(entry)
-    plot_logger_config= plot_logger_config_loaded
+    #Ignore items in plot_logger_config_loaded if their labels are not included in plot_logger_config.
+    labels_orig= [label for (signal_name,label,axis,index,enabled) in plot_logger_config]
+    plot_logger_config= [[signal_name,label,axis,index,enabled]
+                         for (signal_name,label,axis,index,enabled) in plot_logger_config_loaded
+                         if label in labels_orig]
   else:
     SaveYAML(plot_logger_config, config['PLOT_LOGGER_CONFIG'], interactive=False)
   def UpdatePlotLoggerConfig(label, checked):
