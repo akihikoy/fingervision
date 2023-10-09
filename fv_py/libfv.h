@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <opencv2/core/core.hpp>
 //-------------------------------------------------------------------------------------------
 namespace trick
 {
@@ -160,11 +161,23 @@ void StartDetectObj();
 void ClearObj();
 // Set the calibration flag with the specified name of a window.
 void SetCalibrationRequest(const std::string &name);
-// Display images with imshow and run the key event handler.
+bool ReqCalibrate(const std::string &kind, const int &idx);
+bool ReqInitialize(const std::string &kind, const int &idx);
+bool SetDimLevel(const std::string &kind, const int &dim_idx_in);
+bool SetTrackbarMode(const std::string &kind, const int &mode);
+void SaveParameters(const std::string &file_name_in);
+void LoadParameters(const std::string &file_names_in);
+bool SaveCalibration(const std::string &kind, const int &idx);
+bool LoadCalibration(const std::string &kind, const int &idx);
+// Handle the window visibility request and return if the windows are visible.
+bool HandleWindowVisibilityRequest();
+// Handle the window visibility request, display images with imshow, and run the key event handler.
 // return: false if shutdown is requested.
 bool DisplayImages();
 // Display an image (window) specified by name.
 void DisplayImage(const std::string &name);
+// Copy an image for display specified by the window name to dst.
+void CopyDispImage(const std::string &name, cv::Mat &dst);
 // Return a list of image (window) names to be displayed.
 std::list<std::string> GetDisplayImageList();
 // Return the number of cameras.
@@ -177,8 +190,11 @@ void StopThreads();
 void StartThreads(
     const std::string &pkg_dir=".",
     const std::string &config="config/cam1.yaml",
+    const std::string &config_out="out1.yaml",
     const std::string &blob_calib_prefix="blob_",
-    int frame_skip=0, int target_fps=0, int capture_fps=0, bool windows_hidden=false, bool camera_auto_reopen=true);
+    const std::string &objdet_model_prefix="objdet_",
+    int frame_skip=0, int target_fps=0, int capture_fps=0,
+    bool windows_hidden=false, bool camera_auto_reopen=true, bool initial_obj_detect=true);
 
 //-------------------------------------------------------------------------------------------
 

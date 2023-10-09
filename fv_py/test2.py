@@ -34,10 +34,12 @@ if __name__=='__main__':
         windows_hidden= not windows_hidden
         if windows_hidden:  fv.HideWindows()
         else:  fv.ShowWindows()
+      windows_hidden= not fv.HandleWindowVisibilityRequest()
       if not windows_hidden:
         for name in disp_images:
           fv.DisplayImage(name)
         if not fv.HandleKeyEvent():  fv.SetShutdown()
+      #if not fv.DisplayImages():  fv.SetShutdown()
       rate.Sleep()
 
   fv.StopThreads()
