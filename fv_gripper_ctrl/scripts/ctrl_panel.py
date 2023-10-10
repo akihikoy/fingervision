@@ -143,18 +143,20 @@ if __name__=='__main__':
   sensor_app= True if '-sensor_app' in sys.argv or '--sensor_app' in sys.argv else False
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
-  RVIZ_CONFIG= os.environ['HOME']+'/.rviz/default.rviz'
+  HOME= os.environ['HOME']
+  RVIZ_CONFIG= HOME+'/.rviz/default.rviz'
   RIGHT,LEFT= fv_sensor.RIGHT,fv_sensor.LEFT
   if sensor_app:
     is_gsim= True
   #Parameters:
   config={
+    'PARAM_FILE_UI': HOME+'/data/config/fv_ctrl_ui.yaml',
     'GripperType': gripper_type,
     'JoyUSB': joy_dev,
     'DxlUSB': dxl_dev,
     'FV_L_DEV': '/media/video_fv1',
     'FV_R_DEV': '/media/video_fv2',
-    'FV_BASE_DIR': '{}/data'.format(os.environ['HOME']),
+    'FV_BASE_DIR': HOME+'/data',
     'FV_L_CONFIG': 'config/fvp300x_l.yaml',
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_L_GUI_CONFIG': 'data_gen/fvp_l.yaml',
@@ -164,14 +166,14 @@ if __name__=='__main__':
     'FV_FILE_R_CONFIG': 'config/fvp_file1_r.yaml',
     'FV_FILE_L_GUI_CONFIG': 'data_gen/fvp_file1_l.yaml',
     'FV_FILE_R_GUI_CONFIG': 'data_gen/fvp_file1_r.yaml',
-    'FV_CTRL_CONFIG': '{}/data/config/fv_ctrl.yaml'.format(os.environ['HOME']),
+    'FV_CTRL_CONFIG': HOME+'/data/config/fv_ctrl.yaml',
     'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
-    'VIDEO_PREFIX': '{}/data/data_gen/video-'.format(os.environ['HOME']),
-    'LOG_PREFIX': '{}/data/data_gen/log-'.format(os.environ['HOME']),
+    'VIDEO_PREFIX': HOME+'/data/data_gen/video-',
+    'LOG_PREFIX': HOME+'/data/data_gen/log-',
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'SENSOR_APP': sensor_app,
-    'PLOT_LOGGER_CONFIG': '{}/data/config/plot_logger.yaml'.format(os.environ['HOME']),
+    'PLOT_LOGGER_CONFIG': HOME+'/data/config/plot_logger.yaml',
     'WINDOW_ALIGNMENT':{
         'fvp_1_l-blob': '0,0,640,480',
         'fvp_1_r-blob': '648,0,640,480',
@@ -181,6 +183,21 @@ if __name__=='__main__':
       }
     }
   config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
+
+  #Parameters managed by UI:
+  ui_managed_param={
+    'MODBUS_C_SRV': '10.10.6.204',
+    'MODBUS_C_PORT': 502,
+    'MODBUS_C_ROBOT': 'Yaskawa',
+    }
+  if os.path.exists(config['PARAM_FILE_UI']):
+    InsertDict(ui_managed_param, LoadYAML(config['PARAM_FILE_UI']))
+  def GenerateParamFile():
+    SaveYAML(ui_managed_param, config['PARAM_FILE_UI'], interactive=False)
+  def UpdateParam(name, value):
+    ui_managed_param[name]= value
+    GenerateParamFile()
+  GenerateParamFile()
 
   #List of commands (name: [[command/args],'fg'/'bg']).
   cmds= {
@@ -200,10 +217,11 @@ if __name__=='__main__':
     #'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
-    'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
-    'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
     'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
+    'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
+    'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
+    'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={PARAM_FILE_UI}','bg'],
     }
   if is_gsim:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
@@ -223,10 +241,12 @@ if __name__=='__main__':
   topics_to_monitor= {
     'FV_L': '/fingervision/fvp_1_l/prox_vision',
     'FV_R': '/fingervision/fvp_1_r/prox_vision',
-    #'ModbusSrv': '/fingervision/fvp_1_r/prox_vision',
     }
   if not sensor_app:
     topics_to_monitor['Gripper']= '/gripper_driver/joint_states'
+  if with_modbus:
+    topics_to_monitor['ModbusSrv']= '/fv_gripper_modbus_srv/status'
+    topics_to_monitor['ModbusCli']= '/fv_gripper_modbus_client/status'
 
   pm= TSubProcManagerJoy(topics_to_monitor=topics_to_monitor)
   run_cmd= lambda name: pm.RunBGProcess(name,cmds[name][0]) if cmds[name][1]=='bg' else\
@@ -456,9 +476,58 @@ if __name__=='__main__':
         'size_policy': ('expanding', 'fixed'),
         'onclick': lambda w,obj: AlignWindows(config['WINDOW_ALIGNMENT']), }),
     }
+  widgets_modbus= {
+    'combo_modbus_c_robot': (
+      'combobox',{
+        'options':('Yaskawa',),
+        'index':{'Yaskawa':0,}[ui_managed_param['MODBUS_C_ROBOT']],
+        'font_size_range': (8,24),
+        'size_policy': ('minimum', 'minimum'),
+        'onactivated': lambda w,obj:UpdateParam('MODBUS_C_ROBOT',str(obj.currentText())) }),
+    'lineedit_modbus_c_srv': (
+      'lineedit',{
+        'text': ui_managed_param['MODBUS_C_SRV'],
+        'font_size_range': (8,24),
+        'size_policy': ('expanding', 'minimum'),
+        'ontextchanged': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.text())) }),
+    'btn_modbus_client': (
+      'buttonchk',{
+        'text':('Modbus Client','Stop Modbus Cli'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('modbus_client'),
+                      w.widgets['btn_modbus_server'].setEnabled(False),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('modbus_client'),
+                      w.widgets['btn_modbus_server'].setEnabled(True),
+                     ) )}),
+    'btn_modbus_server': (
+      'buttonchk',{
+        'text':('Modbus Server','Stop Modbus Srv'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('modbus_port_fwd'),
+                      run_cmd('modbus_server'),
+                      w.widgets['btn_modbus_client'].setEnabled(False),
+                    ),
+                   lambda w,obj:(
+                      stop_cmd('modbus_server'),
+                      w.widgets['btn_modbus_client'].setEnabled(True),
+                     ) )}),
+    }
   layout_init= (
-    'grid',None,(
-      ('label_init',0,0), ('btn_init1',0,1), ('btn_init2',0,2),
+    'boxh',None,(
+      'label_init',
+      ('boxv',None, (
+        ('boxh',None,('btn_init1', 'btn_init2')),
+        ('boxh',None, ('btn_modbus_server',
+                       ('boxv',None, (
+                         ('boxh',None, ('combo_modbus_c_robot', 'lineedit_modbus_c_srv')),
+                         'btn_modbus_client',
+                         )),
+                       ) if with_modbus else ()),
+        ))
       ))
 
   widgets_joy= {
@@ -909,23 +978,9 @@ if __name__=='__main__':
         #'size_policy': ('minimum', 'minimum'),
         'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
     }
-  widgets_debug_modbus= {
-    'btn_modbus_server': (
-      'buttonchk',{
-        'text':('Modbus Server','Stop Modbus Srv'),
-        'font_size_range': (8,24),
-        'onclick':(lambda w,obj:(
-                      run_cmd('modbus_port_fwd'),
-                      run_cmd('modbus_server'),
-                     ),
-                   lambda w,obj:(
-                      stop_cmd('modbus_server'),
-                     ) )}),
-    }
   layout_debug= (
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
-      ('boxv',None, ('btn_modbus_server',) if with_modbus else ()),
       ('boxh',None, ('label_dxlg', ('boxv',None, (
                         ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
                         ))
@@ -991,7 +1046,7 @@ if __name__=='__main__':
   if not sensor_app:
     panel.AddWidgets(widgets_debug_gripper)
   if with_modbus:
-    panel.AddWidgets(widgets_debug_modbus)
+    panel.AddWidgets(widgets_modbus)
   panel.Construct(layout_main)
   #for tab in panel.layouts['maintab'].tab:
     #tab.setFont(QtGui.QFont('', 24))
