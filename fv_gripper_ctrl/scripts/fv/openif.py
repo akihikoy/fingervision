@@ -4,8 +4,8 @@ import rospy
 from ay_py.core import *
 from ay_py.ros import *
 slip= SmartImportReload('fv.slip')
-d_center_norm= SmartImportReload('fv.d_center_norm')
-d_area= SmartImportReload('fv.d_area')
+da_center_norm= SmartImportReload('fv.da_center_norm')
+da_area= SmartImportReload('fv.da_area')
 num_force_change= SmartImportReload('fv.num_force_change')
 
 def Help():
@@ -26,8 +26,8 @@ def Loop(fvg):
   num_force_change.Reset(fvg)
 
   slip_detect2= lambda: ((slip.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_slip,
-                          d_center_norm.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oc,
-                          d_area.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oa))
+                          da_center_norm.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oc,
+                          da_area.Get(fvg,fv_data)>fvg.fv_ctrl_param.openif_sensitivity_oa))
 
   g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():
@@ -38,7 +38,7 @@ def Loop(fvg):
       fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort)
       break
     elif any(slips):
-      CPrint(2,'Detected (slip,d_center_norm(oc),d_area(oa))',slips)
+      CPrint(2,'Detected (slip,da_center_norm(oc),da_area(oa))',slips)
       g_pos= fvg.GripperPosition()+fvg.fv_ctrl_param.openif_dw_grip
       fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort)
       break

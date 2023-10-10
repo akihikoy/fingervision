@@ -265,7 +265,7 @@ if __name__=='__main__':
   ctrl_config= {
       #Common control parameters:
       'min_gstep': 0.001,  #Minimum gripper step size.
-      'min_obj_area': 0.05,  #Minimum object area to detect an object (used in center/orientation/d_area/d_center/d_orientation sensors).
+      'min_obj_area': 0.05,  #Minimum object area to detect an object (used in center/orientation/da_area/d_center/da_orientation sensors).
       'force_change_sensitivity': 1.3,  #Sensitivity of each force element; if the norm of force change is larger than this threshold, the point is counted as a force change point.
       'force_init_len': 10,  #Length of initial force array to average as a basis to compute the force array change.
       #Parameters used in fv.grasp:
@@ -297,13 +297,13 @@ if __name__=='__main__':
       ['fv.center_l','center_l_y',1,1, False],
       ['fv.center_r','center_r_x',1,0, False],
       ['fv.center_r','center_r_y',1,1, False],
-      ['fv.d_area','d_area',1,None, False],
-      ['fv.d_center_norm','d_center_norm',1,None, False],
       ['fv.d_center_l','d_center_l_x',1,0, False],
       ['fv.d_center_l','d_center_l_y',1,1, False],
       ['fv.d_center_r','d_center_r_x',1,0, False],
       ['fv.d_center_r','d_center_r_y',1,1, False],
-      ['fv.d_orientation','d_orientation',1,None, False],
+      ['fv.da_area','da_area',1,None, False],
+      ['fv.da_center_norm','da_center_norm',1,None, False],
+      ['fv.da_orientation','da_orientation',1,None, False],
       ['fv.force_l','force_l_x',1,0, False],
       ['fv.force_l','force_l_y',1,1, False],
       ['fv.force_l','force_l_z',1,2, False],
