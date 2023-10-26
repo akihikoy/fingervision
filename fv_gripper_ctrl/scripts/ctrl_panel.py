@@ -479,8 +479,8 @@ if __name__=='__main__':
   widgets_modbus= {
     'combo_modbus_c_robot': (
       'combobox',{
-        'options':('Yaskawa',),
-        'index':{'Yaskawa':0,}[ui_managed_param['MODBUS_C_ROBOT']],
+        'options':('Yaskawa','Fanuc'),
+        'index':{'Yaskawa':0,'Fanuc':1}[ui_managed_param['MODBUS_C_ROBOT']],
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum'),
         'onactivated': lambda w,obj:UpdateParam('MODBUS_C_ROBOT',str(obj.currentText())) }),
