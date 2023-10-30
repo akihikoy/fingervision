@@ -203,9 +203,9 @@ if __name__=='__main__':
   cmds= {
     'roscore': ['roscore','bg'],
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
-    'gripper': ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} is_sim:={IS_GSIM}','bg'],
-    'reboot_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} Reboot','fg'],
-    'factory_reset_dxlg': ['rosrun ay_util dxlg_reboot.py /dev/tty{DxlUSB} {GripperType} FactoryReset','fg'],
+    'gripper':           ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} is_sim:={IS_GSIM}','bg'],
+    'reboot_dxlg':       ['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=Reboot','fg'],
+    'factory_reset_dxlg':['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
     'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG},{FV_L_GUI_CONFIG} config2:={FV_R_CONFIG},{FV_R_GUI_CONFIG}','bg'],
     'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
