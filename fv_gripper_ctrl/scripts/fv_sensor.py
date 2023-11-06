@@ -90,7 +90,7 @@ class TFVSensor(TROSUtil):
               or a common FV node name (dict, fv_node),
               or None (node_names==fv_names).
   '''
-  def SetupFV(self, fv_names, node_names=None, service_only=False):
+  def SetupFV(self, fv_names, node_names=None, service_only=False, timeout=6.0, with_thread=True):
     print '''Setup FV:
     fv_names: {fv_names}
     node_names: {node_names}'''.format(fv_names=fv_names,node_names=node_names)
@@ -122,15 +122,34 @@ class TFVSensor(TROSUtil):
 
     self.config= GetFVSrvDict(fv_names,node_names)
     print 'Configured info with:',fv_names,node_names
-    if self.config['srv_separated']:
-      for srvtype,srvs in SRV_TABLE:
-        for srv in srvs:
-          self.AddSrvP(srv+'_l', self.config[srv+'_l'], srvtype, persistent=False, time_out=3.0)
-          self.AddSrvP(srv+'_r', self.config[srv+'_r'], srvtype, persistent=False, time_out=3.0)
+
+    if with_thread:
+      threads= {}
+      if self.config['srv_separated']:
+        for srvtype,srvs in SRV_TABLE:
+          for srv in srvs:
+            for name in (srv+'_l', srv+'_r'):
+              threads[name]= threading.Thread(name=name, target=lambda:
+                  self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout))
+              threads[name].start()
+      else:
+        for srvtype,srvs in SRV_TABLE:
+          for srv in srvs:
+            name= srv
+            threads[name]= threading.Thread(name=name, target=lambda:
+                self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout))
+      for name,th in threads.iteritems():  th.join()
     else:
-      for srvtype,srvs in SRV_TABLE:
-        for srv in srvs:
-          self.AddSrvP(srv, self.config[srv], srvtype, persistent=False, time_out=3.0)
+      if self.config['srv_separated']:
+        for srvtype,srvs in SRV_TABLE:
+          for srv in srvs:
+            for name in (srv+'_l', srv+'_r'):
+              self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout)
+      else:
+        for srvtype,srvs in SRV_TABLE:
+          for srv in srvs:
+            self.AddSrvP(srv, self.config[srv], srvtype, persistent=False, time_out=timeout)
+
 
     if not service_only:
       self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback)
