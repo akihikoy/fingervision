@@ -180,7 +180,8 @@ if __name__=='__main__':
         'fvp_1_l-pxv': '0,545,640,480',
         'fvp_1_r-pxv': '648,545,640,480',
         'Robot Operation Panel': '1200,0,600,500',
-      }
+      },
+    'MODBUS_PROTOCOL_CONFIG': HOME+'/data/config/fv_ctrl_modbus_protocol.yaml',
     }
   config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
 
@@ -220,8 +221,8 @@ if __name__=='__main__':
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
     'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
-    'modbus_server': ['/sbin/fvgripper_modbus_srv.sh','bg'],
-    'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={PARAM_FILE_UI}','bg'],
+    'modbus_server': ['/sbin/fvgripper_modbus_srv.sh --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
+    'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={PARAM_FILE_UI} --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
     }
   if is_gsim:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
