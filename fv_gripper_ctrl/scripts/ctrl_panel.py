@@ -153,6 +153,7 @@ if __name__=='__main__':
 
   HOME= os.environ['HOME']
   RVIZ_CONFIG= HOME+'/.rviz/default.rviz'
+  CTRL_PANEL_CONFIG= HOME+'/data/config/fv_ctrl_panel.yaml'
   RIGHT,LEFT= fv_sensor.RIGHT,fv_sensor.LEFT
   if sensor_app:
     is_gsim= True
@@ -192,6 +193,11 @@ if __name__=='__main__':
     'MODBUS_PROTOCOL_CONFIG': HOME+'/data/config/fv_ctrl_modbus_protocol.yaml',
     }
   config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
+
+  SaveYAML(config, '/tmp/fv_ctrl_panel.yaml', interactive=False)
+  if os.path.exists(CTRL_PANEL_CONFIG):
+    InsertDict(config, LoadYAML(CTRL_PANEL_CONFIG))
+  print(config)
 
   #Parameters managed by UI:
   ui_managed_param={
@@ -244,7 +250,6 @@ if __name__=='__main__':
   for key in cmds.iterkeys():
     if isinstance(cmds[key][0],str):
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
-  print(config)
 
   #List of topics to monitor the status:
   topics_to_monitor= {
