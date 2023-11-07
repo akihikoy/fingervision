@@ -30,6 +30,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_srvs/Empty.h>
+#include <std_msgs/Float32.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <camera_info_manager/camera_info_manager.h>
@@ -95,6 +96,8 @@ std::map<std::string, TShowTrackbars> ShowTrackbars;
 std::vector<ros::Publisher> BlobPub;  // Blob (marker) tracking publisher.
 std::vector<ros::Publisher> PXVPub;  // Proximity-vision (object and slip detection) publisher.
 std::vector<ros::Publisher> PXVObjDetModePub;  // Object-detection mode publisher.
+ros::Publisher FPSBlobPub;  // FPS publisher of blob tracker.
+ros::Publisher FPSPXVPub;  // FPS publisher of proximity-vision tracker.
 std::vector<image_transport::Publisher> ImgPub;  // Image publisher [i_cam]
 std::vector<cv::Mat> Frame;
 std::vector<int64_t> CapTime;
@@ -1060,6 +1063,26 @@ void ExecImgCapture(std::vector<cv::VideoCapture> &cap, bool camera_auto_reopen,
         show_fps=VideoOut.begin()->second.FPS()*4;
       }
       --show_fps;
+      if(BlobTracker.size()>0)
+      {
+        float fps_blob(0.0);
+        for(int j(0),j_end(BlobTracker.size());j<j_end;++j)
+          fps_blob+= VideoOut[BlobTracker[j].Name].FPS();
+        fps_blob/= float(BlobTracker.size());
+        std_msgs::Float32 msg;
+        msg.data= fps_blob;
+        FPSBlobPub.publish(msg);
+      }
+      if(ObjDetTracker.size()>0)
+      {
+        float fps_pxv(0.0);
+        for(int j(0),j_end(ObjDetTracker.size());j<j_end;++j)
+          fps_pxv+= VideoOut[ObjDetTracker[j].Name].FPS();
+        fps_pxv/= float(ObjDetTracker.size());
+        std_msgs::Float32 msg;
+        msg.data= fps_pxv;
+        FPSPXVPub.publish(msg);
+      }
 
       if(CaptureFPS>0.0)  rate.sleep();
 
@@ -1244,6 +1267,9 @@ int main(int argc, char**argv)
     PXVPub[j]= node.advertise<fingervision_msgs::ProxVision>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/prox_vision", 1);
     PXVObjDetModePub[j]= node.advertise<std_msgs::Bool>(ros::this_node::getNamespace()+"/"+CamInfo[j].Name+"/pxv_obj_detection", 1);
   }
+
+  FPSBlobPub= node.advertise<std_msgs::Float32>("blob_fps", 1);
+  FPSPXVPub= node.advertise<std_msgs::Float32>("pxv_fps", 1);
 
   image_transport::ImageTransport imgtr(node);
   typedef boost::shared_ptr<camera_info_manager::CameraInfoManager> CamInfoMngrPtr;

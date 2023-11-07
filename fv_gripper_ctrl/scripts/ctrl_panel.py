@@ -71,8 +71,16 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
       self.sub[topic]= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.TopicCallback(topic,msg))
     self.r_pxv_obj_detection= None
     self.l_pxv_obj_detection= None
+    self.r_blob_fps= None
+    self.l_blob_fps= None
+    self.r_pxv_fps= None
+    self.l_pxv_fps= None
     self.sub['r_pxv_obj_detection']= rospy.Subscriber('/fingervision/fvp_1_r/pxv_obj_detection', std_msgs.msg.Bool, lambda msg:self.TopicCallback('r_pxv_obj_detection',msg))
     self.sub['l_pxv_obj_detection']= rospy.Subscriber('/fingervision/fvp_1_l/pxv_obj_detection', std_msgs.msg.Bool, lambda msg:self.TopicCallback('l_pxv_obj_detection',msg))
+    self.sub['r_blob_fps']= rospy.Subscriber('/fingervision/fvp_1_r/blob_fps', std_msgs.msg.Float32, lambda msg:self.TopicCallback('r_blob_fps',msg))
+    self.sub['l_blob_fps']= rospy.Subscriber('/fingervision/fvp_1_l/blob_fps', std_msgs.msg.Float32, lambda msg:self.TopicCallback('l_blob_fps',msg))
+    self.sub['r_pxv_fps']= rospy.Subscriber('/fingervision/fvp_1_r/pxv_fps', std_msgs.msg.Float32, lambda msg:self.TopicCallback('r_pxv_fps',msg))
+    self.sub['l_pxv_fps']= rospy.Subscriber('/fingervision/fvp_1_l/pxv_fps', std_msgs.msg.Float32, lambda msg:self.TopicCallback('l_pxv_fps',msg))
 
   def SerupFVSrv(self, fv_names, fv_node_names=None):
     self.fv.Setup(gripper=None, g_param=None, frame_id='base_link',
@@ -262,6 +270,8 @@ if __name__=='__main__':
   if not sensor_app:
     status_grid_list_text= [
         dict(label='ObjDetect(l,r)', type='text', state='N/A'),
+        dict(label='FPS/blob(l,r)', type='text', state='N/A'),
+        dict(label='FPS/pxv(l,r)', type='text', state='N/A'),
         dict(label='GPos', type='text', state='N/A'),
         dict(label='GPosTrg', type='text', state='N/A'),
         dict(label='Action', type='text', state='N/A'),
@@ -269,11 +279,16 @@ if __name__=='__main__':
   else:
     status_grid_list_text= [
         dict(label='ObjDetect(l,r)', type='text', state='N/A'),
+        dict(label='FPS/blob(l,r)', type='text', state='N/A'),
+        dict(label='FPS/pxv(l,r)', type='text', state='N/A'),
       ]
 
   status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
   def UpdateStatusGridText(w,obj,status=None):
+    to_str_2= lambda x:'{:.2f}'.format(x) if x is not None else 'N/A'
     obj.UpdateStatus('ObjDetect(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
+    obj.UpdateStatus('FPS/blob(l,r)', '({},{})'.format(to_str_2(pm.l_blob_fps),to_str_2(pm.r_blob_fps)))
+    obj.UpdateStatus('FPS/pxv(l,r)', '({},{})'.format(to_str_2(pm.l_pxv_fps),to_str_2(pm.r_pxv_fps)))
     if not sensor_app:
       obj.UpdateStatus('GPos', '{:.5f} [m]'.format(pm.gripper_pos) if pm.gripper_pos is not None else 'N/A')
       obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
