@@ -486,11 +486,15 @@ if __name__=='__main__':
         'size_policy': ('minimum', 'minimum'),
         'onactivated': lambda w,obj:UpdateParam('MODBUS_C_ROBOT',str(obj.currentText())) }),
     'lineedit_modbus_c_srv': (
-      'lineedit',{
+      'combobox',{
+        'options':('10.10.6.204','192.168.1.100','192.168.250.81'),
+        'index': None,
+        'editable': True,
         'text': ui_managed_param['MODBUS_C_SRV'],
         'font_size_range': (8,24),
         'size_policy': ('expanding', 'minimum'),
-        'ontextchanged': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.text())) }),
+        #'ontextchanged': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.text())),
+        'onactivated': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.currentText())) }),
     'btn_modbus_client': (
       'buttonchk',{
         'text':('Modbus Client','Stop Modbus Cli'),
@@ -1033,7 +1037,7 @@ if __name__=='__main__':
     print('Screen size: {}'.format(app.screens()[0].size()))
     screen_size= app.screens()[0].size()
     win_size= (screen_size.width(),screen_size.height())
-  panel= TSimplePanel('Robot Operation Panel', size=win_size, font_height_scale=300.0)
+  panel= TSimplePanel('Robot Operation Panel', size=win_size, font_height_scale=350.0)
   panel.AddWidgets(widgets_common)
   panel.AddWidgets(widgets_init)
   if not sensor_app:
