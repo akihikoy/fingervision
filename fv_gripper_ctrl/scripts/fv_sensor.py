@@ -90,7 +90,7 @@ class TFVSensor(TROSUtil):
               or a common FV node name (dict, fv_node),
               or None (node_names==fv_names).
   '''
-  def SetupFV(self, fv_names, node_names=None, service_only=False, timeout=6.0, with_thread=True):
+  def SetupFV(self, fv_names, node_names=None, service_only=False, timeout=6.0, with_thread=False):
     print '''Setup FV:
     fv_names: {fv_names}
     node_names: {node_names}'''.format(fv_names=fv_names,node_names=node_names)
@@ -140,16 +140,20 @@ class TFVSensor(TROSUtil):
                 self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout))
       for name,th in threads.iteritems():  th.join()
     else:
-      if self.config['srv_separated']:
-        for srvtype,srvs in SRV_TABLE:
-          for srv in srvs:
-            for name in (srv+'_l', srv+'_r'):
-              self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout)
-      else:
-        for srvtype,srvs in SRV_TABLE:
-          for srv in srvs:
-            self.AddSrvP(srv, self.config[srv], srvtype, persistent=False, time_out=timeout)
-
+      try:
+        if self.config['srv_separated']:
+          for srvtype,srvs in SRV_TABLE:
+            for srv in srvs:
+              for name in (srv+'_l', srv+'_r'):
+                if not self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout):
+                  raise StopIteration()
+        else:
+          for srvtype,srvs in SRV_TABLE:
+            for srv in srvs:
+              if not self.AddSrvP(srv, self.config[srv], srvtype, persistent=False, time_out=timeout):
+                raise StopIteration()
+      except StopIteration:
+        print 'SetupFV: Stopped service connection trial due to a failure.'
 
     if not service_only:
       self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback)
