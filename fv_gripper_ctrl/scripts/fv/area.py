@@ -9,6 +9,7 @@ def Reset(fvg):
   pass
 
 def Get(fvg, fv_data):
+  if None in fv_data.obj_area_filtered:  return None
   area= np.mean(fv_data.obj_area_filtered)
   return area
 

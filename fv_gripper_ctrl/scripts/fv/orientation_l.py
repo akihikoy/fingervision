@@ -10,5 +10,6 @@ def Reset(fvg):
   pass
 
 def Get(fvg, fv_data):
+  if fv_data.obj_orientation[LEFT] is None:  return None
   orientation= fv_data.obj_orientation[LEFT] if is_detected_l.Get(fvg,fv_data) else 0.0
   return orientation

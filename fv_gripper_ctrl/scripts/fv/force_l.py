@@ -9,6 +9,6 @@ def Reset(fvg):
   pass
 
 def Get(fvg, fv_data):
-  force= list(fv_data.force[LEFT])
-  return force
+  force= fv_data.force[LEFT]
+  return list(force) if force is not None else None
 

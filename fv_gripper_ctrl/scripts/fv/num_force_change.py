@@ -18,8 +18,10 @@ def Get(fvg, fv_data):
     if force_array is None: continue
     if len(fvg.cnt.force_array0[side])<fvg.fv_ctrl_param.force_init_len:
       fvg.cnt.force_array0[side].append(force_array)
+  if fv_data.force_array[0] is None or fv_data.force_array[1] is None:
+    return None
   if any((len(fvg.cnt.force_array0[0])==0, len(fvg.cnt.force_array0[1])==0,
-          len(fv_data.force_array[0])==0, len(fv_data.force_array[0])==0)):
+          len(fv_data.force_array[0])==0, len(fv_data.force_array[1])==0)):
     return None
   fa0= [np.mean(fvg.cnt.force_array0[0],axis=0), np.mean(fvg.cnt.force_array0[1],axis=0)]
   num_change= sum([1 if Dist(f[:3],f0[:3])>fvg.fv_ctrl_param.force_change_sensitivity else 0

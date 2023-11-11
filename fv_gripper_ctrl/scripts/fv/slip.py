@@ -9,5 +9,6 @@ def Reset(fvg):
   pass
 
 def Get(fvg, fv_data):
+  if None in fv_data.mv_s:  return None
   slip= np.sum(np.sum(s) for s in fv_data.mv_s)
   return slip
