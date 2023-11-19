@@ -38,4 +38,4 @@ def Loop(fvg):
       g_pos= fvg.GripperPosition()
     else:
       rospy.sleep(0.001)
-    rospy.sleep(0.04)  #0.02
+    rospy.sleep(0.04)  #0.02  #TODO:FIXME:This value should be configurable. 1/60 is better?

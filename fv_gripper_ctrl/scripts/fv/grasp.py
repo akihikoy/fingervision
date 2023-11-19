@@ -25,5 +25,6 @@ def Loop(fvg):
       CPrint(2,'Detected num_force_change=,',num_fc)
       break
     g_pos-= fvg.fv_ctrl_param.min_gstep
-    fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=True)
+    fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+    rospy.sleep(0.01)  #TODO:FIXME:This value should be configurable.
 

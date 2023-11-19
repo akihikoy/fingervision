@@ -163,6 +163,7 @@ if __name__=='__main__':
     'GripperType': gripper_type,
     'JoyUSB': joy_dev,
     'DxlUSB': dxl_dev,
+    'IOLINK_MODBUS_URI': '10.10.6.207',
     'FV_L_DEV': '/media/video_fv1',
     'FV_R_DEV': '/media/video_fv2',
     'FV_BASE_DIR': HOME+'/data',
@@ -219,6 +220,7 @@ if __name__=='__main__':
     'roscore': ['roscore','bg'],
     'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
     'gripper':           ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} is_sim:={IS_GSIM}','bg'],
+    'gripper_geh':       ['/sbin/geh6000il_cpsl08p1en_driver.py _gripper_type:={GripperType} _modbus_uri:={IOLINK_MODBUS_URI} _is_sim:={IS_GSIM} _is_test:=False','bg'],
     'reboot_dxlg':       ['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=Reboot','fg'],
     'factory_reset_dxlg':['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
@@ -237,8 +239,14 @@ if __name__=='__main__':
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
     'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={PARAM_FILE_UI} --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
+    'geh60_homing': ['rosservice call /gripper_driver/move Homing [0] [100] [100] 0','fg'],
+    'geh60_deactivate': ['rosservice call /gripper_driver/move Deactivate [0] [100] [100] 0','fg'],
+    'geh60_activate': ['rosservice call /gripper_driver/move Activate [0] [100] [100] 0','fg'],
+    'geh60_startmoveth': ['rosservice call /gripper_driver/move StartMoveTh [0] [100] [100] 0','fg'],
+    'geh60_stopmoveth': ['rosservice call /gripper_driver/move StopMoveTh [0] [100] [100] 0','fg'],
     }
-  if is_gsim:
+  is_geh60= config['GripperType'].startswith('GEH60')
+  if is_gsim or is_geh60:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
       cmds[c][1]= None
   if is_fvsim:
@@ -455,7 +463,7 @@ if __name__=='__main__':
         'onclick':(lambda w,obj:(
                       run_cmd('reboot_dxlg'),
                       run_cmd('fix_usb'),
-                      run_cmd('gripper'),
+                      run_cmd('gripper' if not is_geh60 else 'gripper_geh'),
                       run_cmd('joy'),
                       run_cmd('fv_gripper_ctrl'),
                       pm.SetupGripper(),
@@ -463,7 +471,7 @@ if __name__=='__main__':
                      ),
                    lambda w,obj:(
                       pm.StopGripper(),
-                      stop_cmd('gripper'),
+                      stop_cmd('gripper' if not is_geh60 else 'gripper_geh'),
                       stop_cmd('joy'),
                       stop_cmd('fv_gripper_ctrl'),
                       w.widgets['btn_init1'].setEnabled(True),
@@ -984,32 +992,85 @@ if __name__=='__main__':
         #'size_policy': ('expanding', 'fixed'),
         #'onclick': lambda w,obj: w.close(), }),
     }
-  widgets_debug_gripper= {
-    'label_dxlg': (
-      'label',{
-        'text': 'Gripper: ',
-        'font_size_range': (8,24),
-        'size_policy': ('minimum', 'minimum')}),
-    'btn_dxlg_reboot': (
-      'button',{
-        'text': 'Reboot',
-        'font_size_range': (8,24),
-        #'size_policy': ('minimum', 'minimum'),
-        'onclick': lambda w,obj: run_cmd('reboot_dxlg'), }),
-    'btn_dxlg_factory_reset': (
-      'button',{
-        'text': 'FactoryReset',
-        'font_size_range': (8,24),
-        #'size_policy': ('minimum', 'minimum'),
-        'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
-    }
+  if not is_geh60:
+    widgets_debug_gripper= {
+      'label_dxlg': (
+        'label',{
+          'text': 'Gripper: ',
+          'font_size_range': (8,24),
+          'size_policy': ('minimum', 'minimum')}),
+      'btn_dxlg_reboot': (
+        'button',{
+          'text': 'Reboot',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('reboot_dxlg'), }),
+      'btn_dxlg_factory_reset': (
+        'button',{
+          'text': 'FactoryReset',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('factory_reset_dxlg'), }),
+      }
+  if is_geh60:
+    widgets_debug_gripper= {
+      'label_geh60': (
+        'label',{
+          'text': 'GEH6000IL: ',
+          'font_size_range': (8,24),
+          'size_policy': ('minimum', 'minimum')}),
+      'btn_geh60_homing': (
+        'button',{
+          'text': 'Homing',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('geh60_homing'), }),
+      'btn_geh60_startmoveth': (
+        'button',{
+          'text': 'StartMoveTh',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('geh60_startmoveth'), }),
+      'btn_geh60_stopmoveth': (
+        'button',{
+          'text': 'StopMoveTh',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('geh60_stopmoveth'), }),
+      'btn_geh60_deactivate': (
+        'button',{
+          'text': 'Deactivate',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('geh60_deactivate'), }),
+      'btn_geh60_activate': (
+        'button',{
+          'text': 'Activate',
+          'font_size_range': (8,24),
+          #'size_policy': ('minimum', 'minimum'),
+          'onclick': lambda w,obj: run_cmd('geh60_activate'), }),
+      }
+  if not is_geh60:
+    layout_debug_gripper= (
+      'boxh',None, (
+        'label_dxlg',
+        ('boxv',None, (
+            ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
+            ))
+      ))
+  if is_geh60:
+    layout_debug_gripper= (
+      'boxh',None, (
+        'label_geh60',
+        ('boxv',None, (
+            ('boxh',None, ('btn_geh60_homing','btn_geh60_deactivate','btn_geh60_activate')),
+            ('boxh',None, ('btn_geh60_startmoveth','btn_geh60_stopmoveth')),
+            ))
+      ))
   layout_debug= (
     'boxv',None,(
       ('boxv',None, ('btn_rviz',)),
-      ('boxh',None, ('label_dxlg', ('boxv',None, (
-                        ('boxh',None, ('btn_dxlg_reboot','btn_dxlg_factory_reset')),
-                        ))
-                     ) if not sensor_app else ()),
+      layout_debug_gripper if not sensor_app else ('boxh',None, ()),
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),

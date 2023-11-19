@@ -85,6 +85,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
     mod= __import__('ay_py.ros.rbt_rhp12rn',globals(),None,('TRHP12RNGripper',))
     gripper= mod.TRHP12RNGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1(('RHP12RNGripper','ThGripper'),pos_range=[0.0,0.109])
+    gripper.Init()
     param={
       'lx': [0.0,0.0,0.218, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -96,6 +97,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
     mod= __import__('ay_py.ros.rbt_dxlg',globals(),None,('TDxlGripper',))
     gripper= mod.TDxlGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.095])
+    gripper.Init()
     param={
       'lx': [0.0,0.0,0.16, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -107,6 +109,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
     mod= __import__('ay_py.ros.rbt_ezg',globals(),None,('TEZGripper',))
     gripper= mod.TEZGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.150])
+    gripper.Init()
     param={
       'lx': [0,0,0, 0.0,-0.70710678,0.0,0.70710678],
       'bound_box':{
@@ -120,6 +123,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
     mod= __import__('ay_py.ros.rbt_dxlpo2',globals(),None,('TDxlpO2Gripper',))
     gripper= mod.TDxlpO2Gripper(node_name=gripper_node, finger_type=finger_type)
     #gripper= TSimGripper2F1((gripper_type,),pos_range={'st1':[0.0,0.300],'sr1':[0.0,0.1950],'f1':[-0.0189,0.200]}[fts])
+    gripper.Init()
     param={
       'lx': [0.0,0.0,{'st1':0.31,'sr1':0.22,'f1':0.22}[fts], 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -131,6 +135,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
     mod= __import__('ay_py.ros.rbt_dxlpy1',globals(),None,('TDxlpY1Gripper',))
     gripper= mod.TDxlpY1Gripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.133])
+    gripper.Init()
     param={
       'lx': [0.0,0.0,0.264, 0.5,-0.5,0.5,0.5],
       'bound_box':{
@@ -138,8 +143,21 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         'center': [0.0,0.0,0.132, 0.0,0.0,0.0,1.0],
         }
       }
-  if gripper is not None:
+  elif gripper_type.startswith('GEH60'):
+    mod= __import__('ay_py.ros.rbt_geh6000il',globals(),None,('TGEH6000ILGripper',))
+    gripper= mod.TGEH6000ILGripper(node_name=gripper_node)
     gripper.Init()
+    pos_range= gripper.PosRange()
+    param={
+      'lx': [0.0,0.0,0.1655, 0.5,-0.5,0.5,0.5],
+      'bound_box':{
+        'dim': [pos_range[1]+0.01 if pos_range is not None else 0.13, 0.062, 0.1655],
+        #WARNING: dim[y]=0.062 is inaccurate for GEH6040 because it ignores the i/f board.
+        'center': [0.0,0.0,0.1655/2., 0.0,0.0,0.0,1.0],
+        }
+      }
+  else:
+    raise Exception('CreateGripperDriver: Unknown gripper type: {}'.format(gripper_type))
   return gripper, param
 
 
