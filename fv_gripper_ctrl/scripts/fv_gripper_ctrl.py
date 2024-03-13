@@ -17,7 +17,8 @@ def DecodeNamedVariableMsg(msg):
   if msg.type==msg.NONE:
     if msg.form==msg.SCALAR:  return msg.name, None
     elif msg.form==msg.LIST_1D:
-      assert(msg.sizes==[0] and len(msg.sizes)==1)
+      if not (len(msg.sizes)==1 and msg.sizes[0]==0):
+        raise Exception('Invalid content (NONE/LIST_1D): {}'.format(msg))
       return msg.name, []
     else:
       raise Exception('Invalid content: {}'.format(msg))
@@ -25,13 +26,13 @@ def DecodeNamedVariableMsg(msg):
     return msg.name, accessor[msg.type][0]
   elif msg.form==msg.LIST_1D:
     data= accessor[msg.type]
-    assert(len(msg.sizes)==1)
-    assert(msg.sizes[0]==len(data))
+    if not (len(msg.sizes)==1 and msg.sizes[0]==len(data)):
+      raise Exception('Invalid content (LIST_1D): {}'.format(msg))
     return msg.name, data
   elif msg.form==msg.LIST_2D:
     data= accessor[msg.type]
-    assert(len(msg.sizes)>=2)
-    assert(np.prod(msg.sizes)==len(data))
+    if not (len(msg.sizes)>=2 and np.prod(msg.sizes)==len(data)):
+      raise Exception('Invalid content (LIST_2D): {}'.format(msg))
     data= np.array(data).reshape(msg.sizes)
     return msg.name, data
 

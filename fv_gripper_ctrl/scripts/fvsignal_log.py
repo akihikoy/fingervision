@@ -58,9 +58,12 @@ class TFVSignalListener(object):
   @staticmethod
   def ToValue(fvsignals_decoded, signal_name, index):
     if fvsignals_decoded[signal_name] is None:  return None
-    return (fvsignals_decoded[signal_name] if index is None
-            else fvsignals_decoded[signal_name][index] if isinstance(index,int)
-            else fvsignals_decoded[signal_name][tuple(index)] )
+    try:
+      return (fvsignals_decoded[signal_name] if index is None
+              else fvsignals_decoded[signal_name][index] if isinstance(index,int)
+              else fvsignals_decoded[signal_name][tuple(index)] )
+    except IndexError:
+      return None
 
   def UpdateValues(self):
     pass
