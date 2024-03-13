@@ -57,6 +57,23 @@ class TFVSignalListenerForPlot(TFVSignalListener):
     with self.plot_value_locker:
       return self.plot_values
 
+#Concatenate a list of strings with commas and line breaks.
+#  The length of each line (row) is limited to max_line_len.
+def CatStrListWithCommaLB(str_list, max_line_len):
+  cat= ''
+  sum_len= 0
+  for s in str_list:
+    if sum_len==0:
+      cat+= s
+    elif sum_len+len(s)+1>max_line_len:
+      cat+= ',\n' + s
+      sum_len= 0
+    else:
+      cat+= ',' + s
+      sum_len+= 1
+    sum_len+= len(s)
+  return cat
+
 if __name__=='__main__':
   def get_arg(opt_name, default):
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
@@ -99,10 +116,13 @@ if __name__=='__main__':
   if xlabel is None:
     #xlabel= 'time [s] (+ {})'.format(t_start)
     xlabel= 'time [s]'
+  max_ylabel_len= 55
   if ylabel is None:
-    ylabel= ','.join([label for (signal_name,label,axis,index) in plots if axis==1])
+    #ylabel= ','.join([label for (signal_name,label,axis,index) in plots if axis==1])
+    ylabel= CatStrListWithCommaLB([label for (signal_name,label,axis,index) in plots if axis==1], max_line_len=max_ylabel_len)
   if y2label is None:
-    y2label= ','.join([label for (signal_name,label,axis,index) in plots if axis==2])
+    #y2label= ','.join([label for (signal_name,label,axis,index) in plots if axis==2])
+    y2label= CatStrListWithCommaLB([label for (signal_name,label,axis,index) in plots if axis==2], max_line_len=max_ylabel_len)
 
   rate_adjuster= rospy.Rate(plot_rate)
   while not rospy.is_shutdown():
