@@ -471,6 +471,7 @@ class TFVGripper(TROSUtil):
     #g_range= self.gripper.PosRange()
     while not self.gripper.IsInitialized() and not rospy.is_shutdown():
       rospy.sleep(0.05)
+    rospy.sleep(0.1)  #Sleep time to receive a proper gripper position value.
     self.SetGripperTarget(self.GripperPosition())
     self.GripperMoveTo()
 
