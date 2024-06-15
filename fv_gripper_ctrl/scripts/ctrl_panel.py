@@ -312,6 +312,9 @@ if __name__=='__main__':
 
   #UI for configuring FV control parameters:
   ctrl_config= {
+      #Basic configuration:
+      'current_limit': None,  #Limit of the gripper operating current. Value depends on a gripper. null/None means using the gripper default. In RHP12RN case, the default is 1984 mA (max).
+      'gpos_range': [None, None],  #Range (min,max) to limit the gripper motion (null/None for no limit).
       #Common control parameters:
       'min_gstep': 0.001,  #Minimum gripper step size.
       'min_obj_area': 0.05,  #Minimum object area to detect an object (used in center/orientation/da_area/d_center/da_orientation sensors).

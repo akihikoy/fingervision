@@ -235,6 +235,7 @@ class TFVGripper(TROSUtil):
 
     self.state_locker= threading.RLock()
     self.g_target= None
+    self.requested_current_limit= None
 
   def __del__(self):
     self.Cleanup()
@@ -409,8 +410,11 @@ class TFVGripper(TROSUtil):
     if pos is None:
       pos= self.GripperTarget()
     else:
-      self.SetGripperTarget(pos)
+      pos= self.SetGripperTarget(pos)
     if pos is not None:
+      if self.requested_current_limit!=self.fv_ctrl_param.current_limit and self.fv_ctrl_param.current_limit is not None:
+        self.gripper.SetCurrentLimit(self.fv_ctrl_param.current_limit)
+        self.requested_current_limit= self.fv_ctrl_param.current_limit
       self.gripper.Move(pos, max_effort=max_effort, speed=speed, blocking=blocking)
 
   def GripperTarget(self):
@@ -418,8 +422,14 @@ class TFVGripper(TROSUtil):
       return self.g_target
 
   def SetGripperTarget(self, g_target):
+    g_range= self.gripper.PosRange()
+    if self.fv_ctrl_param.gpos_range[0] is not None:  g_range[0]= max(g_range[0], self.fv_ctrl_param.gpos_range[0])
+    if self.fv_ctrl_param.gpos_range[1] is not None:  g_range[1]= min(g_range[1], self.fv_ctrl_param.gpos_range[1])
+    if g_target<g_range[0]:  g_target= g_range[0]
+    if g_target>g_range[1]:  g_target= g_range[1]
     with self.state_locker:
       self.g_target= g_target
+    return g_target
 
   def CtrlLoop(self):
     #TODO:FIXME:Put in the param list.
@@ -458,7 +468,7 @@ class TFVGripper(TROSUtil):
     ctrl_freq= 200.0  #TODO:Put in the param list.
     rate_adjuster= rospy.Rate(ctrl_freq)
 
-    g_range= self.gripper.PosRange()
+    #g_range= self.gripper.PosRange()
     while not self.gripper.IsInitialized() and not rospy.is_shutdown():
       rospy.sleep(0.05)
     self.SetGripperTarget(self.GripperPosition())
@@ -526,8 +536,8 @@ class TFVGripper(TROSUtil):
                 active_holding[0]= True
             if abs(gsteps[0])>1.0e-5:
               g_target= self.GripperPosition() + 1.0/ctrl_freq*gsteps[0]
-              if g_target<g_range[0]:  g_target= g_range[0]
-              if g_target>g_range[1]:  g_target= g_range[1]
+              #if g_target<g_range[0]:  g_target= g_range[0]
+              #if g_target>g_range[1]:  g_target= g_range[1]
               self.SetGripperTarget(g_target)
             else:
               state[1]= 'no_cmd'
@@ -561,6 +571,9 @@ class TFVGripper(TROSUtil):
       print 'Finished'
 
   def LoadCtrlParams(self):
+    #Basic configuration:
+    self.fv_ctrl_param.current_limit= None  #Limit of the gripper operating current. Value depends on a gripper. null/None means using the gripper default. In RHP12RN case, the default is 1984 mA (max).
+    self.fv_ctrl_param.gpos_range= [None, None]  #Range (min,max) to limit the gripper motion (null/None for no limit).
     #Common control parameters:
     self.fv_ctrl_param.min_gstep= 0.0005
     self.fv_ctrl_param.effort= 100.0
