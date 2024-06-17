@@ -11,8 +11,8 @@ FVDEV_NUM=2
 FVDEV_IDX_START=1
 #--------------------------------------------------
 
-usage="`basename $0` [OPTIONS] DEV
-Configure camera parameters of device DEV.
+usage="`basename $0` [OPTIONS]
+Find camera devices with a device type name and create symbolic links.
   OPTIONS:
     [-devn STR]   : set TARGET_DEVICE_NAME (default: $TARGET_DEVICE_NAME)
     [-pre STR]  : set FVDEV_PREFIX (default: $FVDEV_PREFIX)
@@ -35,6 +35,13 @@ while true; do
   esac
 done
 #--------------------------------------------------
+
+echo "`basename $0` configuration:
+  TARGET_DEVICE_NAME=$TARGET_DEVICE_NAME
+  FVDEV_PREFIX=$FVDEV_PREFIX
+  FVDEV_NUM=$FVDEV_NUM
+  FVDEV_IDX_START=$FVDEV_IDX_START
+"
 
 # List all devices and their paths
 DEVICES=$(v4l2-ctl --list-devices 2>&1)
