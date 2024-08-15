@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>fingervision</name>
+  <description>FingerVision ROS node</description>
+  <version>0.0.0</version>
+  <author email="info@akihikoy.net">Akihiko Yamaguchi</author>
+  <maintainer email="info@akihikoy.net">Akihiko Yamaguchi</maintainer>
+  <license>Described in LICENSE</license>
+  <url>http://akihikoy.net/p/fv</url>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>fingervision_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>cv_bridge</depend>
+
+  <depend>image_transport</depend>
+  <depend>camera_info_manager</depend>
+
+  <export>
+    <cpp cflags="-I${prefix}/include -I${prefix}/../3rdparty -I${prefix}/../fv_core" lflags="-L${prefix}/lib"/>
+  </export>
+
+</package>
