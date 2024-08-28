@@ -308,6 +308,8 @@ if __name__=='__main__':
     'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
+    'gui_config_fv_l': ['rosrun fingervision conf_cam_gui.py {FV_L_DEV}','bg'],
+    'gui_config_fv_r': ['rosrun fingervision conf_cam_gui.py {FV_R_DEV}','bg'],
     #'start_record_l': ['rosservice call /fingervision/fvp_1_l/start_record','fg'],
     #'start_record_r': ['rosservice call /fingervision/fvp_1_r/start_record','fg'],
     #'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
@@ -316,6 +318,7 @@ if __name__=='__main__':
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GRIPPER_TYPE} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
     'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
+    'ln_cams': ['rosrun fingervision ln_cams.sh','fg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
     'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={MODBUS_CONFIG_TEMPORARY} --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
@@ -601,7 +604,7 @@ if __name__=='__main__':
                      ) )}),
     'btn_align_windows': (
       'button',{
-        'text': 'Align windows',
+        'text': 'Align Windows',
         'size_policy': ('expanding', 'fixed'),
         'onclick': lambda w,obj: AlignWindows(config['WINDOW_ALIGNMENT']), }),
     }
@@ -1050,6 +1053,11 @@ if __name__=='__main__':
       ))
 
   widgets_debug= {
+    'label_tools': (
+      'label',{
+        'text': 'Tools: ',
+        'font_size_range': (8,24),
+        'size_policy': ('minimum', 'minimum')}),
     'btn_rviz': (
       'buttonchk',{
         'text':('RViz','Stop RViz'),
@@ -1059,6 +1067,31 @@ if __name__=='__main__':
                      ),
                    lambda w,obj:(
                       stop_cmd('rviz'),
+                     ) )}),
+    'btn_ln_cams': (
+      'button',{
+        'text': 'Link Cameras',
+        'font_size_range': (8,24),
+        'onclick': lambda w,obj: run_cmd('ln_cams') if AskYesNoDialog(w,'Link camera tool is executed in the terminal. Please see the terminal to proceed.\nDo you want to proceed?') else None }),
+    'btn_gui_config_fv_l': (
+      'buttonchk',{
+        'text':('Camera Control (L)','Stop CamCon(L)'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('gui_config_fv_l'),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('gui_config_fv_l'),
+                     ) )}),
+    'btn_gui_config_fv_r': (
+      'buttonchk',{
+        'text':('Camera Control (R)','Stop CamCon(R)'),
+        'font_size_range': (8,24),
+        'onclick':(lambda w,obj:(
+                      run_cmd('gui_config_fv_r'),
+                     ),
+                   lambda w,obj:(
+                      stop_cmd('gui_config_fv_r'),
                      ) )}),
     'label_processes': (
       'label',{
@@ -1177,7 +1210,11 @@ if __name__=='__main__':
       ))
   layout_debug= (
     'boxv',None,(
-      ('boxv',None, ('btn_rviz',)),
+      ('boxh',None, ('label_tools', ('boxv',None, (
+                        ('boxh',None, ('btn_rviz','btn_ln_cams')),
+                        ('boxh',None, ('btn_gui_config_fv_l','btn_gui_config_fv_r')),
+                        )),
+                     )),
       layout_debug_gripper if not sensor_app else ('boxh',None, ()),
       ('boxh',None, ('label_processes', ('boxv',None, (
                         'combobox_procs',
