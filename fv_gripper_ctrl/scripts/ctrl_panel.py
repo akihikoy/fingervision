@@ -534,7 +534,7 @@ if __name__=='__main__':
         'index': config_file_index,
         'font_size_range': (8,24),
         'size_policy': ('expanding', 'minimum'),
-        'ontextchanged': lambda w,obj:(
+        'onactivated': lambda w,obj:(
                             UpdateUIConfig('CONFIG_FILE',dict(config_file_list)[str(obj.currentText())]),
                             (setattr(pm,'flag_relaunch', True), w.close()) if AskYesNoDialog(w,'Restarting the program is needed to make the new configuration effective.\nDo you want to restart now?') else None
                             ) }),
@@ -615,7 +615,7 @@ if __name__=='__main__':
         'index':{'Yaskawa':0,'Fanuc':1}[ui_config['MODBUS_C_ROBOT']],
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum'),
-        'ontextchanged': lambda w,obj:UpdateUIConfig('MODBUS_C_ROBOT',str(obj.currentText())) }),
+        'onactivated': lambda w,obj:UpdateUIConfig('MODBUS_C_ROBOT',str(obj.currentText())) }),
     'lineedit_modbus_c_srv': (
       'combobox',{
         'options':('10.10.6.204','192.168.1.100','192.168.250.81'),
@@ -763,14 +763,14 @@ if __name__=='__main__':
         'index': 3,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
-        'ontextchanged': lambda w,obj:pm.fv.CallSrv('set_dim_level','BlobTracker',obj.currentIndex()) }),
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','BlobTracker',obj.currentIndex()) }),
     'combobox_set_dim_pxv': (
       'combobox',{
         'options':map(lambda v:'pxv:'+str(v),[0.0,0.3,0.7,1.0]),
         'index': 1,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
-        'ontextchanged': lambda w,obj:pm.fv.CallSrv('set_dim_level','ObjDetTracker',obj.currentIndex()) }),
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','ObjDetTracker',obj.currentIndex()) }),
     'label_calib': (
       'label',{
         'text': 'Calibration:      ',
@@ -857,14 +857,14 @@ if __name__=='__main__':
         'index': 0,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
-        'ontextchanged': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','BlobTracker',obj.currentIndex()) }),
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','BlobTracker',obj.currentIndex()) }),
     'combobox_set_trackbar_pxv': (
       'combobox',{
         'options':map(lambda v:'pxv:'+str(v),range(7)),
         'index': 0,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
-        'ontextchanged': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',obj.currentIndex()) }),
+        'onactivated': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','ObjDetTracker',obj.currentIndex()) }),
     'label_save_parameters': (
       'label',{
         'text': 'Save parameters: ',
@@ -1103,7 +1103,7 @@ if __name__=='__main__':
         'options':('(Process_name/PID)',),
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
-        'ontextchanged': lambda w,obj:None}),
+        'onactivated': lambda w,obj:None}),
     'btn_update_proc_list': (
       'button',{
         'text': 'Update',
