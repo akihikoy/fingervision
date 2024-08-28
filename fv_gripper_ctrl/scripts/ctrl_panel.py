@@ -45,6 +45,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     QtCore.QObject.__init__(self)
     TSubProcManager.__init__(self)
     TJoyEmulator.__init__(self)
+    self.flag_relaunch= False
     self.node_name= node_name
     self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
     self.pub= {}
@@ -134,6 +135,11 @@ def AlignWindows(window_positions):
     else:
       print('No window with title containing "{}" found.'.format(title))
 
+def RelaunchProgram():
+  print("Relaunching program...")
+  python= sys.executable
+  os.execl(python, python, *sys.argv)
+
 if __name__=='__main__':
   def get_arg(opt_name, default):
     exists= map(lambda a:a.startswith(opt_name),sys.argv)
@@ -152,21 +158,74 @@ if __name__=='__main__':
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   HOME= os.environ['HOME']
+  DATA_DIR= HOME+'/data'
+  CONFIG_DIR= DATA_DIR+'/config'
+  TEMP_DIR= '/tmp'
   RVIZ_CONFIG= HOME+'/.rviz/default.rviz'
-  CTRL_PANEL_CONFIG= HOME+'/data/config/fv_ctrl_panel.yaml'
+  UI_CONFIG_FILE= CONFIG_DIR+'/fv_ctrl_ui.yaml'
+  #PANEL_CONFIG_FILE= CONFIG_DIR+'/fv_ctrl_panel.yaml'
   RIGHT,LEFT= fv_sensor.RIGHT,fv_sensor.LEFT
+
   if sensor_app:
     is_gsim= True
-  #Parameters:
+
+  #Search for config files (YAML files that have a CONFIG_NAME field).
+  config_file_list= [('(Default Config)', '')]  #List of (config name, file name).
+  for f in os.listdir(CONFIG_DIR):
+    if f.endswith('.yaml') and not os.path.isdir(os.path.join(CONFIG_DIR,f)):
+      try:
+        d= LoadYAML(os.path.join(CONFIG_DIR,f))
+        if 'CONFIG_NAME' in d:
+          if d['CONFIG_NAME'] in dict(config_file_list):
+            print('WARNING: Multiple config files with the same CONFIG_NAME value.')
+            print('  File 1: {}: {}'.format(d['CONFIG_NAME'], dict(config_file_list)[d['CONFIG_NAME']]))
+            print('  File 2: {}: {}'.format(d['CONFIG_NAME'], f))
+            config_file_list= [(config_name, file_name) if config_name!=d['CONFIG_NAME']
+                               else (config_name, f)
+                                  for config_name, file_name in config_file_list]
+          else:
+            config_file_list.append((d['CONFIG_NAME'], f))
+      except Exception:
+        pass
+  for config_name, file_name in config_file_list:
+    print('Config file option: {}: {}'.format(config_name, file_name))
+  print('')
+
+  #Parameters managed by UI (UI can change those values):
+  ui_config={
+    'MODBUS_C_SRV': '10.10.6.204',
+    'MODBUS_C_ROBOT': 'Yaskawa',
+    'CONFIG_FILE': 'fv_ctrl_panel.yaml',
+    }
+  #Loading UI config from a file.
+  if os.path.exists(UI_CONFIG_FILE):
+    InsertDict(ui_config, LoadYAML(UI_CONFIG_FILE))
+  def DumpUIConfigToFile():
+    SaveYAML(ui_config, UI_CONFIG_FILE, interactive=False)
+  def UpdateUIConfig(name, value):
+    ui_config[name]= value
+    DumpUIConfigToFile()
+  DumpUIConfigToFile()
+
+  #Search for ui_config['CONFIG_FILE'] in config_file_list.
+  config_file_index= 0
+  index= 0
+  for config_name, file_name in config_file_list:
+    if ui_config['CONFIG_FILE']==file_name:
+      config_file_index= index
+      break
+    index+= 1
+
+  #Control Panel Parameters:
   config={
-    'PARAM_FILE_UI': HOME+'/data/config/fv_ctrl_ui.yaml',
-    'GripperType': gripper_type,
-    'JoyUSB': joy_dev,
-    'DxlUSB': dxl_dev,
+    'CONFIG_NAME': 'Default Config',
+    'GRIPPER_TYPE': gripper_type,
+    'JOY_USB': joy_dev,
+    'DXL_USB': dxl_dev,
     'IOLINK_MODBUS_URI': '10.10.6.207',
     'FV_L_DEV': '/media/video_fv1',
     'FV_R_DEV': '/media/video_fv2',
-    'FV_BASE_DIR': HOME+'/data',
+    'FV_BASE_DIR': DATA_DIR,
     'FV_L_CONFIG': 'config/fvp300x_l.yaml',
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_L_GUI_CONFIG': 'data_gen/fvp_l.yaml',
@@ -176,14 +235,14 @@ if __name__=='__main__':
     'FV_FILE_R_CONFIG': 'config/fvp_file1_r.yaml',
     'FV_FILE_L_GUI_CONFIG': 'data_gen/fvp_file1_l.yaml',
     'FV_FILE_R_GUI_CONFIG': 'data_gen/fvp_file1_r.yaml',
-    'FV_CTRL_CONFIG': HOME+'/data/config/fv_ctrl.yaml',
+    'FV_CTRL_CONFIG': CONFIG_DIR+'/fv_ctrl.yaml',
     'FV_NAMES': {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'},
-    'VIDEO_PREFIX': HOME+'/data/data_gen/video-',
-    'LOG_PREFIX': HOME+'/data/data_gen/log-',
+    'VIDEO_PREFIX': DATA_DIR+'/data_gen/video-',
+    'LOG_PREFIX': DATA_DIR+'/data_gen/log-',
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'SENSOR_APP': sensor_app,
-    'PLOT_LOGGER_CONFIG': HOME+'/data/config/plot_logger.yaml',
+    'PLOT_LOGGER_CONFIG': CONFIG_DIR+'/plot_logger.yaml',
     'WINDOW_ALIGNMENT':{
         'fvp_1_l-blob': '0,0,640,480',
         'fvp_1_r-blob': '648,0,640,480',
@@ -191,15 +250,20 @@ if __name__=='__main__':
         'fvp_1_r-pxv': '648,545,640,480',
         'Robot Operation Panel': '1200,0,600,500',
       },
-    'MODBUS_PROTOCOL_CONFIG': HOME+'/data/config/fv_ctrl_modbus_protocol.yaml',
+    'MODBUS_CONFIG_TEMPORARY': TEMP_DIR+'/fv_ctrl_modbus_tmp.yaml',
+    'MODBUS_PROTOCOL_CONFIG': CONFIG_DIR+'/fv_ctrl_modbus_protocol.yaml',
     }
   config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
 
-  SaveYAML(config, '/tmp/fv_ctrl_panel.yaml', interactive=False)
-  if os.path.exists(CTRL_PANEL_CONFIG):
-    InsertDict(config, LoadYAML(CTRL_PANEL_CONFIG))
+  #Loading config from a file.
+  SaveYAML(config, TEMP_DIR+'/fv_ctrl_panel_default.yaml', interactive=False)
+  ctrl_panel_config_file= os.path.join(CONFIG_DIR,ui_config['CONFIG_FILE'])
+  if os.path.exists(ctrl_panel_config_file) and not os.path.isdir(ctrl_panel_config_file):
+    InsertDict(config, LoadYAML(ctrl_panel_config_file))
+  SaveYAML(config, TEMP_DIR+'/fv_ctrl_panel_latest.yaml', interactive=False)
   print(config)
 
+  '''
   #Parameters managed by UI:
   ui_managed_param={
     'MODBUS_C_SRV': '10.10.6.204',
@@ -214,16 +278,32 @@ if __name__=='__main__':
     ui_managed_param[name]= value
     GenerateParamFile()
   GenerateParamFile()
+  '''
+
+
+  #Modbus config
+  modbus_config= dict()
+  #Copy UI config to Modbus config and optionally save config to a temporary file.
+  def MapUIConfigToModbusConfig(save_to_temp=True):
+    modbus_config={
+      'MODBUS_C_SRV': ui_config['MODBUS_C_SRV'],
+      'MODBUS_C_ROBOT': ui_config['MODBUS_C_SRV'],
+      'MODBUS_C_PORT': 502,
+      }
+    if save_to_temp:
+      SaveYAML(modbus_config, config['MODBUS_CONFIG_TEMPORARY'], interactive=False)
+  MapUIConfigToModbusConfig()
+
 
   #List of commands (name: [[command/args],'fg'/'bg']).
   cmds= {
     'roscore': ['roscore','bg'],
-    'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DxlUSB}','fg'],
-    'gripper':           ['roslaunch ay_util gripper_selector.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} is_sim:={IS_GSIM}','bg'],
-    'gripper_geh':       ['/sbin/geh6000il_cpsl08p1en_driver.py _gripper_type:={GripperType} _modbus_uri:={IOLINK_MODBUS_URI} _is_sim:={IS_GSIM} _is_test:=False','bg'],
-    'reboot_dxlg':       ['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=Reboot','fg'],
-    'factory_reset_dxlg':['roslaunch ay_util gripper_reboot.launch gripper_type:={GripperType} dxldev:=/dev/tty{DxlUSB} command:=FactoryReset','fg'],
-    'joy': ['rosrun joy joy_node joy_node {JoyUSB}','bg'],
+    'fix_usb': ['sudo /sbin/fix_usb_latency.sh tty{DXL_USB}','fg'],
+    'gripper':           ['roslaunch ay_util gripper_selector.launch gripper_type:={GRIPPER_TYPE} dxldev:=/dev/tty{DXL_USB} is_sim:={IS_GSIM}','bg'],
+    'gripper_geh':       ['/sbin/geh6000il_cpsl08p1en_driver.py _gripper_type:={GRIPPER_TYPE} _modbus_uri:={IOLINK_MODBUS_URI} _is_sim:={IS_GSIM} _is_test:=False','bg'],
+    'reboot_dxlg':       ['roslaunch ay_util gripper_reboot.launch gripper_type:={GRIPPER_TYPE} dxldev:=/dev/tty{DXL_USB} command:=Reboot','fg'],
+    'factory_reset_dxlg':['roslaunch ay_util gripper_reboot.launch gripper_type:={GRIPPER_TYPE} dxldev:=/dev/tty{DXL_USB} command:=FactoryReset','fg'],
+    'joy': ['rosrun joy joy_node joy_node {JOY_USB}','bg'],
     'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG},{FV_L_GUI_CONFIG} config2:={FV_R_CONFIG},{FV_R_GUI_CONFIG}','bg'],
     'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
@@ -233,19 +313,19 @@ if __name__=='__main__':
     #'stop_record_l': ['rosservice call /fingervision/fvp_1_l/stop_record','fg'],
     #'stop_record_r': ['rosservice call /fingervision/fvp_1_r/stop_record','fg'],
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
-    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GripperType} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
+    'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GRIPPER_TYPE} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
     'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
-    'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={PARAM_FILE_UI} --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
+    'modbus_client': ['/sbin/fvgripper_modbus_client.py --config={MODBUS_CONFIG_TEMPORARY} --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
     'geh60_homing': ['rosservice call /gripper_driver/move Homing [0] [100] [100] 0','fg'],
     'geh60_deactivate': ['rosservice call /gripper_driver/move Deactivate [0] [100] [100] 0','fg'],
     'geh60_activate': ['rosservice call /gripper_driver/move Activate [0] [100] [100] 0','fg'],
     'geh60_startmoveth': ['rosservice call /gripper_driver/move StartMoveTh [0] [100] [100] 0','fg'],
     'geh60_stopmoveth': ['rosservice call /gripper_driver/move StopMoveTh [0] [100] [100] 0','fg'],
     }
-  is_geh60= config['GripperType'].startswith('GEH60')
+  is_geh60= config['GRIPPER_TYPE'].startswith('GEH60')
   if is_gsim or is_geh60:
     for c in ('fix_usb','reboot_dxlg','factory_reset_dxlg'):
       cmds[c][1]= None
@@ -440,6 +520,21 @@ if __name__=='__main__':
         'text': 'Setup: ',
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum')}),
+    'label_config': (
+      'label',{
+        'text': 'Config: ',
+        'font_size_range': (8,24),
+        'size_policy': ('minimum', 'minimum')}),
+    'combo_config_file_list': (
+      'combobox',{
+        'options': [config_name for config_name, file_name in config_file_list],
+        'index': config_file_index,
+        'font_size_range': (8,24),
+        'size_policy': ('expanding', 'minimum'),
+        'onactivated': lambda w,obj:(
+                          UpdateUIConfig('CONFIG_FILE',dict(config_file_list)[str(obj.currentText())]),
+                          (setattr(pm,'flag_relaunch', True), w.close()) if AskYesNoDialog(w,'Restarting the program is needed to make the new configuration effective.\nDo you want to restart now?') else None
+                          ) }),
     'btn_init1': (
       'buttonchk',{
         'text':('(1)FV','(1)Stop FV'),
@@ -452,11 +547,13 @@ if __name__=='__main__':
                       pm.fv.CallSrv('set_video_prefix', config['VIDEO_PREFIX']),
                       w.widgets['rviz'].setup(),
                       w.widgets['btn_init2'].setEnabled(True),
+                      w.widgets['combo_config_file_list'].setEnabled(False),
                      ),
                    lambda w,obj:(
                       pm.StopFVSrv(),
                       stop_cmd('fvp'),
                       w.widgets['btn_init2'].setEnabled(False),
+                      w.widgets['combo_config_file_list'].setEnabled(True),
                      ) )}),
     'btn_init2': (
       'buttonchk',{
@@ -512,25 +609,26 @@ if __name__=='__main__':
     'combo_modbus_c_robot': (
       'combobox',{
         'options':('Yaskawa','Fanuc'),
-        'index':{'Yaskawa':0,'Fanuc':1}[ui_managed_param['MODBUS_C_ROBOT']],
+        'index':{'Yaskawa':0,'Fanuc':1}[ui_config['MODBUS_C_ROBOT']],
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum'),
-        'onactivated': lambda w,obj:UpdateParam('MODBUS_C_ROBOT',str(obj.currentText())) }),
+        'onactivated': lambda w,obj:UpdateUIConfig('MODBUS_C_ROBOT',str(obj.currentText())) }),
     'lineedit_modbus_c_srv': (
       'combobox',{
         'options':('10.10.6.204','192.168.1.100','192.168.250.81'),
         'index': None,
         'editable': True,
-        'text': ui_managed_param['MODBUS_C_SRV'],
+        'text': ui_config['MODBUS_C_SRV'],
         'font_size_range': (8,24),
         'size_policy': ('expanding', 'minimum'),
-        #'ontextchanged': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.text())),
-        'onactivated': lambda w,obj:UpdateParam('MODBUS_C_SRV',str(obj.currentText())) }),
+        #'ontextchanged': lambda w,obj:UpdateUIConfig('MODBUS_C_SRV',str(obj.text())),
+        'onactivated': lambda w,obj:UpdateUIConfig('MODBUS_C_SRV',str(obj.currentText())) }),
     'btn_modbus_client': (
       'buttonchk',{
         'text':('Modbus Client','Stop Modbus Cli'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
+                      MapUIConfigToModbusConfig(),
                       run_cmd('modbus_client'),
                       w.widgets['btn_modbus_server'].setEnabled(False),
                      ),
@@ -543,6 +641,7 @@ if __name__=='__main__':
         'text':('Modbus Server','Stop Modbus Srv'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
+                      MapUIConfigToModbusConfig(),
                       run_cmd('modbus_port_fwd'),
                       run_cmd('modbus_server'),
                       w.widgets['btn_modbus_client'].setEnabled(False),
@@ -556,6 +655,7 @@ if __name__=='__main__':
     'boxh',None,(
       'label_init',
       ('boxv',None, (
+        ('boxh',None,('label_config','combo_config_file_list')),
         ('boxh',None,('btn_init1', 'btn_init2')),
         ('boxh',None, ('btn_modbus_server',
                        ('boxv',None, (
@@ -994,6 +1094,11 @@ if __name__=='__main__':
         #'text': 'Exit',
         #'size_policy': ('expanding', 'fixed'),
         #'onclick': lambda w,obj: w.close(), }),
+    'btn_dbg_relaunch': (
+      'button',{
+        'text': 'Relaunch',
+        'size_policy': ('expanding', 'fixed'),
+        'onclick': lambda w,obj: (setattr(pm,'flag_relaunch', True), w.close()), }),
     }
   if not is_geh60:
     widgets_debug_gripper= {
@@ -1078,6 +1183,7 @@ if __name__=='__main__':
                         'combobox_procs',
                         ('boxh',None, ('btn_update_proc_list','btn_terminate_proc','btn_kill_proc')),
                         #('boxh',None, ('btn_dbg_exit',)),
+                        ('boxh',None, ('btn_dbg_relaunch',)),
                         ))
                      )),
       ))
@@ -1160,4 +1266,7 @@ if __name__=='__main__':
       pm.Cleanup(),
       True)[-1]
 
-  RunPanelApp()
+  RunPanelApp(exit_at_close=False)
+
+  if pm.flag_relaunch:
+    RelaunchProgram()
