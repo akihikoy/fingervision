@@ -287,7 +287,7 @@ if __name__=='__main__':
   def MapUIConfigToModbusConfig(save_to_temp=True):
     modbus_config={
       'MODBUS_C_SRV': ui_config['MODBUS_C_SRV'],
-      'MODBUS_C_ROBOT': ui_config['MODBUS_C_SRV'],
+      'MODBUS_C_ROBOT': ui_config['MODBUS_C_ROBOT'],
       'MODBUS_C_PORT': 502,
       }
     if save_to_temp:
