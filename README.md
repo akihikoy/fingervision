@@ -36,10 +36,6 @@ fingervision_msgs/
 -----------------------
 The messages and services used in fingervision.
 
-3rdparty/
------------------------
-Utility programs that are copied from other projects.
-
 cad/
 -----------------------
 CAD models of FingerVision.

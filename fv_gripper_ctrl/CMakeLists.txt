@@ -8,7 +8,13 @@ project(fv_gripper_ctrl)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  rospy
   std_msgs
+  std_srvs
+  tf
+  ay_py
+  ay_util
+  fingervision_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,7 +109,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES fv_gripper_ctrl
-#  CATKIN_DEPENDS std_msgs
+  CATKIN_DEPENDS ay_py ay_util
 #  DEPENDS system_lib
 )
 

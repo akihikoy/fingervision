@@ -9,6 +9,8 @@ project(fingervision)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   fingervision_msgs
+  ay_vision
+  ay_cpp
   roscpp
   std_msgs
   std_srvs
@@ -112,9 +114,9 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES fingervision
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+  INCLUDE_DIRS ${FV_CORE_DIR}
+  LIBRARIES fv_blob_tracker2 fv_prox_vision
+  CATKIN_DEPENDS fingervision_msgs ay_vision ay_cpp
 #  DEPENDS system_lib
 )
 
@@ -124,7 +126,6 @@ catkin_package(
 
 set(PROJECT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(FV_CORE_DIR ${PROJECT_BASE_DIR}/fv_core)
-set(THIRDPARTY_DIR ${PROJECT_BASE_DIR}/3rdparty)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -132,7 +133,6 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
   ${FV_CORE_DIR}
-  ${THIRDPARTY_DIR}
   ${EIGEN3_INCLUDE_DIR}
 )
 
@@ -147,12 +147,6 @@ add_library(fv_prox_vision
   ${FV_CORE_DIR}/prox_vision.cpp
 )
 target_link_libraries(fv_prox_vision
-  ${OpenCV_LIBRARIES}
-)
-add_library(ay_vision
-  ${THIRDPARTY_DIR}/ay_vision/vision_util.cpp
-)
-target_link_libraries(ay_vision
   ${OpenCV_LIBRARIES}
 )
 
@@ -182,7 +176,6 @@ set_target_properties(${PROJECT_NAME}_fv_core_node PROPERTIES OUTPUT_NAME fv_cor
 target_link_libraries(${PROJECT_NAME}_fv_core_node
   fv_blob_tracker2
   fv_prox_vision
-  ay_vision
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 #   libcv_bridge.so
