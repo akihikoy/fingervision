@@ -69,6 +69,9 @@ target_link_libraries(fv_prox_vision
 add_executable(${PROJECT_NAME}_fv_core_node
   src/fv_core_node.cpp
 )
+add_dependencies(${PROJECT_NAME}_fv_core_node
+  ${fingervision_msgs_EXPORTED_TARGETS}
+)
 
 ## Rename C++ executable without prefix
 set_target_properties(${PROJECT_NAME}_fv_core_node PROPERTIES OUTPUT_NAME fv_core_node PREFIX "")
