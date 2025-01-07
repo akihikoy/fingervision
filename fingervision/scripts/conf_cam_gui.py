@@ -148,30 +148,31 @@ def GenerateImgCtrlWidges(cam_dev):
 
 if __name__=='__main__':
   cam_dev= sys.argv[1] if len(sys.argv)>1 else '/dev/video0'
-  if not os.path.exists(cam_dev):
+  cam_dev_path= os.path.realpath(cam_dev)
+  if not os.path.exists(cam_dev) or not os.path.exists(cam_dev_path):
     raise Exception('Device not found:',cam_dev)
 
   def Print(*s):
     for ss in s:  print ss,
     print ''
 
-  widges_img_ctrl,layout_img_ctrl,ctrls,ctrl_details= GenerateImgCtrlWidges(cam_dev)
+  widges_img_ctrl,layout_img_ctrl,ctrls,ctrl_details= GenerateImgCtrlWidges(cam_dev_path)
 
   widgets_common= {
     'label_device': (
       'label',{
-        'text': 'Device: '+cam_dev,
+        'text': 'Device: {} ({})'.format(cam_dev,cam_dev_path),
         'size_policy': ('expanding', 'minimum')}),
     'btn_yaml': (
       'button',{
         'text': 'YAML',
         'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj: Print(yaml.dump(GetCtrlValues(cam_dev,ctrls))), }),
+        'onclick': lambda w,obj: Print(yaml.dump(GetCtrlValues(cam_dev_path,ctrls))), }),
     'btn_b64': (
       'button',{
         'text': 'Base64',
         'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj: Print(EncodeDictB64(GetCtrlValues(cam_dev,ctrls))), }),
+        'onclick': lambda w,obj: Print(EncodeDictB64(GetCtrlValues(cam_dev_path,ctrls))), }),
     'btn_exit': (
       'button',{
         'text': 'Exit',

@@ -89,3 +89,5 @@ for (( i=0; i<num_devices; i++ )); do
   sudo ln -is ${MATCHING_PATHS[$i]} $FVDEV_PREFIX$((i+FVDEV_IDX_START))
 done
 
+echo "Finished."
+
