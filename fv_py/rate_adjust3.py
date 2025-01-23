@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    rate_adjust3.py
 #\brief   Rate adjuster 2.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -37,12 +37,12 @@ if __name__=='__main__':
   rate= TRateAdjuster(2)
   t0= time.time()
   while True:
-    print '---------',time.time()-t0
+    print('---------',time.time()-t0)
     t0= time.time()
     s= 0
-    for i in xrange(int(600*random.random())):
+    for i in range(int(600*random.random())):
       s+= i
       time.sleep(0.0001)
-    print i
+    print(i)
     rate.Sleep()
     #time.sleep(0.5)

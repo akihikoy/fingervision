@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    test1.py
 #\brief   Test the FingerVision library for Python.
 #\author  Akihiko Yamaguchi, info@akihikoy.net

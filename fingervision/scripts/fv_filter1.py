@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    fv_filter1.py
 #\brief   Filter the output topics of fv_core_node.
 #         BlobMoves: Convert blob_moves to force and torque estimates.
@@ -173,11 +173,11 @@ if __name__=='__main__':
   side= StrToLR(side_str)
   if side is None:  side= StrToID(side_str)
 
-  print '''FV-Filter {node}
+  print('''FV-Filter {node}
     FV: {fv}
     FV_out: {fv_out}
     Side: {side}
-    Options: {options}'''.format(node=rospy.get_name(),fv=fv,fv_out=fv_out,side=side,options=options)
+    Options: {options}'''.format(node=rospy.get_name(),fv=fv,fv_out=fv_out,side=side,options=options))
 
   state_fobjinfo= TContainer(debug=True)
 

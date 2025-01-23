@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    fvsignal_plot.py
 #\brief   Realtime plot tool of fvsignals.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -20,6 +20,8 @@ from ay_py.core import LoadYAML
 import fingervision_msgs.msg
 import std_msgs.msg
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as plt_cols
 
@@ -40,7 +42,7 @@ class TFVSignalListenerForPlot(TFVSignalListener):
                     if fvsignals_decoded[signal_name] is not None}
 
     plot_values= copy.deepcopy(self.plot_values)
-    for label,value in new_values.iteritems():
+    for label,value in new_values.items():
       if label in plot_values:
         plot_values[label][0].append(time_stamp)
         plot_values[label][1].append(value)
@@ -76,7 +78,7 @@ def CatStrListWithCommaLB(str_list, max_line_len):
 
 if __name__=='__main__':
   def get_arg(opt_name, default):
-    exists= map(lambda a:a.startswith(opt_name),sys.argv)
+    exists= [a.startswith(opt_name) for a in sys.argv]
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
   #no_kbhit= True if '-no_kbhit' in sys.argv or '--no_kbhit' in sys.argv else False
@@ -100,7 +102,7 @@ if __name__=='__main__':
             ('fv.center_l','center_l_y',1,1, True),
             ('gripper_pos','gpos',2,None, True),
             ('target_pos','gpos_trg',2,None, True)]
-  print 'plots=',plots
+  print('plots=',plots)
 
   plots= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in plots if enabled]
 
@@ -136,7 +138,7 @@ if __name__=='__main__':
     col_scheme= plt_cols.TABLEAU_COLORS
     for i,(signal_name,label,axis,index) in enumerate(fvsignal_listener.fvsignal_list):
       times,values= plot_values[label]
-      col= col_scheme.values()[i%len(col_scheme)]
+      col= list(col_scheme.values())[i%len(col_scheme)]
       ax= (None,ax1,ax2)[axis]
       lines+= ax.plot(times,values, color=col, linewidth=2, label=label)
 

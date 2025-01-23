@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+import importlib
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *
@@ -83,7 +84,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
   gripper= None
   param= None
   if gripper_type in ('RHP12RNGripper','RHP12RNAGripper'):
-    mod= __import__('ay_py.ros.rbt_rhp12rn',globals(),None,('TRHP12RNGripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_rhp12rn')
     gripper= mod.TRHP12RNGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1(('RHP12RNGripper','ThGripper'),pos_range=[0.0,0.109])
     gripper.Init()
@@ -95,7 +96,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         }
       }
   elif gripper_type=='DxlGripper':
-    mod= __import__('ay_py.ros.rbt_dxlg',globals(),None,('TDxlGripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_dxlg')
     gripper= mod.TDxlGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.095])
     gripper.Init()
@@ -107,7 +108,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         }
       }
   elif gripper_type=='EZGripper':
-    mod= __import__('ay_py.ros.rbt_ezg',globals(),None,('TEZGripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_ezg')
     gripper= mod.TEZGripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.150])
     gripper.Init()
@@ -121,7 +122,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
   elif gripper_type.startswith('DxlpO2Gripper'):
     finger_type= gripper_type.replace('DxlpO2Gripper_','')
     fts= {'Straight1':'st1','SRound1':'sr1','Fork1':'f1'}[finger_type]
-    mod= __import__('ay_py.ros.rbt_dxlpo2',globals(),None,('TDxlpO2Gripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_dxlpo2')
     gripper= mod.TDxlpO2Gripper(node_name=gripper_node, finger_type=finger_type)
     #gripper= TSimGripper2F1((gripper_type,),pos_range={'st1':[0.0,0.300],'sr1':[0.0,0.1950],'f1':[-0.0189,0.200]}[fts])
     gripper.Init()
@@ -133,7 +134,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         }
       }
   elif gripper_type=='DxlpY1Gripper':
-    mod= __import__('ay_py.ros.rbt_dxlpy1',globals(),None,('TDxlpY1Gripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_dxlpy1')
     gripper= mod.TDxlpY1Gripper(node_name=gripper_node)
     #gripper= TSimGripper2F1((gripper_type,),pos_range=[0.0,0.133])
     gripper.Init()
@@ -145,7 +146,7 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         }
       }
   elif gripper_type.startswith('GEH60'):
-    mod= __import__('ay_py.ros.rbt_geh6000il',globals(),None,('TGEH6000ILGripper',))
+    mod= importlib.import_module('ay_py.ros.rbt_geh6000il')
     gripper= mod.TGEH6000ILGripper(node_name=gripper_node)
     gripper.Init()
     pos_range= gripper.PosRange()
@@ -240,7 +241,7 @@ class TFVGripper(TROSUtil):
   def __del__(self):
     self.Cleanup()
     if TFVGripper is not None:  super(TFVGripper,self).__del__()
-    print 'TFVGripper: done',self
+    print('TFVGripper: done',self)
 
   def Cleanup(self):
     self.StopScript()
@@ -289,15 +290,13 @@ class TFVGripper(TROSUtil):
 
   def LoadScript(self, script_name):
     try:
-      #mod= __import__(script_name,globals(),None,(script_name,))
       mod= SmartImportReload(script_name)
       return mod
     except ImportError:
-      print 'No script named: {}'.format(script_name)
+      print('No script named: {}'.format(script_name))
     return None
 
   def GetSensorFunctions(self, sensor_name):
-    # mod= __import__(sensor_name,globals(),None,(sensor_name,))
     mod= self.LoadScript(sensor_name)
     if mod is None:  return None,None
     f_reset,f_get= getattr(mod,'Reset',None), getattr(mod,'Get',None)
@@ -308,11 +307,11 @@ class TFVGripper(TROSUtil):
   #    'all': All sensors, 'only_new': Newly added sensors, 'none': No sensors.
   def LoadAllSensors(self, sensor_name_list, run_reset='only_new'):
     #Remove sensors that are not included in sensor_name_list:
-    remove_list= [s for s in self.sensors.iterkeys() if s not in sensor_name_list]
+    remove_list= [s for s in self.sensors.keys() if s not in sensor_name_list]
     for s in remove_list:  del self.sensors[s]
     #Load sensors and store them in self.sensors:
     for sensor_name in sensor_name_list:
-      print 'Loading sensor {}'.format(sensor_name)
+      print('Loading sensor {}'.format(sensor_name))
       f_reset,f_get= self.GetSensorFunctions(sensor_name)
       is_new= False
       if sensor_name not in self.sensors:
@@ -324,7 +323,7 @@ class TFVGripper(TROSUtil):
         try:
           f_reset(self)
         except Exception as e:
-          print '  Error in executing {}.Reset: {}'.format(sensor_name, e)
+          print('  Error in executing {}.Reset: {}'.format(sensor_name, e))
           del self.sensors[sensor_name]
 
   #Run Get functions of all loaded sensors for a given fv_data (snapshot of self.fv.data)
@@ -334,30 +333,29 @@ class TFVGripper(TROSUtil):
     sensor_values= {}
     time_stamps= [tm for tm in fv_data.tm_last_topic if tm is not None]
     time_stamp= max(time_stamps) if len(time_stamps)>0 else None
-    for sensor_name,d in self.sensors.iteritems():
+    for sensor_name,d in self.sensors.items():
       try:
         sensor_values[sensor_name]= d['f_get'](self, fv_data)
       except Exception as e:
-        print 'Sensor {} error: {}'.format(sensor_name, e)
+        print('Sensor {} error: {}'.format(sensor_name, e))
     return time_stamp, sensor_values
 
   def CopySensorValuesToMsg(self, time_stamp, sensor_values):
     msg= fingervision_msgs.msg.NamedVariableListStamped()
     msg.header.stamp= time_stamp
     msg.data.data= [EncodeNamedVariableMsg(sensor_name, sensor_values[sensor_name] if sensor_name in sensor_values else None)
-                    for sensor_name,d in self.sensors.iteritems()]
+                    for sensor_name,d in self.sensors.items()]
     return msg
 
   def GetScriptFunctions(self, script_name):
-    # mod= __import__(script_name,globals(),None,(script_name,))
     mod= self.LoadScript(script_name)
     if mod is None:  return None,None
     f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
     if f_run is None and f_loop is None:
-      print 'In script {}, both Run and Loop are not defined'.format(script_name)
+      print('In script {}, both Run and Loop are not defined'.format(script_name))
       return None,None
     if f_run is not None and f_loop is not None:
-      print 'In script {}, both Run and Loop are defined'.format(script_name)
+      print('In script {}, both Run and Loop are defined'.format(script_name))
       return None,None
     return f_run,f_loop
 
@@ -371,7 +369,7 @@ class TFVGripper(TROSUtil):
       try:
         f_run(self)
       except Exception as e:
-        print 'Script {} error in Run: {}'.format(script_name, e)
+        print('Script {} error in Run: {}'.format(script_name, e))
       self.script_is_active= False
     elif f_loop is not None:
       self.script_is_active= True
@@ -386,7 +384,7 @@ class TFVGripper(TROSUtil):
     try:
       f_loop(self)
     except Exception as e:
-      print 'Script {} error in Loop: {}'.format(script_name, e)
+      print('Script {} error in Loop: {}'.format(script_name, e))
     CPrint(2,'{} is stopped'.format(script_name))
     self.script_is_active= False
     self.script_thread= None
@@ -569,7 +567,7 @@ class TFVGripper(TROSUtil):
         if active_holding[0]:
           self.gripper.StopHolding()
           active_holding[0]= False
-      print 'Finished'
+      print('Finished')
 
   def LoadCtrlParams(self):
     #Basic configuration:
@@ -596,7 +594,7 @@ class TFVGripper(TROSUtil):
       file_path= os.path.join(dir_path,CONFIG_FILE)
       if os.path.exists(file_path):
         InsertDict(ctrl_params, LoadYAML(file_path))
-    for k,v in ctrl_params.iteritems():
+    for k,v in ctrl_params.items():
       fvg.fv_ctrl_param[k]= v
 
 
@@ -614,8 +612,8 @@ if __name__ == '__main__':
       if key in table:  return table[key]
       return int(key)
     return key
-  print 'fv_names: {}'.format(fv_names)
-  fv_names= {convert_key(key):value for key,value in fv_names.iteritems()}
+  print('fv_names: {}'.format(fv_names))
+  fv_names= {convert_key(key):value for key,value in fv_names.items()}
 
   fvg= TFVGripper()
   fvg.Setup(gripper_type, gripper_node, fv_names, fv_nodes)

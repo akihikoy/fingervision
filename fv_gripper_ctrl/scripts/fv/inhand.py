@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *
@@ -21,7 +21,7 @@ def Loop(fvg):
   g_pos= fvg.GripperPosition()
   while thread_cond():
     if abs(theta0-get_theta())>target_angle:
-      print 'Done! target=', RadToDeg(target_angle)
+      print('Done! target=', RadToDeg(target_angle))
       g_pos-= fvg.fv_ctrl_param.min_gstep
       fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
       break
@@ -49,5 +49,5 @@ def Loop(fvg):
         rospy.sleep(0.0001)
       g_pos= fvg.GripperPosition()
 
-    print RadToDeg(theta0-get_theta()), RadToDeg(get_theta())
+    print(RadToDeg(theta0-get_theta()), RadToDeg(get_theta()))
 

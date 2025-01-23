@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    conf_cam_gui.py
 #\brief   Simple GUI tool for configuring cameras.
 #         This tool does not open a camera, so you can use this together with
@@ -21,21 +21,23 @@ import zlib
 def ExecCmd(cmd):
   p= subprocess.Popen(cmd, stdout=subprocess.PIPE)
   (stdout, stderr)= p.communicate()
+  if stdout is not None:  stdout= stdout.decode('utf-8').strip()
+  if stderr is not None:  stderr= stderr.decode('utf-8').strip()
   exit_code= p.wait()
-  return stdout.strip() if stdout is not None else stdout, stderr.strip() if stderr is not None else stderr, exit_code
+  return stdout, stderr, exit_code
 
 def EncodeDictB64(d, with_compress=True):
   d_yaml= yaml.dump(d)
-  if with_compress:  d_yaml_c= zlib.compress(d_yaml)
-  else:  d_yaml_c= d_yaml
-  d_b64= base64.b64encode(d_yaml_c)
+  if with_compress:  d_yaml_c= zlib.compress(d_yaml.encode('utf-8'))
+  else:  d_yaml_c= d_yaml.encode('utf-8')
+  d_b64= base64.b64encode(d_yaml_c).decode('utf-8')
   return d_b64
 
 def DecodeDictB64(d_b64, with_compress=True):
-  d_yaml_c= base64.b64decode(d_b64)
+  d_yaml_c= base64.b64decode(d_b64.encode('utf-8'))
   if with_compress:  d_yaml= zlib.decompress(d_yaml_c)
   else:  d_yaml= d_yaml_c
-  d= yaml.load(d_yaml)
+  d= yaml.load(d_yaml.decode('utf-8'), Loader=yaml.SafeLoader)
   return d
 
 def GetControls(cam_dev):
@@ -58,7 +60,7 @@ def GetControls(cam_dev):
       value= s[idx_colon+1:].strip()
       if value[-1]==',':  value= value[:-1]
       ctrl_details[curr_ctrl][param_name]= value
-  for ctrl,details in ctrl_details.iteritems():
+  for ctrl,details in ctrl_details.items():
     details['Flags']= re.findall(r'[a-zA-Z0-9_]+', details['Flags'])
     details['Default']= int(details['Default'])
     if details['Type']=='Choice':
@@ -71,7 +73,7 @@ def GetControls(cam_dev):
       details['Values']= [values[i] if i in values else None for i in range(sorted(values.keys())[-1]+1)]
     elif details['Type'] in ('Boolean', 'Dword'):
       #(min,max,step) tuple.
-      details['Values']= map(int, re.match(r'\[\s*([\-\+0-9]+)\s*\.\.\s*([\-\+0-9]+)\s*,\s*step size\:\s*([\-\+0-9]+)\s*\]', details['Values']).groups())
+      details['Values']= list(map(int, re.match(r'\[\s*([\-\+0-9]+)\s*\.\.\s*([\-\+0-9]+)\s*,\s*step size\:\s*([\-\+0-9]+)\s*\]', details['Values']).groups()))
   return ctrls, ctrl_details
 
 def GetCtrlValue(cam_dev, ctrl):
@@ -86,7 +88,7 @@ def SetCtrlValue(cam_dev, ctrl, value):
   stdout,stderr,ec= ExecCmd(['uvcdynctrl', '-d', cam_dev, '-s', ctrl, '--', str(value)])
 
 def SetCtrlValues(cam_dev, ctrl_values):
-  for ctrl,value in ctrl_values.iteritems():
+  for ctrl,value in ctrl_values.items():
     SetCtrlValue(cam_dev, ctrl, value)
 
 
@@ -99,10 +101,10 @@ def GenerateImgCtrlWidges(cam_dev):
   for ctrl in ctrls:
     value= ctrl_values[ctrl]
     #print 'debug:',ctrl,value,ctrl_details[ctrl]['Values']
-    print ctrl,'=',value,ctrl_details[ctrl]['Values'][value] if ctrl_details[ctrl]['Type']=='Choice' else ''
+    print(ctrl,'=',value,ctrl_details[ctrl]['Values'][value] if ctrl_details[ctrl]['Type']=='Choice' else '')
 
   def onvaluechange(ctrl, value):
-    print 'Setting',ctrl,value
+    print('Setting',ctrl,value)
     SetCtrlValue(cam_dev, ctrl, value)
 
   widges_img_ctrl= {}
@@ -153,8 +155,8 @@ if __name__=='__main__':
     raise Exception('Device not found:',cam_dev)
 
   def Print(*s):
-    for ss in s:  print ss,
-    print ''
+    for ss in s:  print(ss, end=' ')
+    print('')
 
   widges_img_ctrl,layout_img_ctrl,ctrls,ctrl_details= GenerateImgCtrlWidges(cam_dev_path)
 

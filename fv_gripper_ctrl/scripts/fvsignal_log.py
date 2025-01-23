@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    fvsignal_log.py
 #\brief   Logger tool of fvsignals.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -96,7 +96,7 @@ class TFVSignalListenerForLog(TFVSignalListener):
 
 if __name__=='__main__':
   def get_arg(opt_name, default):
-    exists= map(lambda a:a.startswith(opt_name),sys.argv)
+    exists= [a.startswith(opt_name) for a in sys.argv]
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
   file_prefix= get_arg('-file_prefix=',get_arg('--file_prefix=','/tmp/log-'))
@@ -117,7 +117,7 @@ if __name__=='__main__':
             ('fv.center_l','center_l_y',1,1, True),
             ('gripper_pos','gpos',2,None, True),
             ('target_pos','gpos_trg',2,None, True)]
-  print 'logs=',logs
+  print('logs=',logs)
 
   logs= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in logs if enabled]
 

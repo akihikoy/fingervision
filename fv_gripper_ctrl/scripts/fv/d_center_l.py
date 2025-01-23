@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from ay_py.core import *
 from ay_py.ros import *
 is_detected_l= SmartImportReload('fv.is_detected_l')

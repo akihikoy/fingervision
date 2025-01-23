@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    test3.py
 #\brief   Test the FingerVision library for Python.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -25,8 +25,8 @@ if __name__=='__main__':
   windows_hidden= True
   fv.StartThreads(config=config_file, windows_hidden=windows_hidden)
 
-  print 'GetDisplayImageList:',fv.GetDisplayImageList()
-  print 'GetNumCameras:',fv.GetNumCameras()
+  print('GetDisplayImageList:',fv.GetDisplayImageList())
+  print('GetNumCameras:',fv.GetNumCameras())
   disp_blob_moves= False
   disp_prox_vision= False
   rate= TRateAdjuster(30)
@@ -46,7 +46,7 @@ if __name__=='__main__':
         disp_prox_vision= not disp_prox_vision
       elif c in ('c','C'):
         name= fv.GetDisplayImageList()[{'c':0,'C':1}[c]]
-        print 'Calibrating {}...'.format(name)
+        print('Calibrating {}...'.format(name))
         fv.SetCalibrationRequest(name)
       windows_hidden= not fv.HandleWindowVisibilityRequest()
       if not windows_hidden:
@@ -54,8 +54,8 @@ if __name__=='__main__':
           fv.DisplayImage(name)
         if not fv.HandleKeyEvent():  fv.SetShutdown()
       if disp_blob_moves:
-        print fv.GetBlobMoves(0)
+        print(fv.GetBlobMoves(0))
       if disp_prox_vision:
-        print fv.GetProxVision(0)
+        print(fv.GetProxVision(0))
       rate.Sleep()
   fv.StopThreads()

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    test2.py
 #\brief   Test the FingerVision library for Python.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -22,7 +22,7 @@ if __name__=='__main__':
   fv.StartThreads(config=config_file, windows_hidden=windows_hidden)
 
   disp_images= fv.GetDisplayImageList()
-  print 'disp_images:',disp_images
+  print('disp_images:',disp_images)
   rate= TRateAdjuster(30)
   with TKBHit() as kbhit:
     while not fv.IsShutdown():

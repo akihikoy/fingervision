@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    ctrl_panel.py
 #\brief   FV+Gripper control panel.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -22,7 +22,7 @@ Setup:
     $ ln -s `rospack find ay_fv_extra`/config/fvp_5_l.yaml fvp300x_l.yaml
     $ ln -s `rospack find ay_fv_extra`/config/fvp_5_r.yaml fvp300x_r.yaml
 '''
-from __future__ import print_function
+
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import os,sys
 import subprocess
@@ -100,7 +100,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     self.StopGripper()
     self.fv.Cleanup()
     self.StopTopicMonitorThread()
-    for key,sub in self.sub.iteritems():
+    for key,sub in self.sub.items():
       sub.unregister()
 
   def TopicCallback(self, topic, msg):
@@ -109,7 +109,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
 
 def UpdateProcList(pm,combobox):
   combobox.clear()
-  for name,proc in pm.procs.iteritems():
+  for name,proc in pm.procs.items():
     combobox.addItem('{0}/{1}'.format(name,proc.pid))
 
 #Align windows to window_positions (dict of: {'window_title': 'x,y,w,h'}).
@@ -142,7 +142,7 @@ def RelaunchProgram():
 
 if __name__=='__main__':
   def get_arg(opt_name, default):
-    exists= map(lambda a:a.startswith(opt_name),sys.argv)
+    exists= [a.startswith(opt_name) for a in sys.argv]
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
   gripper_type= get_arg('-gripper_type=',get_arg('--gripper_type=','RHP12RNAGripper'))
@@ -230,7 +230,7 @@ if __name__=='__main__':
     'FV_R_CONFIG': 'config/fvp300x_r.yaml',
     'FV_L_GUI_CONFIG': 'data_gen/fvp_l.yaml',
     'FV_R_GUI_CONFIG': 'data_gen/fvp_r.yaml',
-    'FV_FILE_BASE_DIR': subprocess.check_output('rospack find ay_fv_extra'.split(' ')).strip(),
+    'FV_FILE_BASE_DIR': subprocess.check_output('rospack find ay_fv_extra'.split(' ')).decode('utf-8').strip(),
     'FV_FILE_L_CONFIG': 'config/fvp_file1_l.yaml',
     'FV_FILE_R_CONFIG': 'config/fvp_file1_r.yaml',
     'FV_FILE_L_GUI_CONFIG': 'data_gen/fvp_file1_l.yaml',
@@ -253,7 +253,7 @@ if __name__=='__main__':
     'MODBUS_CONFIG_TEMPORARY': TEMP_DIR+'/fv_ctrl_modbus_tmp.yaml',
     'MODBUS_PROTOCOL_CONFIG': CONFIG_DIR+'/fv_ctrl_modbus_protocol.yaml',
     }
-  config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].iteritems()))
+  config['FV_NAMES_STR']= '{{{}}}'.format(','.join("'{}':'{}'".format(key,value) for key,value in config['FV_NAMES'].items()))
 
   #Loading config from a file.
   SaveYAML(config, TEMP_DIR+'/fv_ctrl_panel_default.yaml', interactive=False)
@@ -338,7 +338,7 @@ if __name__=='__main__':
       cmds[c][1]= None
     config['FV_L_GUI_CONFIG']= config['FV_FILE_L_GUI_CONFIG']
     config['FV_R_GUI_CONFIG']= config['FV_FILE_R_GUI_CONFIG']
-  for key in cmds.iterkeys():
+  for key in cmds.keys():
     if isinstance(cmds[key][0],str):
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
 
@@ -379,7 +379,7 @@ if __name__=='__main__':
         dict(label='FPS/pxv(l,r)', type='text', state='N/A'),
       ]
 
-  status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.iterkeys())]
+  status_grid_list_color= [dict(label=key, type='color', state='red') for key in sorted(pm.topics_to_monitor.keys())]
   def UpdateStatusGridText(w,obj,status=None):
     to_str_2= lambda x:'{:.2f}'.format(x) if x is not None else 'N/A'
     obj.UpdateStatus('ObjDetect(l,r)', '({},{})'.format(pm.l_pxv_obj_detection,pm.r_pxv_obj_detection))
@@ -390,7 +390,7 @@ if __name__=='__main__':
       obj.UpdateStatus('GPosTrg', '{:.5f} [m]'.format(pm.target_pos) if pm.target_pos is not None else 'N/A')
       obj.UpdateStatus('Action', '(move-to)' if pm.active_script=='' else pm.active_script if pm.active_script is not None else 'N/A')
   def UpdateStatusGridColor(w,obj,status=None):
-    for key,topic in pm.topics_to_monitor.iteritems():
+    for key,topic in pm.topics_to_monitor.items():
       obj.UpdateStatus(key, 'green' if pm.IsActive(key) else 'red')
 
   #UI for configuring FV control parameters:
@@ -759,14 +759,14 @@ if __name__=='__main__':
         'size_policy': ('minimum', 'minimum')}),
     'combobox_set_dim_blob': (
       'combobox',{
-        'options':map(lambda v:'blob:'+str(v),[0.0,0.3,0.7,1.0]),
+        'options':['blob:'+str(v) for v in [0.0,0.3,0.7,1.0]],
         'index': 3,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
         'onactivated': lambda w,obj:pm.fv.CallSrv('set_dim_level','BlobTracker',obj.currentIndex()) }),
     'combobox_set_dim_pxv': (
       'combobox',{
-        'options':map(lambda v:'pxv:'+str(v),[0.0,0.3,0.7,1.0]),
+        'options':['pxv:'+str(v) for v in [0.0,0.3,0.7,1.0]],
         'index': 1,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
@@ -853,14 +853,14 @@ if __name__=='__main__':
         'size_policy': ('minimum', 'minimum')}),
     'combobox_set_trackbar_blob': (
       'combobox',{
-        'options':map(lambda v:'blob:'+str(v),range(6)),
+        'options':['blob:'+str(v) for v in range(6)],
         'index': 0,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
         'onactivated': lambda w,obj:pm.fv.CallSrv('set_trackbar_mode','BlobTracker',obj.currentIndex()) }),
     'combobox_set_trackbar_pxv': (
       'combobox',{
-        'options':map(lambda v:'pxv:'+str(v),range(7)),
+        'options':['pxv:'+str(v) for v in range(7)],
         'index': 0,
         'font_size_range': (8,24),
         'size_adjust_policy': 'all_contents',
@@ -1288,7 +1288,7 @@ if __name__=='__main__':
 
   #Since the ontopicshzupdated signal is emitted from ProcessManager,
   #we connect the ontopicshzupdated slots of panel to it.
-  for w_name, (w_type, w_param) in panel.widgets_in.iteritems():
+  for w_name, (w_type, w_param) in panel.widgets_in.items():
     if 'ontopicshzupdated' in w_param and w_param['ontopicshzupdated'] is not None:
       pm.ontopicshzupdated.connect(lambda w_param=w_param,w_name=w_name: w_param['ontopicshzupdated'](panel,panel.widgets[w_name]))
 

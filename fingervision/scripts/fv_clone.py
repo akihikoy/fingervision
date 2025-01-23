@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    fv_clone.py
 #\brief   Creating a clone of fv_core_node.
 #         This script is to be used for a system with small CPU power

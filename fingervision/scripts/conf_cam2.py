@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    conf_cam2.py
 #\brief   Camera configuration tool ver.2.
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -31,21 +31,23 @@ import re
 def ExecCmd(cmd):
   p= subprocess.Popen(cmd, stdout=subprocess.PIPE)
   (stdout, stderr)= p.communicate()
+  if stdout is not None:  stdout= stdout.decode('utf-8').strip()
+  if stderr is not None:  stderr= stderr.decode('utf-8').strip()
   exit_code= p.wait()
-  return stdout.strip() if stdout is not None else stdout, stderr.strip() if stderr is not None else stderr, exit_code
+  return stdout, stderr, exit_code
 
 def EncodeDictB64(d, with_compress=True):
   d_yaml= yaml.dump(d)
-  if with_compress:  d_yaml_c= zlib.compress(d_yaml)
-  else:  d_yaml_c= d_yaml
-  d_b64= base64.b64encode(d_yaml_c)
+  if with_compress:  d_yaml_c= zlib.compress(d_yaml.encode('utf-8'))
+  else:  d_yaml_c= d_yaml.encode('utf-8')
+  d_b64= base64.b64encode(d_yaml_c).decode('utf-8')
   return d_b64
 
 def DecodeDictB64(d_b64, with_compress=True):
-  d_yaml_c= base64.b64decode(d_b64)
+  d_yaml_c= base64.b64decode(d_b64.encode('utf-8'))
   if with_compress:  d_yaml= zlib.decompress(d_yaml_c)
   else:  d_yaml= d_yaml_c
-  d= yaml.load(d_yaml)
+  d= yaml.load(d_yaml.decode('utf-8'), Loader=yaml.SafeLoader)
   return d
 
 def SetCtrlValue(cam_dev, ctrl, value):
@@ -53,7 +55,7 @@ def SetCtrlValue(cam_dev, ctrl, value):
   stdout,stderr,ec= ExecCmd(['uvcdynctrl', '-d', os.path.realpath(cam_dev), '-s', ctrl, '--', str(value)])
 
 def SetCtrlValues(cam_dev, ctrl_values):
-  for ctrl,value in ctrl_values.iteritems():
+  for ctrl,value in ctrl_values.items():
     SetCtrlValue(cam_dev, ctrl, value)
 
 def LoadFromYAML(filename):
@@ -75,14 +77,14 @@ if __name__=='__main__':
   values= sys.argv[2]
 
   if values.startswith('yaml:'):
-    d= yaml.load(values[5:])
+    d= yaml.load(values[5:], Loader=yaml.SafeLoader)
   elif values.startswith('b64:'):
     d= DecodeDictB64(values[4:])
   elif values.startswith('file:'):
     keys_filename= values[5:].split(':')
     filename= keys_filename[-1]
     keys= [int(key) if re.match(r'\+?[0-9]+',key) else key for key in keys_filename[:-1]]
-    #d= yaml.load(open(filename,'r').read())
+    #d= yaml.load(open(filename,'r').read(), Loader=yaml.SafeLoader)
     d= LoadFromYAML(filename)
     for key in keys:  d= d[key]
   else:

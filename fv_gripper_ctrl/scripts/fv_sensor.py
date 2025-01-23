@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import roslib; roslib.load_manifest('fv_gripper_ctrl')
 import rospy
 from ay_py.core import *
@@ -34,11 +34,11 @@ def GetFVSrvDict(fv_names, node_names=None):
         fv_names[LEFT]:     LEFT,
         }
   if config['srv_separated']:
-    for srv in SRV_TO_TYPE.iterkeys():
+    for srv in SRV_TO_TYPE.keys():
       config[srv+'_r']= '/fingervision/{}/{}'.format(node_names[RIGHT],srv)
       config[srv+'_l']= '/fingervision/{}/{}'.format(node_names[LEFT],srv)
   else:
-    for srv in SRV_TO_TYPE.iterkeys():
+    for srv in SRV_TO_TYPE.keys():
       config[srv]= '/fingervision/{}/{}'.format(node_names,srv)
   return config
 
@@ -61,11 +61,11 @@ class TFVSensor(TROSUtil):
   def __del__(self):
     self.Cleanup()
     if TFVSensor is not None:  super(TFVSensor,self).__del__()
-    print 'TFVSensor: done',self
+    print('TFVSensor: done',self)
 
   def Cleanup(self):
     self.Stop()
-    for k in self.callback.keys():
+    for k in list(self.callback.keys()):
       self.callback[k]= None  #We do not delete
     if TFVSensor is not None:  super(TFVSensor,self).Cleanup()
 
@@ -91,9 +91,9 @@ class TFVSensor(TROSUtil):
               or None (node_names==fv_names).
   '''
   def SetupFV(self, fv_names, node_names=None, service_only=False, timeout=6.0, with_thread=False):
-    print '''Setup FV:
+    print('''Setup FV:
     fv_names: {fv_names}
-    node_names: {node_names}'''.format(fv_names=fv_names,node_names=node_names)
+    node_names: {node_names}'''.format(fv_names=fv_names,node_names=node_names))
 
     if not service_only:
       self.callback.fv_wrench= [None,None]  #Callbacks in Filter1WrenchCallback
@@ -121,7 +121,7 @@ class TFVSensor(TROSUtil):
       l.running= True
 
     self.config= GetFVSrvDict(fv_names,node_names)
-    print 'Configured info with:',fv_names,node_names
+    print('Configured info with:',fv_names,node_names)
 
     if with_thread:
       threads= {}
@@ -138,7 +138,7 @@ class TFVSensor(TROSUtil):
             name= srv
             threads[name]= threading.Thread(name=name, target=lambda:
                 self.AddSrvP(name, self.config[name], srvtype, persistent=False, time_out=timeout))
-      for name,th in threads.iteritems():  th.join()
+      for name,th in threads.items():  th.join()
     else:
       try:
         if self.config['srv_separated']:
@@ -153,7 +153,7 @@ class TFVSensor(TROSUtil):
               if not self.AddSrvP(srv, self.config[srv], srvtype, persistent=False, time_out=timeout):
                 raise StopIteration()
       except StopIteration:
-        print 'SetupFV: Stopped service connection trial due to a failure.'
+        print('SetupFV: Stopped service connection trial due to a failure.')
 
     if not service_only:
       self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback)
@@ -161,7 +161,7 @@ class TFVSensor(TROSUtil):
 
   #Stop subscribing topics.
   def Stop(self):
-    print 'Stopping','fv'
+    print('Stopping','fv')
     self.data.running= False
     if 'fv_wrench' in self.callback:  self.callback.fv_wrench= [None,None]
     if 'fv_objinfo' in self.callback:  self.callback.fv_objinfo= [None,None]
@@ -170,18 +170,18 @@ class TFVSensor(TROSUtil):
     for srv in ('fv_filter1_wrench','fv_filter1_objinfo'):
       self.DelSub(srv)
     if self.config['srv_separated']:
-      for srv in SRV_TO_TYPE.iterkeys():
+      for srv in SRV_TO_TYPE.keys():
         self.DelSrvP(srv+'_r')
         self.DelSrvP(srv+'_l')
     else:
-      for srv in SRV_TO_TYPE.iterkeys():
+      for srv in SRV_TO_TYPE.keys():
         self.DelSrvP(srv)
 
   def Filter1WrenchCallback(self, msg):
     side= self.config[msg.fv]
     l= self.data
-    l.posforce_array[side]= np.array(msg.posforce_array).reshape(len(msg.posforce_array)/5,5).tolist()
-    l.force_array[side]= np.array(msg.force_array).reshape(len(msg.force_array)/6,6).tolist()
+    l.posforce_array[side]= np.array(msg.posforce_array).reshape(len(msg.posforce_array)//5,5).tolist()
+    l.force_array[side]= np.array(msg.force_array).reshape(len(msg.force_array)//6,6).tolist()
     l.dstate_array[side]= msg.dstate_array
     l.force[side]= msg.force
     l.dstate[side]= msg.dstate

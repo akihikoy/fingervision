@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys, termios
 import time
@@ -64,6 +64,7 @@ class TKBHit:
   #Print a character
   def PutCh(self,ch):
     sys.stdout.write(ch)
+    sys.stdout.flush()
 
   #Get a character
   def GetCh(self):
@@ -81,7 +82,7 @@ class TKBHit:
     #print 'dr:',dr
     #print 'dw:',dw
     #print 'de:',de
-    return dr <> []
+    return dr != []
 
   #Get a keyboard hit
   def KBHit(self, echo=False, timeout=0):
@@ -168,6 +169,7 @@ if __name__ == '__main__':
       #while kbhit(): getch()  #Clear buffer
     #else:
       #sys.stdout.write('no kbhit\n')
+      #sys.stdout.flush()
       #while kbhit():
         #ch= getch()  #Get the last one of buffer
         #sys.stdout.write('>>>> %s\n'%ch)
@@ -179,5 +181,5 @@ if __name__ == '__main__':
       time.sleep(0.05)
     sys.stdout.write('\n')
 
-  print 'done'
+  print('done')
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #\file    test_qt1.py
 #\brief   Example of fv_py with Qt (the images are rendered with OpenCV).
 #\author  Akihiko Yamaguchi, info@akihikoy.net
@@ -11,7 +11,7 @@ import fv
 import sys
 from rate_adjust3 import TRateAdjuster
 import multiprocessing as mp
-import Queue
+import queue
 from PyQt4 import QtCore, QtGui
 
 def FVLoop(config_file, queue_cmd, queue_out):
@@ -30,13 +30,13 @@ def FVLoop(config_file, queue_cmd, queue_out):
         fv.ShowWindows()
       elif cmd=='calib_0':
         name= fv.GetDisplayImageList()[0]
-        print 'Calibrating {}...'.format(name)
+        print('Calibrating {}...'.format(name))
         fv.SetCalibrationRequest(name)
       elif cmd=='calib_1':
         name= fv.GetDisplayImageList()[1]
-        print 'Calibrating {}...'.format(name)
+        print('Calibrating {}...'.format(name))
         fv.SetCalibrationRequest(name)
-    except Queue.Empty:
+    except queue.Empty:
       pass
     fv.DisplayImages()
     rate.Sleep()
