@@ -32,6 +32,7 @@ def Loop(fvg):
   g_pos= fvg.GripperPosition()
   while fvg.script_is_active and not rospy.is_shutdown():
     slips,num_fc= slip_detect2(),num_force_change.Get(fvg,fv_data)
+    if num_fc is None:  num_fc= 0
     if num_fc>fvg.fv_ctrl_param.openif_nforce_threshold:
       CPrint(2,'Detected num_force_change=,',num_fc)
       g_pos= fvg.GripperPosition()+fvg.fv_ctrl_param.openif_dw_grip
