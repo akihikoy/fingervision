@@ -29,12 +29,15 @@ import subprocess
 import rospy
 import rospkg
 from ay_py.core import InsertDict, LoadYAML, SaveYAML, CPrint
+from ay_py.ros import SetupServiceProxy
 from ay_py.tool.py_panel import TSimplePanel, InitPanelApp, RunPanelApp, AskYesNoDialog, QtCore, QtGui
 sys.path.append(os.path.join(rospkg.RosPack().get_path('ay_util'),'scripts'))
 from proc_manager import TSubProcManager
 from joy_fv import TJoyEmulator
 from topic_monitor import TTopicMonitor
 import std_msgs.msg
+import std_srvs.srv
+import fingervision_msgs.srv
 import fv_sensor
 import numpy as np
 
@@ -50,6 +53,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
     self.pub= {}
     self.sub= {}
+    self.srvp= {}
 
     TTopicMonitor.__init__(self, topics_to_monitor)
     self.thread_topics_hz_callback= lambda: self.ontopicshzupdated.emit()
@@ -92,6 +96,26 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
 
   def SetupGripper(self):
     self.pub['set_target_pos']= rospy.Publisher('/fv_gripper_ctrl/set_target_pos', std_msgs.msg.Float64, queue_size=1)
+    self.srvp['run_script']= SetupServiceProxy('/fv_gripper_ctrl/run_script', fingervision_msgs.srv.SetString, persistent=False, time_out=15.0)
+    self.srvp['stop_script']= SetupServiceProxy('/fv_gripper_ctrl/stop_script', std_srvs.srv.Empty, persistent=False, time_out=5.0)
+
+  def FVGSetTargetPos(self, pos):
+    if 'set_target_pos' not in self.pub:
+      CPrint(4,'fv_gripper_ctrl is not ready.')
+      return
+    self.pub['set_target_pos'].publish(std_msgs.msg.Float64(pos))
+
+  def FVGRunScript(self, script_name):
+    if 'run_script' not in self.srvp:
+      CPrint(4,'fv_gripper_ctrl is not ready.')
+      return
+    self.srvp['run_script'](fingervision_msgs.srv.SetStringRequest(script_name))
+
+  def FVGStopScript(self):
+    if 'stop_script' not in self.srvp:
+      CPrint(4,'fv_gripper_ctrl is not ready.')
+      return
+    self.srvp['stop_script'](std_srvs.srv.EmptyRequest())
 
   def StopGripper(self):
     pass
@@ -674,33 +698,27 @@ if __name__=='__main__':
       'button',{
         'text':'Grasp',
         #'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj:set_joy('grasp_on',is_active=1),  }),
+        'onclick': lambda w,obj:pm.FVGRunScript('fv.grasp'),  }),
     'btn_hold': (
       'button',{
         'text':'Hold',
         #'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj:set_joy('hold_on',is_active=1),   }),
+        'onclick': lambda w,obj:pm.FVGRunScript('fv.hold'),   }),
     'btn_openif': (
       'button',{
         'text':'OpenIf',
         #'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj:set_joy('openif_on',is_active=1),   }),
+        'onclick': lambda w,obj:pm.FVGRunScript('fv.openif'),   }),
     'btn_stop': (
       'button',{
         'text':'Stop',
         #'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj:(
-                    set_joy('grasp_off'),
-                    rospy.sleep(0.05),
-                    set_joy('hold_off'),
-                    rospy.sleep(0.05),
-                    set_joy('openif_off'),
-                    ),   }),
+        'onclick': lambda w,obj:pm.FVGStopScript(),   }),
     'btn_grip_open': (
       'button',{
         'text': 'Open',
         #'size_policy': ('expanding', 'fixed'),
-        'onclick': lambda w,obj:(set_joy('open'),), }),
+        'onclick': lambda w,obj:pm.FVGRunScript('fv.open'), }),
     'label_grip': (
       'label',{
         'text': 'Gripper: ',
@@ -711,6 +729,7 @@ if __name__=='__main__':
         'kind':'hbox',
         'stick_color':[255,128,128],
         'size_policy': ('expanding','expanding'),
+        #'onstickmoved': lambda w,obj,pm=pm:pm.FVGSetTargetPos(pm.gripper_pos-0.04*obj.position()[0]), }),  # NOTE: this does not work like a velocity control as onstickmoved is emitted only when the position is changed.
         'onstickmoved': lambda w,obj:set_joy('grip',obj.position(),is_active=1), }),
     'lineedit_g_trg': (
       'lineedit',{
@@ -723,7 +742,7 @@ if __name__=='__main__':
         'text': 'Go',
         'font_size_range': (8,24),
         'size_policy': ('expanding', 'minimum'),
-        'onclick': lambda w,obj:(pm.pub['set_target_pos'].publish(std_msgs.msg.Float64(float(w.widgets['lineedit_g_trg'].text())))
+        'onclick': lambda w,obj:(pm.FVGSetTargetPos(float(w.widgets['lineedit_g_trg'].text()))
                                  if w.widgets['lineedit_g_trg'].text()!='' else None,), }),
     }
 

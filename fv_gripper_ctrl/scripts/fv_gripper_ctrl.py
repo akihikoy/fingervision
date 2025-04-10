@@ -288,6 +288,15 @@ class TFVGripper(TROSUtil):
       mid= viz.AddCoord(Transform(xw,lw_xe), scale=[0.01,0.001], alpha=1.0, mid=mid)
     viz.Publish()
 
+  #Return a list of script names (including all python scripts in the script directory).
+  def GetScriptNameList(self):
+    script_dir= 'fv'
+    curr_dir= os.path.dirname(__file__)
+    script_dir_cmp= os.path.join(curr_dir,script_dir)
+    script_name_list= [f'fv.{f[:-3]}' for f in sorted(os.listdir(script_dir_cmp))
+                       if f.endswith('.py') and not f.startswith('__')]
+    return script_name_list
+
   def LoadScript(self, script_name):
     try:
       mod= SmartImportReload(script_name)
@@ -296,11 +305,31 @@ class TFVGripper(TROSUtil):
       print('No script named: {}'.format(script_name))
     return None
 
-  def GetSensorFunctions(self, sensor_name):
-    mod= self.LoadScript(sensor_name)
+  def GetScriptType(self, script_name):
+    mod= self.LoadScript(script_name)
+    if mod is None:  return None
+    if getattr(mod,'Get',None) is not None:  return 'sensor'
+    if getattr(mod,'Run',None) is not None:  return 'run'
+    if getattr(mod,'Loop',None) is not None:  return 'loop'
+    return None
+
+  def GetSensorFunctions(self, script_name):
+    mod= self.LoadScript(script_name)
     if mod is None:  return None,None
     f_reset,f_get= getattr(mod,'Reset',None), getattr(mod,'Get',None)
     return f_reset,f_get
+
+  def GetScriptFunctions(self, script_name):
+    mod= self.LoadScript(script_name)
+    if mod is None:  return None,None
+    f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
+    if f_run is None and f_loop is None:
+      print('In script {}, both Run and Loop are not defined'.format(script_name))
+      return None,None
+    if f_run is not None and f_loop is not None:
+      print('In script {}, both Run and Loop are defined'.format(script_name))
+      return None,None
+    return f_run,f_loop
 
   #Load sensor scripts specified by sensor_name_list.
   #  run_reset: Control the timing to run Reset function:
@@ -347,31 +376,20 @@ class TFVGripper(TROSUtil):
                     for sensor_name,d in self.sensors.items()]
     return msg
 
-  def GetScriptFunctions(self, script_name):
-    mod= self.LoadScript(script_name)
-    if mod is None:  return None,None
-    f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
-    if f_run is None and f_loop is None:
-      print('In script {}, both Run and Loop are not defined'.format(script_name))
-      return None,None
-    if f_run is not None and f_loop is not None:
-      print('In script {}, both Run and Loop are defined'.format(script_name))
-      return None,None
-    return f_run,f_loop
-
   def RunScript(self, script_name, with_update_params=True):
-    self.StopScript()
+    #self.StopScript()  #Moved below to enable the simultaneous execution of f_run and f_loop.
     if with_update_params:  self.LoadCtrlParams()  #TODO:FIXME:This is tentative.
     f_run,f_loop= self.GetScriptFunctions(script_name)
     if f_run is not None:
-      self.script_is_active= True
+      #self.script_is_active= True  #Removed to enable the simultaneous execution of f_run and f_loop.
       CPrint(2,'{} is called'.format(script_name))
       try:
         f_run(self)
       except Exception as e:
         print('Script {} error in Run: {}'.format(script_name, e))
-      self.script_is_active= False
+      #self.script_is_active= False  #Removed to enable the simultaneous execution of f_run and f_loop.
     elif f_loop is not None:
+      self.StopScript()
       self.script_is_active= True
       self.script_thread= threading.Thread(name=script_name,
                                            target=lambda:self.ScriptLoopExecutor(f_loop))
@@ -430,29 +448,7 @@ class TFVGripper(TROSUtil):
     return g_target
 
   def CtrlLoop(self):
-    #TODO:FIXME:Put in the param list.
-    sensor_name_list= [
-      'fv.area_l',
-      'fv.area_r',
-      'fv.area',
-      'fv.center_l',
-      'fv.center_r',
-      'fv.d_center_l',
-      'fv.d_center_r',
-      'fv.da_area',
-      'fv.da_center_norm',
-      'fv.da_orientation',
-      'fv.force_l',
-      'fv.force_r',
-      'fv.is_detected_l',
-      'fv.is_detected_r',
-      'fv.num_force_change',
-      'fv.orientation_l',
-      'fv.orientation_r',
-      'fv.slip_l',
-      'fv.slip_r',
-      'fv.slip',
-      ]
+    sensor_name_list= [s for s in self.GetScriptNameList() if self.GetScriptType(s)=='sensor']
     self.LoadAllSensors(sensor_name_list)
 
     if self.gripper.Is('DxlGripper'):
@@ -578,12 +574,9 @@ class TFVGripper(TROSUtil):
     self.fv_ctrl_param.effort= 100.0
 
     #Load default control parameters of scripts.
-    curr_dir= os.path.dirname(__file__)
-    for script in sorted(os.listdir(os.path.join(curr_dir,'fv'))):
-      if not script.endswith('.py'):  continue
-      mod= self.LoadScript('fv.{}'.format(script[:-3]))
+    for script in self.GetScriptNameList():
+      mod= self.LoadScript(script)
       f_set= getattr(mod,'SetDefaultParams',None)
-      #print 'debug',script,'fv.{}'.format(script[:-3]),f_set
       if f_set is None:  continue
       f_set(self)
 

@@ -9,7 +9,7 @@ force_r= SmartImportReload('fv.force_r')
 def Help():
   return 'Set zero the force_l and force_r values.'
 
-def Loop(fvg):
+def Run(fvg):
   fv_data= fvg.fv.data
   force_l.SetZero(fvg, fv_data)
   force_r.SetZero(fvg, fv_data)
