@@ -13,9 +13,12 @@ import rospy
 import rospkg
 sys.path.append(os.path.join(rospkg.RosPack().get_path('fv_gripper_ctrl'),'scripts'))
 from fv_gripper_ctrl import DecodeNamedVariableMsg,DecodeNamedVariableListMsg
-from ay_py.core import LoadYAML, TimeStr
-import fingervision_msgs.msg
+from ay_py.core import LoadYAML, TimeStr, CPrint, PrintException
+from ay_py.ros import TROSUtil
 import std_msgs.msg
+import std_srvs.srv
+import fingervision_msgs.msg
+import fingervision_msgs.srv
 import numpy as np
 
 
@@ -73,18 +76,26 @@ class TFVSignalListenerForLog(TFVSignalListener):
     self.file_name= file_name
     self.with_label_line= with_label_line
     super(TFVSignalListenerForLog,self).__init__(fvsignal_list, data_skip)
+    self.logging= True
+    self.fp= None
 
   def __enter__(self, *args, **kwargs):
     self.fp= open(self.file_name,'w')
     if self.with_label_line:
       labels= [label for (signal_name,label,axis,index) in self.fvsignal_list]
       self.fp.write('%time {}\n'.format(' '.join(labels)))
+    print(f'Start logging to {self.file_name}')
     return self
 
   def __exit__(self, *args, **kwargs):
     self.fp.close()
+    self.fp= None
+    print(f'Finished logging to {self.file_name}')
 
   def UpdateValues(self):
+    if not self.logging:  return False
+    if self.fp is None:  return False
+
     fvsignals_decoded,time_stamp= self.Decode(self.signal_names)
     if fvsignals_decoded is None:  return False
     #print fvsignals_decoded
@@ -94,35 +105,153 @@ class TFVSignalListenerForLog(TFVSignalListener):
     self.fp.write('{} {}\n'.format(time_stamp,' '.join(map(str,new_values))))
 
 
+#Make a log file name from the prefix.
+def MakeLogFileName(file_prefix, time_stamp_fmt='short2'):
+  return '{}{}.dat'.format(file_prefix, TimeStr(time_stamp_fmt))
+
+#Load (convert) signal_list from a text(str).
+def LoadSignalListFromText(signal_list):
+  signal_list= eval(signal_list)
+  signal_list= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in signal_list if enabled]
+  return signal_list
+
+#Load signal_list from a file.
+def ReloadSignalList(signal_list_file):
+  signal_list= LoadYAML(signal_list_file)
+  signal_list= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in signal_list if enabled]
+  return signal_list
+
+
+'''
+Interface ROS node of FV signal logger.
+This node is designed to work in background and make logs only when requested.
+The subscription to the data (such as fvsignals) is done only during logging
+to minimize the CPU usage.
+'''
+class TFVSignalLoggerNode(TROSUtil):
+  def __init__(self, log_file_prefix, signal_list_file, signal_list, data_skip, with_label_line=True):
+    super(TFVSignalLoggerNode,self).__init__()
+    self.log_file_prefix  = log_file_prefix
+    self.signal_list_file = signal_list_file
+    self.signal_list      = signal_list
+    self.data_skip        = data_skip
+    self.with_label_line  = with_label_line
+    self.fvsignal_listener= None
+
+  def __del__(self):
+    self.Cleanup()
+    if TFVSignalLoggerNode is not None:  super(TFVSignalLoggerNode,self).__del__()
+    print('TFVSignalLoggerNode: done',self)
+
+  def Cleanup(self):
+    if TFVSignalLoggerNode is not None:  super(TFVSignalLoggerNode,self).Cleanup()
+
+  def Setup(self):
+    def add_srv_s(name, f_method):
+      self.AddSrv(name, f'~{name}', fingervision_msgs.srv.SetString,
+                  lambda req:(f_method(req.data),
+                              fingervision_msgs.srv.SetStringResponse())[-1])
+    def add_srv_e(name, f_method):
+      self.AddSrv(name, f'~{name}', std_srvs.srv.Empty,
+                  lambda req:(f_method(), std_srvs.srv.EmptyResponse())[-1])
+    add_srv_s('set_log_file_prefix', self.SetLogFilePrefix  )
+    add_srv_s('set_signal_list_file', self.SetSignalListFile )
+    add_srv_s('set_signal_list', self.SetSignalList )
+    add_srv_e('reload_signal_list', self.ReloadSignalList )
+    add_srv_e('start', self.Start )
+    add_srv_e('pause', self.Pause )
+    add_srv_e('finish', self.Finish )
+
+    self.fvsignal_listener= None
+
+  def SetLogFilePrefix(self, log_file_prefix):
+    self.log_file_prefix= log_file_prefix
+
+  def SetSignalListFile(self, signal_list_file):
+    self.signal_list_file= signal_list_file
+
+  def SetSignalList(self, signal_list):
+    try:
+      self.signal_list= LoadSignalListFromText(signal_list)
+    except Exception as e:
+      PrintException(e)
+
+  def ReloadSignalList(self):
+    if self.signal_list_file is None:
+      CPrint(4, f'ReloadSignalList is requested, but signal_list_file is not specified.')
+      return
+    if not os.path.exists(self.signal_list_file):
+      CPrint(4, f'In ReloadSignalList, signal_list_file does not exist: {self.signal_list_file}.')
+      return
+    self.signal_list= ReloadSignalList(signal_list_file)
+
+  def Start(self):
+    if self.fvsignal_listener is not None:
+      self.fvsignal_listener.logging= True
+      return
+    file_name= MakeLogFileName(self.log_file_prefix)
+    self.fvsignal_listener= TFVSignalListenerForLog(file_name, self.signal_list, self.data_skip, self.with_label_line)
+    self.fvsignal_listener.__enter__()
+
+  def Pause(self):
+    if self.fvsignal_listener is not None:
+      self.fvsignal_listener.logging= False
+
+  def Finish(self):
+    if self.fvsignal_listener is not None:
+      self.fvsignal_listener.logging= False
+      self.fvsignal_listener.__exit__()
+      self.fvsignal_listener= None
+
+
 if __name__=='__main__':
   def get_arg(opt_name, default):
     exists= [a.startswith(opt_name) for a in sys.argv]
     if any(exists):  return sys.argv[exists.index(True)].replace(opt_name,'')
     else:  return default
+  #File name prefix of a log file.
   file_prefix= get_arg('-file_prefix=',get_arg('--file_prefix=','/tmp/log-'))
+  #Disable to put a label line at the beginning of the data.
   no_label_line= '-no_label_line' in sys.argv or '--no_label_line' in sys.argv
+  #Interval (int) to skip the data sequence to reduce the computation cost.
   data_skip= int(get_arg('-data_skip=',get_arg('--data_skip=',0)))
-  logs= get_arg('-logs=',get_arg('--logs=',None))
+  #List of signal names to log.
+  signal_list= get_arg('-logs=',get_arg('--logs=',None))
+  #Making the node executed persistently (which can accept multiple log requests via ROS services).
+  persistent_mode= '-persistent_mode' in sys.argv or '--persistent_mode' in sys.argv
   assert(file_prefix is not None)
-  if logs is not None:
-    if os.path.exists(logs):
-      logs= LoadYAML(logs)
+  signal_list_file= None
+  if signal_list is not None:
+    if os.path.exists(signal_list):
+      signal_list_file= signal_list
+      signal_list= ReloadSignalList(signal_list_file)
     else:
-      logs= eval(logs)
-  if logs is None:
+      signal_list= LoadSignalListFromText(signal_list)
+  if signal_list is None:
     #List of (signal name, label, axis (1 or 2), tuple of value-index (specify None for scalar), enabled).
     #NOTE: axis is only used by plotter, ignored by the logger.
-    logs= [('fv.slip','slip',1,None, True),
-            ('fv.area','area',1,None, True),
-            ('fv.center_l','center_l_y',1,1, True),
-            ('gripper_pos','gpos',2,None, True),
-            ('target_pos','gpos_trg',2,None, True)]
-  print('logs=',logs)
-
-  logs= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in logs if enabled]
+    signal_list= [('fv.slip','slip',1,None, True),
+                  ('fv.area','area',1,None, True),
+                  ('fv.center_l','center_l_y',1,1, True),
+                  ('gripper_pos','gpos',2,None, True),
+                  ('target_pos','gpos_trg',2,None, True)]
+    signal_list= [(signal_name,label,axis,index) for (signal_name,label,axis,index,enabled) in signal_list if enabled]
+  print(f'Logger: signal_list= {signal_list}')
 
   rospy.init_node('fvsignal_log')
-  file_name= '{}{}.dat'.format(file_prefix, TimeStr('short2'))
-  with TFVSignalListenerForLog(file_name, logs, data_skip, not no_label_line) as fvsignal_listener:
-    rospy.spin()
+  print(f'Logger: persistent_mode= {persistent_mode}')
+
+  if not persistent_mode:
+    file_name= MakeLogFileName(file_prefix)
+    with TFVSignalListenerForLog(file_name, signal_list, data_skip, not no_label_line) as fvsignal_listener:
+      rospy.spin()
+  else:
+    logger_node= TFVSignalLoggerNode(file_prefix, signal_list_file, signal_list, data_skip, not no_label_line)
+    try:
+      logger_node.Setup()
+      rospy.spin()
+    finally:
+      logger_node.Finish()
+
+
 
