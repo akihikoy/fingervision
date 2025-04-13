@@ -219,6 +219,58 @@ def JoyCallback(state, steps, wsteps, gsteps, data):
     state[3]= True
 
 
+#Interface of TFVSignalLoggerNode.
+class TFVSignalLoggerInterface(TROSUtil):
+  #node: name of the logger node.
+  def __init__(self, node='fvsignal_log'):
+    super(TFVSignalLoggerInterface,self).__init__()
+    self.node= node
+
+  def __del__(self):
+    self.Cleanup()
+    if TFVSignalLoggerInterface is not None:  super(TFVSignalLoggerInterface,self).__del__()
+    print('TFVSignalLoggerInterface: done',self)
+
+  def Cleanup(self):
+    if TFVSignalLoggerInterface is not None:  super(TFVSignalLoggerInterface,self).Cleanup()
+
+  def Setup(self):
+    def add_srvp_s(name):
+      self.AddSrvP(name, f'/{self.node}/{name}', fingervision_msgs.srv.SetString,
+                   persistent=False, time_out=None, wait_mode='no_wait')
+    def add_srvp_e(name):
+      self.AddSrvP(name, f'/{self.node}/{name}', std_srvs.srv.Empty,
+                   persistent=False, time_out=None, wait_mode='no_wait')
+    add_srvp_s('set_log_file_prefix')
+    add_srvp_s('set_signal_list_file')
+    add_srvp_s('set_signal_list')
+    add_srvp_e('reload_signal_list')
+    add_srvp_e('start')
+    add_srvp_e('pause')
+    add_srvp_e('finish')
+
+  def SetLogFilePrefix(self, log_file_prefix):
+    return self.srvp.set_log_file_prefix(log_file_prefix).result
+
+  def SetSignalListFile(self, signal_list_file):
+    return self.srvp.set_signal_list_file(signal_list_file).result
+
+  def SetSignalList(self, signal_list):
+    return self.srvp.set_signal_list(signal_list).result
+
+  def ReloadSignalList(self):
+    self.srvp.reload_signal_list()
+
+  def Start(self):
+    self.srvp.start()
+
+  def Pause(self):
+    self.srvp.pause()
+
+  def Finish(self):
+    self.srvp.finish()
+
+
 class TFVGripper(TROSUtil):
   def __init__(self):
     super(TFVGripper,self).__init__()
@@ -226,6 +278,7 @@ class TFVGripper(TROSUtil):
     self.gripper= None  #Gripper driver.
     self.g_param= None  #Gripper parameter dict.
     self.fv= fv_sensor.TFVSensor()  #FV sensor utility.
+    self.logger= TFVSignalLoggerInterface()  #Logger utility.
     self.frame_id= 'base_link'
     self.fv_ctrl_param= TContainer()
     self.cnt= TContainer()  #Utility container for the scripts.
@@ -254,6 +307,7 @@ class TFVGripper(TROSUtil):
   def Setup(self, gripper_type, gripper_node, fv_names, fv_nodes):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node)
     self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
+    self.logger.Setup()
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
     self.LoadCtrlParams()
 
@@ -376,6 +430,15 @@ class TFVGripper(TROSUtil):
                     for sensor_name,d in self.sensors.items()]
     return msg
 
+  '''
+  Run a script specified by script_name.
+  This function automatically decides the execution behavior according to the type of the script.
+  I.e., one shot execution (which has a `Run` function) or loop type execution (which has a `Loop` function)
+  is automatically decided.
+  cf. fv/README.md
+  Parameters:
+    with_update_params: If True, LoadCtrlParams is executed at the beginning.
+  '''
   def RunScript(self, script_name, with_update_params=True):
     #self.StopScript()  #Moved below to enable the simultaneous execution of f_run and f_loop.
     if with_update_params:  self.LoadCtrlParams()  #TODO:FIXME:This is tentative.

@@ -147,6 +147,8 @@ class TFVSignalLoggerNode(TROSUtil):
     if TFVSignalLoggerNode is not None:  super(TFVSignalLoggerNode,self).Cleanup()
 
   def Setup(self):
+    self.AddPub('status','~status',std_msgs.msg.Empty,queue_size=1)
+
     def add_srv_s(name, f_method):
       self.AddSrv(name, f'~{name}', fingervision_msgs.srv.SetString,
                   lambda req:(f_method(req.data),
@@ -203,6 +205,13 @@ class TFVSignalLoggerNode(TROSUtil):
       self.fvsignal_listener.__exit__()
       self.fvsignal_listener= None
 
+  #Waiting loop where the status topic is published at a low frequency.
+  def Spin(self):
+    rate_adjuster= rospy.Rate(1)
+    while not rospy.is_shutdown():
+      self.pub.status.publish(std_msgs.msg.Empty())
+      rate_adjuster.sleep()
+
 
 if __name__=='__main__':
   def get_arg(opt_name, default):
@@ -249,7 +258,8 @@ if __name__=='__main__':
     logger_node= TFVSignalLoggerNode(file_prefix, signal_list_file, signal_list, data_skip, not no_label_line)
     try:
       logger_node.Setup()
-      rospy.spin()
+      #rospy.spin()
+      logger_node.Spin()
     finally:
       logger_node.Finish()
 

@@ -341,7 +341,7 @@ if __name__=='__main__':
     'rviz': ['rosrun rviz rviz -d {0}'.format(RVIZ_CONFIG),'bg'],
     'fv_gripper_ctrl': ['rosrun fv_gripper_ctrl fv_gripper_ctrl.py _gripper_type:={GRIPPER_TYPE} _fv_names:={FV_NAMES_STR} _is_sim:=False','bg'],
     'fvsignal_plot': ['rosrun fv_gripper_ctrl fvsignal_plot.py --plots={PLOT_LOGGER_CONFIG}','bg'],
-    'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX}','bg'],
+    'fvsignal_log': ['rosrun fv_gripper_ctrl fvsignal_log.py --logs={PLOT_LOGGER_CONFIG} --file_prefix={LOG_PREFIX} --persistent_mode','bg'],
     'ln_cams': ['rosrun fingervision ln_cams.sh','fg'],
     'modbus_port_fwd': ['sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-ports 5020','fg'],
     'modbus_server': ['/sbin/fvgripper_modbus_srv.sh --config_protocol={MODBUS_PROTOCOL_CONFIG}','bg'],
@@ -373,6 +373,7 @@ if __name__=='__main__':
     }
   if not sensor_app:
     topics_to_monitor['Gripper']= '/gripper_driver/joint_states'
+  topics_to_monitor['Logger']= '/fvsignal_log/status'
   if with_modbus:
     topics_to_monitor['ModbusSrv']= '/fv_gripper_modbus_srv/status'
     topics_to_monitor['ModbusCli']= '/fv_gripper_modbus_client/status'
@@ -593,14 +594,16 @@ if __name__=='__main__':
                       run_cmd('gripper' if not is_geh60 else 'gripper_geh'),
                       run_cmd('joy'),
                       run_cmd('fv_gripper_ctrl'),
+                      run_cmd('fvsignal_log'),
                       pm.SetupGripper(),
                       w.widgets['btn_init1'].setEnabled(False),
                      ),
                    lambda w,obj:(
                       pm.StopGripper(),
-                      stop_cmd('gripper' if not is_geh60 else 'gripper_geh'),
-                      stop_cmd('joy'),
+                      stop_cmd('fvsignal_log'),
                       stop_cmd('fv_gripper_ctrl'),
+                      stop_cmd('joy'),
+                      stop_cmd('gripper' if not is_geh60 else 'gripper_geh'),
                       w.widgets['btn_init1'].setEnabled(True),
                      ) )}),
     'btn_exit': (
@@ -799,22 +802,31 @@ if __name__=='__main__':
       'button',{
         'text':'r_blob',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','BlobTracker',0),  }),
+        #NOTE: Although we can send calibration request from the script, it requires fv_gripper_ctrl ready.
+        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','BlobTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.reqcalib_r_blob'),
+        }),
     'btn_calib_l_blob': (
       'button',{
         'text':'l_blob',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','BlobTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','BlobTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.reqcalib_l_blob'),
+        }),
     'btn_calib_r_pxv': (
       'button',{
         'text':'r_pxv',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','ObjDetTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvR('req_calibrate','ObjDetTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.reqcalib_r_pxv'),
+        }),
     'btn_calib_l_pxv': (
       'button',{
         'text':'l_pxv',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','ObjDetTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('req_calibrate','ObjDetTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.reqcalib_l_pxv'),
+        }),
     'label_save_calib': (
       'label',{
         'text': 'Save calibration: ',
@@ -824,22 +836,31 @@ if __name__=='__main__':
       'button',{
         'text':'r_blob',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','BlobTracker',0),  }),
+        #NOTE: Although we can send save calibration request from the script, it requires fv_gripper_ctrl ready.
+        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','BlobTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.savecalib_r_blob'),
+        }),
     'btn_save_calib_l_blob': (
       'button',{
         'text':'l_blob',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','BlobTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','BlobTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.savecalib_l_blob'),
+        }),
     'btn_save_calib_r_pxv': (
       'button',{
         'text':'r_pxv',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','ObjDetTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvR('save_calibration','ObjDetTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.savecalib_r_pxv'),
+        }),
     'btn_save_calib_l_pxv': (
       'button',{
         'text':'l_pxv',
         'font_size_range': (8,24),
-        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','ObjDetTracker',0),  }),
+        'onclick': lambda w,obj:pm.fv.CallSrvL('save_calibration','ObjDetTracker',0),
+        #'onclick': lambda w,obj:pm.FVGRunScript('fv.savecalib_l_pxv'),
+        }),
     'label_load_calib': (
       'label',{
         'text': 'Load calibration: ',
@@ -1059,10 +1080,13 @@ if __name__=='__main__':
         'text':('Log','Stop log'),
         'font_size_range': (8,24),
         'onclick':(lambda w,obj:(
-                      run_cmd('fvsignal_log'),
+                      #run_cmd('fvsignal_log'),
+                      pm.FVGRunScript('fv.logger_reload'),
+                      pm.FVGRunScript('fv.logger_start'),
                      ),
                    lambda w,obj:(
-                      stop_cmd('fvsignal_log'),
+                      #stop_cmd('fvsignal_log'),
+                      pm.FVGRunScript('fv.logger_finish'),
                      ) )}),
     }
   layout_plots= (
