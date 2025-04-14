@@ -179,6 +179,9 @@ if __name__=='__main__':
   is_fvsim= True if '-fvsim' in sys.argv or '--fvsim' in sys.argv else False
   #Sensor-only application:
   sensor_app= True if '-sensor_app' in sys.argv or '--sensor_app' in sys.argv else False
+  #Using single FV as two FVs (1/L + clone-of-1):
+  with_fv1to2= True if '-fv1to2' in sys.argv or '--fv1to2' in sys.argv else False
+  #Modbus/TCP support:
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
 
   HOME= os.environ['HOME']
@@ -266,6 +269,7 @@ if __name__=='__main__':
     'IS_GSIM': is_gsim,
     'IS_FVSIM': is_fvsim,
     'SENSOR_APP': sensor_app,
+    'WITH_FV1TO2': with_fv1to2,
     'PLOT_LOGGER_CONFIG': CONFIG_DIR+'/plot_logger.yaml',
     'WINDOW_ALIGNMENT':{
         'fvp_1_l-blob': '0,0,640,480',
@@ -329,6 +333,7 @@ if __name__=='__main__':
     'factory_reset_dxlg':['roslaunch ay_util gripper_reboot.launch gripper_type:={GRIPPER_TYPE} dxldev:=/dev/tty{DXL_USB} command:=FactoryReset','fg'],
     'joy': ['rosrun joy joy_node joy_node {JOY_USB}','bg'],
     'fvp': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG},{FV_L_GUI_CONFIG} config2:={FV_R_CONFIG},{FV_R_GUI_CONFIG}','bg'],
+    'fvp_1to2': ['roslaunch fingervision fvp_general_1to2.launch pkg_dir:={FV_BASE_DIR} config1:={FV_L_CONFIG},{FV_L_GUI_CONFIG}','bg'],
     'fvp_file': ['roslaunch fingervision fvp_general.launch pkg_dir:={FV_FILE_BASE_DIR} config1:={FV_FILE_L_CONFIG},{FV_FILE_L_GUI_CONFIG} config2:={FV_FILE_R_CONFIG},{FV_FILE_R_GUI_CONFIG}','bg'],
     'config_fv_l': ['rosrun fingervision conf_cam2.py {FV_L_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_L_CONFIG}','fg'],
     'config_fv_r': ['rosrun fingervision conf_cam2.py {FV_R_DEV} file:CameraParams:0:{FV_BASE_DIR}/{FV_R_CONFIG}','fg'],
@@ -362,6 +367,9 @@ if __name__=='__main__':
       cmds[c][1]= None
     config['FV_L_GUI_CONFIG']= config['FV_FILE_L_GUI_CONFIG']
     config['FV_R_GUI_CONFIG']= config['FV_FILE_R_GUI_CONFIG']
+  if with_fv1to2:
+    cmds['fvp']= cmds['fvp_1to2']
+    cmds['config_fv_r'][1]= None
   for key in cmds.keys():
     if isinstance(cmds[key][0],str):
       cmds[key][0]= cmds[key][0].format(**config).split(' ')
