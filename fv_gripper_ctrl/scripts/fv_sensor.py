@@ -53,7 +53,7 @@ class TFVSensor(TROSUtil):
     self.config= None
     self.data= TContainer()
     self.callback= TContainer()
-    self.gripper= None
+    self.f_gripper_pos= None  #Function to get the gripper position.
     self.g_param= None
     self.frame_id= None
     self.br= None
@@ -71,13 +71,13 @@ class TFVSensor(TROSUtil):
 
   '''
   Setup the utility.
-  gripper: Gripper utility object.
+  f_gripper_pos: Function to get the gripper position.
   g_param: Gripper parameters.
   frame_id: Frame ID.
   fv_names, node_names: cf. SetupFV()
   '''
-  def Setup(self, gripper, g_param, frame_id, fv_names, node_names=None, service_only=False):
-    self.gripper= gripper
+  def Setup(self, f_gripper_pos, g_param, frame_id, fv_names, node_names=None, service_only=False):
+    self.f_gripper_pos= f_gripper_pos
     self.g_param= g_param
     self.frame_id= frame_id
     self.br= tf.TransformBroadcaster()
@@ -191,9 +191,9 @@ class TFVSensor(TROSUtil):
       self.callback.fv_wrench[side](self, l, side)
 
     #Broadcast the TF of FV.
-    if self.gripper is not None:
+    if self.f_gripper_pos is not None:
       lw_xe= self.g_param['lx']
-      gpos= self.gripper.Position()
+      gpos= self.f_gripper_pos()
       if gpos is not None:
         lw_xg= Transform(lw_xe,[0,(-0.5*gpos,+0.5*gpos)[side],0, 0,0,0,1])
         self.br.sendTransform(lw_xg[0:3],lw_xg[3:],

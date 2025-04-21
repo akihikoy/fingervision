@@ -50,8 +50,8 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     TJoyEmulator.__init__(self)
     self.flag_relaunch= False
     self.node_name= node_name
-    self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
     self.pub= {}
+    self.fv= fv_sensor.TFVSensor()  #FV sensor module to access the FV services.
     self.sub= {}
     self.srvp= {}
 
@@ -88,7 +88,7 @@ class TSubProcManagerJoy(QtCore.QObject, TSubProcManager, TJoyEmulator, TTopicMo
     self.sub['l_pxv_fps']= rospy.Subscriber('/fingervision/fvp_1_l/pxv_fps', std_msgs.msg.Float32, lambda msg:self.TopicCallback('l_pxv_fps',msg))
 
   def SerupFVSrv(self, fv_names, fv_node_names=None):
-    self.fv.Setup(gripper=None, g_param=None, frame_id='base_link',
+    self.fv.Setup(f_gripper_pos=None, g_param=None, frame_id='base_link',
                   fv_names=fv_names, node_names=fv_node_names, service_only=True)
 
   def StopFVSrv(self):

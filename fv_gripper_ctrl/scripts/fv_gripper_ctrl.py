@@ -119,6 +119,17 @@ def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
         'center': [-0.125,0.0,0.0, 0.0,0.0,0.0,1.0],
         }
       }
+  elif gripper_type.startswith('DxlO3Gripper'):
+    mod= importlib.import_module('ay_py.ros.rbt_dxlo3')
+    gripper= mod.TDxlO3Gripper(node_name=gripper_node)
+    gripper.Init()
+    param={
+      'lx': [0.0,0.0,0.192, 0.5,-0.5,0.5,0.5],
+      'bound_box':{
+        'dim': [0.14,0.077,0.192],
+        'center': [0.0,0.0,0.096, 0.0,0.0,0.0,1.0],
+        }
+      }
   elif gripper_type.startswith('DxlpO2Gripper'):
     finger_type= gripper_type.replace('DxlpO2Gripper_','')
     fts= {'Straight1':'st1','SRound1':'sr1','Fork1':'f1'}[finger_type]
@@ -306,7 +317,7 @@ class TFVGripper(TROSUtil):
 
   def Setup(self, gripper_type, gripper_node, fv_names, fv_nodes):
     self.gripper,self.g_param= CreateGripperDriver(gripper_type, gripper_node=gripper_node)
-    self.fv.Setup(self.gripper, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
+    self.fv.Setup(self.GripperPosition, self.g_param, self.frame_id, fv_names=fv_names, node_names=fv_nodes)
     self.logger.Setup()
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
     self.LoadCtrlParams()
@@ -333,7 +344,7 @@ class TFVGripper(TROSUtil):
     bb_center= self.g_param['bound_box']['center']
     mid= viz.AddCube(Transform(xw,bb_center), bb_dim, rgb=viz.ICol(3), alpha=0.5, mid=mid)
     #Visualize finger pads:
-    gpos= self.gripper.Position()
+    gpos= self.GripperPosition()
     if gpos is not None:
       lw_xgl= Transform(lw_xe,[0,+0.5*gpos,0, 0,0,0,1])
       lw_xgr= Transform(lw_xe,[0,-0.5*gpos,0, 0,0,0,1])
@@ -482,9 +493,48 @@ class TFVGripper(TROSUtil):
   def ActiveScript(self):
     return None if self.script_thread is None else self.script_thread.name
 
-  def GripperPosition(self):
-    return self.gripper.Position()
+  '''Return range of gripper. '''
+  def GripperRange(self):
+    if self.gripper.Is('Gripper2F1'):  return self.gripper.PosRange()
+    elif self.gripper.Is('Gripper2F2'):  return self.gripper.PosRange2F1()
 
+  '''Return range of gripper.  '''
+  def GripperRange2(self):
+    return self.gripper.PosRange()
+
+  '''Get a gripper position in meter. '''
+  def GripperPosition(self):
+    if self.gripper.Is('Gripper2F1'):
+      return self.gripper.Position()
+    elif self.gripper.Is('Gripper2F2'):
+      return self.gripper.Position2F1()
+
+  '''Get gripper positions. '''
+  def GripperPosition2(self):
+    self.gripper.Position()
+
+  '''Get a fingertip height offset in meter.
+    The fingertip trajectory of some grippers has a rounded shape.
+    This function gives the offset from the highest (longest) point (= closed fingertip position),
+    and the offset is always negative. '''
+  def FingertipOffset(self, pos=None):
+    if pos is None:  pos= self.GripperPosition()
+    if self.gripper.Is('Gripper2F1'):  return self.gripper.FingertipOffset(pos)
+    elif self.gripper.Is('Gripper2F2'):  return self.gripper.FingertipOffset2F1(pos)
+
+  '''Get a fingertip height offset in meter.
+    The fingertip trajectory of some grippers has a rounded shape.
+    This function gives the offset from the highest (longest) point (= closed fingertip position),
+    and the offset is always negative. '''
+  def FingertipOffset2(self, pos=None):
+    if pos is None:  pos= self.GripperPosition2()
+    return self.gripper.FingertipOffset(pos)
+
+  '''High level interface to control a gripper.
+    pos: target position in meter.
+    max_effort: maximum effort to control; 0 (weakest), 100 (strongest).
+    speed: speed of the movement; 0 (minimum), 100 (maximum).
+    blocking: False: move background, True: wait until motion ends.  '''
   def GripperMoveTo(self, pos=None, max_effort=100.0, speed=100.0, blocking=False):
     if pos is None:
       pos= self.GripperTarget()
@@ -494,14 +544,17 @@ class TFVGripper(TROSUtil):
       if self.requested_current_limit!=self.fv_ctrl_param.current_limit and self.fv_ctrl_param.current_limit is not None:
         self.gripper.SetCurrentLimit(self.fv_ctrl_param.current_limit)
         self.requested_current_limit= self.fv_ctrl_param.current_limit
-      self.gripper.Move(pos, max_effort=max_effort, speed=speed, blocking=blocking)
+      if self.gripper.Is('Gripper2F1'):
+        self.gripper.Move(pos, max_effort=max_effort, speed=speed, blocking=blocking)
+      elif self.gripper.Is('Gripper2F2'):
+        self.gripper.Move2F1(pos, max_effort=max_effort, speed=speed, blocking=blocking)
 
   def GripperTarget(self):
     with self.state_locker:
       return self.g_target
 
   def SetGripperTarget(self, g_target):
-    g_range= self.gripper.PosRange()
+    g_range= self.GripperRange()
     if self.fv_ctrl_param.gpos_range[0] is not None:  g_range[0]= max(g_range[0], self.fv_ctrl_param.gpos_range[0])
     if self.fv_ctrl_param.gpos_range[1] is not None:  g_range[1]= min(g_range[1], self.fv_ctrl_param.gpos_range[1])
     if g_target<g_range[0]:  g_target= g_range[0]
@@ -509,6 +562,8 @@ class TFVGripper(TROSUtil):
     with self.state_locker:
       self.g_target= g_target
     return g_target
+
+  #TODO: Add GripperMoveTo2 as the low level interface to control the gripper.
 
   def CtrlLoop(self):
     sensor_name_list= [s for s in self.GetScriptNameList() if self.GetScriptType(s)=='sensor']
