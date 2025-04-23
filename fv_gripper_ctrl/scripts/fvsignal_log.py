@@ -78,23 +78,26 @@ class TFVSignalListenerForLog(TFVSignalListener):
     super(TFVSignalListenerForLog,self).__init__(fvsignal_list, data_skip)
     self.logging= True
     self.fp= None
+    self.locker_fp= threading.RLock()
 
   def __enter__(self, *args, **kwargs):
-    self.fp= open(self.file_name,'w')
+    with self.locker_fp:
+      self.fp= open(self.file_name,'w')
     if self.with_label_line:
       labels= [label for (signal_name,label,axis,index) in self.fvsignal_list]
-      self.fp.write('%time {}\n'.format(' '.join(labels)))
+      with self.locker_fp:
+        self.fp.write('%time {}\n'.format(' '.join(labels)))
     print(f'Start logging to {self.file_name}')
     return self
 
   def __exit__(self, *args, **kwargs):
-    self.fp.close()
-    self.fp= None
+    with self.locker_fp:
+      self.fp.close()
+      self.fp= None
     print(f'Finished logging to {self.file_name}')
 
   def UpdateValues(self):
     if not self.logging:  return False
-    if self.fp is None:  return False
 
     fvsignals_decoded,time_stamp= self.Decode(self.signal_names)
     if fvsignals_decoded is None:  return False
@@ -102,7 +105,10 @@ class TFVSignalListenerForLog(TFVSignalListener):
 
     new_values= [self.ToValue(fvsignals_decoded, signal_name, index)
                   for (signal_name,label,axis,index) in self.fvsignal_list]
-    self.fp.write('{} {}\n'.format(time_stamp,' '.join(map(str,new_values))))
+    with self.locker_fp:
+      if self.fp is None:
+        return False
+      self.fp.write('{} {}\n'.format(time_stamp,' '.join(map(str,new_values))))
 
 
 #Make a log file name from the prefix.
