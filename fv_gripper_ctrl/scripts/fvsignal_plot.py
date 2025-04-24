@@ -137,6 +137,7 @@ if __name__=='__main__':
     lines= []
     col_scheme= plt_cols.TABLEAU_COLORS
     for i,(signal_name,label,axis,index) in enumerate(fvsignal_listener.fvsignal_list):
+      if label not in plot_values:  continue
       times,values= plot_values[label]
       col= list(col_scheme.values())[i%len(col_scheme)]
       ax= (None,ax1,ax2)[axis]

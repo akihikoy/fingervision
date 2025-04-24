@@ -60,7 +60,7 @@ class TFVSignalListener(object):
 
   @staticmethod
   def ToValue(fvsignals_decoded, signal_name, index):
-    if fvsignals_decoded[signal_name] is None:  return None
+    if signal_name not in fvsignals_decoded or fvsignals_decoded[signal_name] is None:  return None
     try:
       return (fvsignals_decoded[signal_name] if index is None
               else fvsignals_decoded[signal_name][index] if isinstance(index,int)
