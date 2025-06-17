@@ -30,7 +30,7 @@ import rospy
 import rospkg
 from ay_py.core import InsertDict, LoadYAML, SaveYAML, CPrint
 from ay_py.ros import SetupServiceProxy
-from ay_py.tool.py_panel import TSimplePanel, InitPanelApp, RunPanelApp, AskYesNoDialog, QtCore, QtGui
+from ay_py.tool.py_panel import TSimplePanel, InitPanelApp, RunPanelApp, GetApp, RelaunchProgram, AskYesNoDialog, QtCore, QtGui
 sys.path.append(os.path.join(rospkg.RosPack().get_path('ay_util'),'scripts'))
 from proc_manager import TSubProcManager
 from joy_fv import TJoyEmulator
@@ -158,11 +158,6 @@ def AlignWindows(window_positions):
       subprocess.call(['wmctrl', '-i', '-a', window_id])
     else:
       print('No window with title containing "{}" found.'.format(title))
-
-def RelaunchProgram():
-  print("Relaunching program...")
-  python= sys.executable
-  os.execl(python, python, *sys.argv)
 
 if __name__=='__main__':
   def get_arg(opt_name, default):
@@ -520,10 +515,13 @@ if __name__=='__main__':
         'w': 400,
         'h': 1,
         'size_policy': ('fixed', 'fixed')      }),
+    'spacer_cmn1a': ('duplicate','spacer_cmn1'),
     'spacer_cmn2': ('spacer', {
         'w': 100,
         'h': 1,
         'size_policy': ('fixed', 'expanding')      }),
+    'spacer_cmn2a': ('duplicate','spacer_cmn2'),
+    'spacer_cmn2b': ('duplicate','spacer_cmn2'),
     'status_grid_text': (
       'status_grid',{
         'list_status': status_grid_list_text,
@@ -1042,7 +1040,7 @@ if __name__=='__main__':
         ('boxh',None, CtrlConfigSliderLayout('openif_sensitivity_oa') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_nforce_threshold') ),
         ('boxh',None, CtrlConfigSliderLayout('openif_dw_grip') ),
-        'spacer_cmn2',
+        'spacer_cmn2a',
       ))
 
 
@@ -1100,7 +1098,7 @@ if __name__=='__main__':
   layout_plots= (
     'boxv',None,(
       ('boxh',None, ('btn_plot','btn_log',)),
-      ('boxv',None, (layout_plot_cbs,'spacer_cmn2')),
+      ('boxv',None, (layout_plot_cbs,'spacer_cmn2b')),
       ))
 
   widgets_debug= {
@@ -1306,7 +1304,7 @@ if __name__=='__main__':
           ('Advanced',layout_debug),
           )),
         'btn_exit',
-        'spacer_cmn1')),
+        'spacer_cmn1a')),
       ))
 
   app= InitPanelApp()
@@ -1354,7 +1352,9 @@ if __name__=='__main__':
       pm.Cleanup(),
       True)[-1]
 
-  RunPanelApp(exit_at_close=False)
+  exit_code= RunPanelApp(exit_at_close=False)
 
   if pm.flag_relaunch:
     RelaunchProgram()
+
+  sys.exit(exit_code)
