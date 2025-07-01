@@ -32,6 +32,7 @@ add_service_files(
   SetStringInt32Array.srv
   SetStringInt32.srv
   SetString.srv
+  SetGetString.srv
   TakeSnapshot.srv
 )
 

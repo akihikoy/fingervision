@@ -329,10 +329,16 @@ class TFVGripper(TROSUtil):
 
     self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data))
     self.AddSrv('run_script', '~run_script', fingervision_msgs.srv.SetString,
-                lambda req:(self.RunScript(req.data),
-                            fingervision_msgs.srv.SetStringResponse())[-1])
+                lambda req: fingervision_msgs.srv.SetStringResponse(
+                                result=self.RunScript(req.data)) )
     self.AddSrv('stop_script', '~stop_script', std_srvs.srv.Empty,
                 lambda req:(self.StopScript(), std_srvs.srv.EmptyResponse())[-1])
+    self.AddSrv('reset_script', '~reset_script', fingervision_msgs.srv.SetString,
+                lambda req: fingervision_msgs.srv.SetStringResponse(
+                                result=self.ResetScript(req.data)) )
+    self.AddSrv('help_script', '~help_script', fingervision_msgs.srv.SetGetString,
+                lambda req: fingervision_msgs.srv.SetGetStringResponse(
+                                result=self.HelpScript(req.data)) )
 
   def VizGripper(self):
     xw= [0,0,0, 0,0,0,1]
@@ -389,12 +395,18 @@ class TFVGripper(TROSUtil):
     if mod is None:  return None,None
     f_run,f_loop= getattr(mod,'Run',None), getattr(mod,'Loop',None)
     if f_run is None and f_loop is None:
-      print('In script {}, both Run and Loop are not defined'.format(script_name))
+      print('Error: In script {}, both Run and Loop are not defined'.format(script_name))
       return None,None
     if f_run is not None and f_loop is not None:
-      print('In script {}, both Run and Loop are defined'.format(script_name))
+      print('Error: In script {}, both Run and Loop are defined'.format(script_name))
       return None,None
     return f_run,f_loop
+
+  def GetHelpFunction(self, script_name):
+    mod= self.LoadScript(script_name)
+    if mod is None:  return None
+    f_help= getattr(mod,'Help',None)
+    return f_help
 
   #Load sensor scripts specified by sensor_name_list.
   #  run_reset: Control the timing to run Reset function:
@@ -459,8 +471,10 @@ class TFVGripper(TROSUtil):
       CPrint(2,'{} is called'.format(script_name))
       try:
         f_run(self)
+        return True
       except Exception as e:
         print('Script {} error in Run: {}'.format(script_name, e))
+      return False
       #self.script_is_active= False  #Removed to enable the simultaneous execution of f_run and f_loop.
     elif f_loop is not None:
       self.StopScript()
@@ -469,6 +483,10 @@ class TFVGripper(TROSUtil):
                                            target=lambda:self.ScriptLoopExecutor(f_loop))
       CPrint(2,'{} is started'.format(script_name))
       self.script_thread.start()
+      return True
+    else:
+      CPrint(4,f'Cannot run the requested script: {script_name}')
+      return False
 
   def ScriptLoopExecutor(self, f_loop):
     th= self.script_thread
@@ -486,6 +504,34 @@ class TFVGripper(TROSUtil):
     self.script_is_active= False
     if th is not None:  th.join()
     self.script_thread= None
+
+  def ResetScript(self, script_name):
+    f_reset,f_get= self.GetSensorFunctions(script_name)
+    if f_reset is not None:
+      CPrint(2,f'{script_name}.Reset is called')
+      try:
+        f_reset(self)
+        return True
+      except Exception as e:
+        print(f'Script {script_name} error in Reset: {e}')
+      return False
+    else:
+      CPrint(0,f'Script {script_name} does not have Reset')
+      return False
+
+  def HelpScript(self, script_name):
+    f_help= self.GetHelpFunction(script_name)
+    if f_help is not None:
+      CPrint(2,f'{f_help}.Help is called')
+      try:
+        help_msg= f_help()
+        return help_msg
+      except Exception as e:
+        print(f'Script {script_name} error in Help: {e}')
+      return None
+    else:
+      CPrint(0,f'Script {script_name} does not have Help')
+      return None
 
   def IsScriptActive(self):
     return self.script_is_active
