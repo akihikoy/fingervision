@@ -7,7 +7,7 @@ The extension script framework makes adding extra signal processing and gripper 
 
 The signal processing scripts are executed in each step of the loop, and the results are sent to the unified ROS topic: `/fv_gripper_ctrl/fvsignals` (`fingervision_msgs/NamedVariableListStamped` type).
 
-The general purpose scripts can be executed via ROS service: `/fv_gripper_ctrl/run_script` (`fingervision_msgs.srv.SetString`).
+The general purpose scripts can be executed via ROS service: `/fv_gripper_ctrl/run_script` (`fingervision_msgs/SetString`).
 
 In order to achieve this flexibility, the scripts need to follow the format.
 
@@ -154,5 +154,17 @@ def Loop(fvg):
 ```
 
 
+# ROS Services
 
+Related to the extension scripts, following services are available with the ROS node `/fv_gripper_ctrl`:
+
+- `/fv_gripper_ctrl/run_script` (`fingervision_msgs/SetString`)
+    - Launch the script.
+    - The selection of Run/Loop is automatic.
+- `/fv_gripper_ctrl/stop_script` (`std_srvs/Empty`)
+    - Stop the running Loop type script.
+- `/fv_gripper_ctrl/reset_script` (`fingervision_msgs/SetString`)
+    - Call the `Reset` function of the script (if defined).
+- `/fv_gripper_ctrl/help_script` (`fingervision_msgs/SetGetString`)
+    - Call the `Help` function of the script and respond the return (if defined).
 
