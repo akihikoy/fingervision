@@ -23,14 +23,14 @@ def Loop(fvg):
     if abs(theta0-get_theta())>target_angle:
       print('Done! target=', RadToDeg(target_angle))
       g_pos-= fvg.fv_ctrl_param.min_gstep
-      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=100.0, blocking=False)
       break
 
     #Open gripper until slip is detected
     g_pos= fvg.GripperPosition()
     while thread_cond() and sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])<0.05:
       g_pos+= fvg.fv_ctrl_param.min_gstep
-      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=100.0, blocking=False)
       for i in range(100):
         if abs(fvg.GripperPosition()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
         rospy.sleep(0.0001)
@@ -43,7 +43,7 @@ def Loop(fvg):
     g_pos= fvg.GripperPosition()
     while thread_cond() and sum(fv_data.mv_s[0])+sum(fv_data.mv_s[1])>0.05:
       g_pos-= fvg.fv_ctrl_param.min_gstep
-      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=100.0, blocking=False)
       for i in range(100):
         if abs(fvg.GripperPosition()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
         rospy.sleep(0.0001)

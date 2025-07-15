@@ -149,7 +149,7 @@ def Loop(fvg):
   g_pos= fvg.GripperPosition()  #Get the current gripper position.
   while fvg.script_is_active and not rospy.is_shutdown():
     #Calculate g_pos with fv_data.
-    fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=True)
+    fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=100.0, blocking=True)
     rospy.sleep(0.04)
 ```
 

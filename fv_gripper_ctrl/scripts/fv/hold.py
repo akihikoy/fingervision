@@ -31,7 +31,7 @@ def Loop(fvg):
     if any(slips):
       CPrint(2,'(slip,da_center_norm(oc),da_area(oa))',slips)
       g_pos-= fvg.fv_ctrl_param.min_gstep
-      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=1.0, blocking=False)
+      fvg.GripperMoveTo(pos=g_pos, max_effort=fvg.fv_ctrl_param.effort, speed=100.0, blocking=False)
       for i in range(100):  #100
         if abs(fvg.GripperPosition()-g_pos)<0.5*fvg.fv_ctrl_param.min_gstep:  break
         rospy.sleep(0.0001)
