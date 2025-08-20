@@ -33,7 +33,7 @@ class TFVSignalListenerForPlot(TFVSignalListener):
     super(TFVSignalListenerForPlot,self).__init__(fvsignal_list, data_skip)
 
   def UpdateValues(self):
-    fvsignals_decoded,time_stamp= self.Decode(self.signal_names)
+    fvsignals_decoded, time_stamp, fv_time_stamp= self.Decode(self.signal_names)
     if fvsignals_decoded is None:  return False
     #print fvsignals_decoded
 

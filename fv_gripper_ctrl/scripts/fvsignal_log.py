@@ -32,12 +32,12 @@ class TFVSignalListener(object):
         ('gripper_pos',std_msgs.msg.Float64),
         ('target_pos',std_msgs.msg.Float64) ):
       setattr(self, topic, None)
-      sub= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.Callback(topic,msg))
+      sub= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.Callback(topic,msg), queue_size=1, tcp_nodelay=True)
       setattr(self, 'sub_{}'.format(topic), sub)
 
     self.fvsignals= None
     self.fvsignals_header= None
-    self.sub_fvsignals= rospy.Subscriber('/fv_gripper_ctrl/fvsignals', fingervision_msgs.msg.NamedVariableListStamped, self.CallbackFVSignals)
+    self.sub_fvsignals= rospy.Subscriber('/fv_gripper_ctrl/fvsignals', fingervision_msgs.msg.NamedVariableListStamped, self.CallbackFVSignals, queue_size=1, tcp_nodelay=True)
 
   def Callback(self, topic, msg):
     setattr(self, topic, msg.data)
@@ -50,13 +50,14 @@ class TFVSignalListener(object):
     self.UpdateValues()
 
   def Decode(self, names):
-    fvsignals,time_stamp= self.fvsignals.data,self.fvsignals_header.stamp.to_sec()
-    if fvsignals is None:  return None
+    fvsignals,fv_time_stamp= self.fvsignals.data,self.fvsignals_header.stamp.to_sec()
+    if fvsignals is None:  return None, None, None
     data= [DecodeNamedVariableMsg(d) for d in fvsignals if d.name in names]
     decoded= {name:value for (name,value) in data}
     decoded['gripper_pos']= self.gripper_pos
     decoded['target_pos']= self.target_pos
-    return decoded, time_stamp
+    time_stamp= rospy.Time.now().to_sec()
+    return decoded, time_stamp, fv_time_stamp
 
   @staticmethod
   def ToValue(fvsignals_decoded, signal_name, index):
@@ -81,12 +82,14 @@ class TFVSignalListenerForLog(TFVSignalListener):
     self.locker_fp= threading.RLock()
 
   def __enter__(self, *args, **kwargs):
+    dir_name= os.path.dirname(self.file_name)
+    if dir_name and not os.path.exists(dir_name):
+      os.makedirs(dir_name)
     with self.locker_fp:
       self.fp= open(self.file_name,'w')
-    if self.with_label_line:
-      labels= [label for (signal_name,label,axis,index) in self.fvsignal_list]
-      with self.locker_fp:
-        self.fp.write('%time {}\n'.format(' '.join(labels)))
+      if self.with_label_line:
+        labels= [label for (signal_name,label,axis,index) in self.fvsignal_list]
+        self.fp.write('%time fv_time {}\n'.format(' '.join(labels)))
     print(f'Start logging to {self.file_name}')
     return self
 
@@ -99,7 +102,7 @@ class TFVSignalListenerForLog(TFVSignalListener):
   def UpdateValues(self):
     if not self.logging:  return False
 
-    fvsignals_decoded,time_stamp= self.Decode(self.signal_names)
+    fvsignals_decoded, time_stamp, fv_time_stamp= self.Decode(self.signal_names)
     if fvsignals_decoded is None:  return False
     #print fvsignals_decoded
 
@@ -108,7 +111,7 @@ class TFVSignalListenerForLog(TFVSignalListener):
     with self.locker_fp:
       if self.fp is None:
         return False
-      self.fp.write('{} {}\n'.format(time_stamp,' '.join(map(str,new_values))))
+      self.fp.write('{} {} {}\n'.format(time_stamp, fv_time_stamp,' '.join(map(str,new_values))))
 
 
 #Make a log file name from the prefix.
