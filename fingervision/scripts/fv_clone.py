@@ -28,11 +28,12 @@ if __name__=='__main__':
   pub,sub,srvp,srv= {},{},{},{}
 
   #Clone a publisher of fv_from for fv_to.
-  def clone_pub(topic, msg_type, queue_size=10):
+  def clone_pub(topic, msg_type, queue_size=1):
     pub[topic]= rospy.Publisher(rospy.get_namespace()+'{fv}/{topic}'.format(fv=fv_to, topic=topic),
                                 msg_type, queue_size=queue_size)
     sub[topic]= rospy.Subscriber(rospy.get_namespace()+'{fv}/{topic}'.format(fv=fv_from, topic=topic),
-                                 msg_type, lambda msg:pub[topic].publish(ModifyFV(msg,fv_to)))
+                                 msg_type, lambda msg:pub[topic].publish(ModifyFV(msg,fv_to)),
+                                 queue_size=queue_size, tcp_nodelay=True)
 
   clone_pub('blob_moves',  fingervision_msgs.msg.BlobMoves)
   clone_pub('prox_vision', fingervision_msgs.msg.ProxVision)
