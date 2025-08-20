@@ -79,10 +79,21 @@ def EncodeNamedVariableMsg(name, var):
       assign(msg.type, [var])
   return msg
 
+GRIPPER_TYPE_ALIASES={
+    'DxlG'   : 'DxlGripper',
+    'ThG'    : 'RHP12RNAGripper',
+    'ThGA'   : 'RHP12RNAGripper',
+    'DxlpO2' : 'DxlpO2Gripper',
+    'DxlO3'  : 'DxlO3Gripper',
+    'DxlpY1' : 'DxlpY1Gripper',
+    'EZG'    : 'EZGripper',
+  }
 
 def CreateGripperDriver(gripper_type, gripper_node='gripper_driver'):
   gripper= None
   param= None
+  if gripper_type in GRIPPER_TYPE_ALIASES:
+    gripper_type= GRIPPER_TYPE_ALIASES[gripper_type]
   if gripper_type in ('RHP12RNGripper','RHP12RNAGripper'):
     mod= importlib.import_module('ay_py.ros.rbt_rhp12rn')
     gripper= mod.TRHP12RNGripper(node_name=gripper_node)
@@ -322,12 +333,12 @@ class TFVGripper(TROSUtil):
     self.viz= TSimpleVisualizerArray(rospy.Duration(1.0), name_space='fvgripper', frame=self.frame_id)
     self.LoadCtrlParams()
 
-    self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64)
-    self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64)
-    self.AddPub('active_script','~active_script',std_msgs.msg.String)
-    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedVariableListStamped)
+    self.AddPub('gripper_pos','~gripper_pos',std_msgs.msg.Float64, queue_size=1)
+    self.AddPub('target_pos','~target_pos',std_msgs.msg.Float64, queue_size=1)
+    self.AddPub('active_script','~active_script',std_msgs.msg.String, queue_size=10)
+    self.AddPub('fvsignals','~fvsignals',fingervision_msgs.msg.NamedVariableListStamped, queue_size=1)
 
-    self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data))
+    self.AddSub('set_target_pos', '~set_target_pos', std_msgs.msg.Float64, lambda msg:self.SetGripperTarget(msg.data), queue_size=1, tcp_nodelay=True)
     self.AddSrv('run_script', '~run_script', fingervision_msgs.srv.SetString,
                 lambda req: fingervision_msgs.srv.SetStringResponse(
                                 result=self.RunScript(req.data)) )
@@ -758,7 +769,7 @@ class TFVGripper(TROSUtil):
 if __name__ == '__main__':
   rospy.init_node('fv_gripper_ctrl')
 
-  gripper_type= rospy.get_param('~gripper_type', 'RHP12RNGripper')
+  gripper_type= rospy.get_param('~gripper_type', 'RHP12RNAGripper')
   gripper_node= rospy.get_param('~gripper_node', 'gripper_driver')
   fv_names= rospy.get_param('~fv_names', {RIGHT:'fvp_1_r',LEFT:'fvp_1_l'})
   fv_nodes= rospy.get_param('~fv_nodes', None)
