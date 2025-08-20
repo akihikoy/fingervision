@@ -156,8 +156,8 @@ class TFVSensor(TROSUtil):
         print('SetupFV: Stopped service connection trial due to a failure.')
 
     if not service_only:
-      self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback)
-      self.AddSub('fv_filter1_objinfo', '/fingervision/fv_filter1_objinfo', fingervision_msgs.msg.Filter1ObjInfo, self.Filter1ObjInfoCallback)
+      self.AddSub('fv_filter1_wrench', '/fingervision/fv_filter1_wrench', fingervision_msgs.msg.Filter1Wrench, self.Filter1WrenchCallback, queue_size=1, tcp_nodelay=True)
+      self.AddSub('fv_filter1_objinfo', '/fingervision/fv_filter1_objinfo', fingervision_msgs.msg.Filter1ObjInfo, self.Filter1ObjInfoCallback, queue_size=1, tcp_nodelay=True)
 
   #Stop subscribing topics.
   def Stop(self):
