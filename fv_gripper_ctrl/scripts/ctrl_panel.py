@@ -178,6 +178,9 @@ if __name__=='__main__':
   with_fv1to2= True if '-fv1to2' in sys.argv or '--fv1to2' in sys.argv else False
   #Modbus/TCP support:
   with_modbus= True if '-modbus' in sys.argv or '--modbus' in sys.argv else False
+  #Disable RViz rendering:
+  no_rviz= True if '-no_rviz' in sys.argv or '--no_rviz' in sys.argv else (
+           False if '-with_rviz' in sys.argv or '--with_rviz' in sys.argv else False)
 
   HOME= os.environ['HOME']
   DATA_DIR= HOME+'/data'
@@ -512,6 +515,10 @@ if __name__=='__main__':
       'rviz',{
         'config': RVIZ_CONFIG,
         'size_policy': ('expanding', 'expanding')}),
+    'spacer_dummyrviz': ('spacer', {
+        'w': 1,
+        'h': 1,
+        'size_policy': ('expanding', 'expanding')      }),
     'spacer_cmn1': ('spacer', {
         'w': 400,
         'h': 1,
@@ -542,12 +549,14 @@ if __name__=='__main__':
         'shape':'square',
         'margin':(0.05,0.05),
         'rows':None,
-        'columns':3,
+        'columns':3 if not no_rviz else 2,
         'font_size_range': (8,24),
         'size_policy': ('minimum', 'minimum'),
         'ontopicshzupdated': UpdateStatusGridColor,
         }),
     }
+  if no_rviz:
+    del widgets_common['rviz']
 
   widgets_init= {
     'label_init': (
@@ -580,7 +589,7 @@ if __name__=='__main__':
                       run_cmd('config_fv_r'),
                       pm.SerupFVSrv(fv_names=config['FV_NAMES']),
                       pm.fv.CallSrv('set_video_prefix', config['VIDEO_PREFIX']),
-                      w.widgets['rviz'].setup(),
+                      w.widgets['rviz'].setup() if not no_rviz else None,
                       w.widgets['btn_init2'].setEnabled(True),
                       w.widgets['combo_config_file_list'].setEnabled(False),
                      ),
@@ -1279,7 +1288,7 @@ if __name__=='__main__':
     'boxh',None, (
       #'rviz',
       ('boxv',None, (
-        'rviz',
+        'rviz' if not no_rviz else 'spacer_dummyrviz',
         ('boxv',None, ('status_grid_text','status_grid_color')),
         )),
       ('boxv',None, (
