@@ -27,17 +27,40 @@ class TFVSignalListener(object):
     self.fvsignal_list= fvsignal_list
     self.data_skip= data_skip
     self.signal_names= [signal_name for (signal_name,label,axis,index) in self.fvsignal_list]
+    self.topic_list= (
+      ('gripper_pos',std_msgs.msg.Float64),
+      ('target_pos',std_msgs.msg.Float64) )
+    self.Setup()
 
-    for (topic,msg_type) in (
-        ('gripper_pos',std_msgs.msg.Float64),
-        ('target_pos',std_msgs.msg.Float64) ):
+  def __del__(self):
+    self.Cleanup()
+
+  def Setup(self):
+    for (topic,msg_type) in self.topic_list:
       setattr(self, topic, None)
-      sub= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type, lambda msg,topic=topic:self.Callback(topic,msg), queue_size=1, tcp_nodelay=True)
-      setattr(self, 'sub_{}'.format(topic), sub)
+      sub= rospy.Subscriber('/fv_gripper_ctrl/{}'.format(topic), msg_type,
+                            lambda msg,topic=topic:self.Callback(topic,msg),
+                            queue_size=1, tcp_nodelay=True)
+      setattr(self, f'sub_{topic}', sub)
 
     self.fvsignals= None
     self.fvsignals_header= None
-    self.sub_fvsignals= rospy.Subscriber('/fv_gripper_ctrl/fvsignals', fingervision_msgs.msg.NamedVariableListStamped, self.CallbackFVSignals, queue_size=1, tcp_nodelay=True)
+    self.sub_fvsignals= rospy.Subscriber('/fv_gripper_ctrl/fvsignals', fingervision_msgs.msg.NamedVariableListStamped,
+                                         self.CallbackFVSignals,
+                                         queue_size=1, tcp_nodelay=True)
+
+  def Cleanup(self):
+    if getattr(self, 'sub_fvsignals', None):
+      self.sub_fvsignals.unregister()
+      self.sub_fvsignals= None
+    self.fvsignals= None
+    self.fvsignals_header= None
+
+    for (topic,msg_type) in self.topic_list:
+      sub= getattr(self, f'sub_{topic}', None)
+      if sub:  sub.unregister()
+      setattr(self, f'sub_{topic}', None)
+      setattr(self, topic, None)
 
   def Callback(self, topic, msg):
     setattr(self, topic, msg.data)
@@ -95,9 +118,11 @@ class TFVSignalListenerForLog(TFVSignalListener):
 
   def __exit__(self, *args, **kwargs):
     with self.locker_fp:
-      self.fp.close()
+      if self.fp:
+        self.fp.close()
       self.fp= None
     print(f'Finished logging to {self.file_name}')
+    if TFVSignalListenerForLog is not None:  super(TFVSignalListenerForLog,self).Cleanup()
 
   def UpdateValues(self):
     if not self.logging:  return False

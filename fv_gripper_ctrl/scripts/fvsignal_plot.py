@@ -127,31 +127,38 @@ if __name__=='__main__':
     y2label= CatStrListWithCommaLB([label for (signal_name,label,axis,index) in plots if axis==2], max_line_len=max_ylabel_len)
 
   rate_adjuster= rospy.Rate(plot_rate)
-  while not rospy.is_shutdown():
-    plot_values= fvsignal_listener.PlotValues()
+  try:
+    while not rospy.is_shutdown():
+      plot_values= fvsignal_listener.PlotValues()
 
-    #print plot_values
-    ax1.cla()
-    ax2.cla()
+      #print plot_values
+      ax1.cla()
+      ax2.cla()
 
-    lines= []
-    col_scheme= plt_cols.TABLEAU_COLORS
-    for i,(signal_name,label,axis,index) in enumerate(fvsignal_listener.fvsignal_list):
-      if label not in plot_values:  continue
-      times,values= plot_values[label]
-      col= list(col_scheme.values())[i%len(col_scheme)]
-      ax= (None,ax1,ax2)[axis]
-      lines+= ax.plot(times,values, color=col, linewidth=2, label=label)
+      lines= []
+      col_scheme= plt_cols.TABLEAU_COLORS
+      for i,(signal_name,label,axis,index) in enumerate(fvsignal_listener.fvsignal_list):
+        if label not in plot_values:  continue
+        times,values= plot_values[label]
+        col= list(col_scheme.values())[i%len(col_scheme)]
+        ax= (None,ax1,ax2)[axis]
+        lines+= ax.plot(times,values, color=col, linewidth=2, label=label)
 
-    #ax1.legend(loc='upper left', bbox_to_anchor=(0.0,1.0))
-    #ax2.legend(loc='upper left', bbox_to_anchor=(0.0,0.8))
-    ax2.legend(lines, [l.get_label() for l in lines], loc='upper left')
+      #ax1.legend(loc='upper left', bbox_to_anchor=(0.0,1.0))
+      #ax2.legend(loc='upper left', bbox_to_anchor=(0.0,0.8))
+      ax2.legend(lines, [l.get_label() for l in lines], loc='upper left')
 
-    ax1.set_title(title)
-    ax1.set_xlabel(xlabel)
-    ax1.set_ylabel(ylabel)
-    #ax1.set_ylim(bottom=-1.2,top=1.2)
-    ax2.set_ylabel(y2label)
-    fig.tight_layout()
-    plt.pause(0.001)
-    rate_adjuster.sleep()
+      ax1.set_title(title)
+      ax1.set_xlabel(xlabel)
+      ax1.set_ylabel(ylabel)
+      #ax1.set_ylim(bottom=-1.2,top=1.2)
+      ax2.set_ylabel(y2label)
+      fig.tight_layout()
+      plt.pause(0.001)
+      rate_adjuster.sleep()
+
+  except Exception as e:
+    print(f'Exception: {e}')
+
+  finally:
+    fvsignal_listener.Cleanup()
