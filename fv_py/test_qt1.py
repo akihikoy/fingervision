@@ -12,7 +12,33 @@ import sys
 from rate_adjust3 import TRateAdjuster
 import multiprocessing as mp
 import queue
-from PyQt4 import QtCore, QtGui
+import os
+
+if 'QT_API' not in os.environ:
+  os.environ['QT_API'] = 'pyside2'
+if os.environ['QT_API'] == 'pyside2':
+  try:
+    from PySide2 import QtCore, QtWidgets, QtTest
+    import PySide2.QtGui as PySide2QtGui
+    QtGui = QtWidgets
+    components = ('QFont', 'QFontMetrics', 'QIntValidator', 'QDoubleValidator',
+                  'QPalette', 'QColor', 'QLinearGradient', 'QPainter', 'QImage')
+    for component in components:
+      if hasattr(PySide2QtGui, component):
+        setattr(QtGui, component, getattr(PySide2QtGui, component))
+    if not hasattr(QtTest.QTest, 'qWait'):
+      def qWait(msec):
+          loop = QtCore.QEventLoop()
+          QtCore.QTimer.singleShot(msec, loop.quit)
+          loop.exec_()
+      setattr(QtTest.QTest, 'qWait', staticmethod(qWait))
+    QtCore.pyqtSignal = QtCore.Signal
+    QtCore.pyqtSlot = QtCore.Slot
+  except ImportError:
+    raise Exception('Failed to import PySide2. Install: $ sudo apt-get install python3-pyside2.qtcore python3-pyside2.qtwidgets python3-pyside2.qtgui python3-pyside2.qttest')
+else:
+  raise Exception('Unsupported QT_API version:', os.environ.get('QT_API'))
+
 
 def FVLoop(config_file, queue_cmd, queue_out):
   fv.StartThreads(config=config_file)
